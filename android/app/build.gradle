@@ -111,7 +111,7 @@ android {
             if (System.getenv('ANDROID_KEYSTORE_BASE64')) {
                 def keystoreFile = new File("${buildDir}/release.keystore")
                 keystoreFile.parentFile.mkdirs()
-                keystoreFile.bytes = Base64.decoder.decode(System.getenv('ANDROID_KEYSTORE_BASE64'))
+                keystoreFile.bytes = Base64.getMimeDecoder().decode(System.getenv('ANDROID_KEYSTORE_BASE64').replaceAll('\\s', ''))
                 storeFile = keystoreFile
             } else {
                 storeFile = file(System.getenv('ANDROID_RELEASE_KEYSTORE') ?: 'debug.keystore')
