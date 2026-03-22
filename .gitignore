@@ -42,10 +42,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — keep .env.example, ignore real secrets
+# env files — keep .env.development and .env.production (no secrets),
+# ignore local overrides and any file with real keys
 .env
 .env.local
 .env.*.local
+
+# Release keystore — never commit
+android/app/release.keystore
 
 # TypeScript
 *.tsbuildinfo

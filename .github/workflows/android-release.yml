@@ -1,32 +1,32 @@
-name: Android APK — Build & Release
+name: Android — Production Release
+
+# Builds a SIGNED RELEASE APK and publishes it to GitHub Releases.
+# Release = no Metro, Hermes optimised, resource shrinking, R8/ProGuard minified.
+# Triggered by pushing a version tag: git tag v1.2.0 && git push origin v1.2.0
 
 on:
-  # Publish a release whenever a version tag is pushed (e.g. v1.0.0)
   push:
     tags:
       - "v*"
-  # Also allow manual builds from the Actions tab (no release created)
   workflow_dispatch:
     inputs:
       notes:
-        description: "Optional release notes"
+        description: "Extra release notes (optional)"
         required: false
         default: ""
 
 permissions:
-  contents: write   # needed to create GitHub Releases
+  contents: write   # required to create GitHub Releases
 
 jobs:
   build:
-    name: Build debug APK
+    name: Signed release APK (production)
     runs-on: ubuntu-latest
 
     steps:
-      # ── Source ──────────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Runtimes ────────────────────────────────────────────────────────────
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
@@ -39,12 +39,10 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      # ── Android SDK licenses (pre-installed on ubuntu-latest) ────────────────
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
 
-      # ── Caches ──────────────────────────────────────────────────────────────
-      - name: Cache Gradle wrapper & caches
+      - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
@@ -53,41 +51,43 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # ── JS dependencies ──────────────────────────────────────────────────────
       - name: Install JS dependencies
         run: npm ci --legacy-peer-deps
 
-      # ── Android build ────────────────────────────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build debug APK
+      # ── Build signed release APK ──────────────────────────────────────────
+      - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon
         env:
-          # Inject the OpenAI key so expo-constants can embed it at build time.
-          # Add EXPO_PUBLIC_OPENAI_API_KEY in your repo's Settings → Secrets.
+          APP_ENV: production
           EXPO_PUBLIC_OPENAI_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENAI_API_KEY }}
+          # Keystore secrets — add these in Settings → Secrets → Actions
+          # Run scripts/generate-keystore.sh locally to create the keystore
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS:       ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD:  ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD:    ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # ── Rename & collect ─────────────────────────────────────────────────────
+      # ── Rename & publish ──────────────────────────────────────────────────
       - name: Rename APK
         run: |
           VERSION="${GITHUB_REF_NAME:-manual}"
-          APK_SRC="android/app/build/outputs/apk/debug/app-debug.apk"
-          APK_DST="android/app/build/outputs/apk/debug/DungeonFit-${VERSION}.apk"
-          mv "$APK_SRC" "$APK_DST"
-          echo "APK_PATH=$APK_DST"  >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION"   >> "$GITHUB_ENV"
+          SRC="android/app/build/outputs/apk/release/app-release.apk"
+          DST="android/app/build/outputs/apk/release/DungeonFit-${VERSION}.apk"
+          mv "$SRC" "$DST"
+          echo "APK_PATH=$DST"  >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      # Always upload the APK as a workflow artifact (downloadable from the run)
-      - name: Upload APK artifact
+      - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DungeonFit-${{ env.VERSION }}
+          name: DungeonFit-${{ env.VERSION }}-release
           path: ${{ env.APK_PATH }}
           retention-days: 30
 
-      # ── GitHub Release (tag builds only) ────────────────────────────────────
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -96,14 +96,16 @@ jobs:
           files: ${{ env.APK_PATH }}
           generate_release_notes: true
           body: |
-            ## DungeonFit ${{ env.VERSION }}
+            ## DungeonFit ${{ env.VERSION }} — Production Release
 
             ${{ github.event.inputs.notes }}
 
+            ### What's new
+            See the full changelog above ↑
+
             ### Install on Android
             1. Download **DungeonFit-${{ env.VERSION }}.apk** below
-            2. On your device: **Settings → Apps → Install unknown apps** → allow your browser/Files app
+            2. On your device: **Settings → Apps → Install unknown apps** → allow your browser or Files app
             3. Open the downloaded APK and tap **Install**
 
-            > **Note:** This is a debug build intended for testing.
-            > An OpenAI API key is required for AI quest generation — set it up in the app on first launch.
+            > **Signed release build** — no Metro dev overlay, Hermes optimised JS, ProGuard minified.

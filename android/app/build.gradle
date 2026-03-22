@@ -104,21 +104,36 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // Keystore is injected via CI secrets (base64-encoded).
+            // Locally, set ANDROID_RELEASE_KEYSTORE to the keystore file path.
+            // Run scripts/generate-keystore.sh to create one.
+            if (System.getenv('ANDROID_KEYSTORE_BASE64')) {
+                def keystoreFile = new File("${buildDir}/release.keystore")
+                keystoreFile.parentFile.mkdirs()
+                keystoreFile.bytes = Base64.decoder.decode(System.getenv('ANDROID_KEYSTORE_BASE64'))
+                storeFile = keystoreFile
+            } else {
+                storeFile = file(System.getenv('ANDROID_RELEASE_KEYSTORE') ?: 'debug.keystore')
+            }
+            storePassword = System.getenv('ANDROID_STORE_PASSWORD') ?: 'android'
+            keyAlias     = System.getenv('ANDROID_KEY_ALIAS')      ?: 'androiddebugkey'
+            keyPassword  = System.getenv('ANDROID_KEY_PASSWORD')   ?: 'android'
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // Keep Metro dev overlay + fast refresh in debug
+            applicationIdSuffix ".debug"
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
-            shrinkResources enableShrinkResources.toBoolean()
-            minifyEnabled enableMinifyInReleaseBuilds
+            signingConfig signingConfigs.release
+            // Strip Metro, minify JS via Hermes, shrink resources
+            shrinkResources true
+            minifyEnabled true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
-            crunchPngs enablePngCrunchInRelease.toBoolean()
+            crunchPngs true
         }
     }
     packagingOptions {
