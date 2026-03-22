@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dungeonfit-web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["./scripts/serve-dist.js"],
+      "port": 8082
+    }
+  ]
+}
