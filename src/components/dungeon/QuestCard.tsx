@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
 import { COLORS } from '@/lib/constants';
@@ -81,20 +82,15 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
       {/* Action area */}
       {quest.status === 'pending' && !disabled && (
         <Animated.View entering={FadeIn} style={styles.actions}>
+          {/* Primary CTA — opens the guided workout screen */}
           <PressableButton
-            label={`✓ Complete (+${quest.xpReward} XP)`}
-            variant="success"
+            label="⚔️  Accept Quest"
+            variant="primary"
             size="sm"
             style={{ flex: 1 }}
-            onPress={() => onAction(quest.id, 'complete')}
+            onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
           />
-          <PressableButton
-            label="½ Half"
-            variant="ghost"
-            size="sm"
-            style={{ minWidth: 70 }}
-            onPress={() => onAction(quest.id, 'half_complete')}
-          />
+          {/* Quick-action shortcuts for experienced users */}
           <PressableButton
             label="✕"
             variant="danger"

@@ -26,6 +26,10 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="setup" options={{ animation: 'fade' }} />
+        <Stack.Screen
+          name="active-quest"
+          options={{ animation: 'slide_from_bottom', gestureEnabled: true }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
