@@ -107,18 +107,22 @@ android {
         release {
             // Keystore is injected via CI secrets (base64-encoded).
             // Locally, set ANDROID_RELEASE_KEYSTORE to the keystore file path.
-            // Run scripts/generate-keystore.sh to create one.
+            // Run: node scripts/generate-keystore.js
             if (System.getenv('ANDROID_KEYSTORE_BASE64')) {
                 def keystoreFile = new File("${buildDir}/release.keystore")
                 keystoreFile.parentFile.mkdirs()
-                keystoreFile.bytes = Base64.getMimeDecoder().decode(System.getenv('ANDROID_KEYSTORE_BASE64').replaceAll('\\s', ''))
+                // Use MIME decoder + strip whitespace to handle line-wrapped base64 secrets
+                def b64 = System.getenv('ANDROID_KEYSTORE_BASE64').replaceAll('[\\s\\n\\r]', '')
+                keystoreFile.bytes = Base64.getMimeDecoder().decode(b64)
                 storeFile = keystoreFile
             } else {
                 storeFile = file(System.getenv('ANDROID_RELEASE_KEYSTORE') ?: 'debug.keystore')
             }
-            storePassword = System.getenv('ANDROID_STORE_PASSWORD') ?: 'android'
-            keyAlias     = System.getenv('ANDROID_KEY_ALIAS')      ?: 'androiddebugkey'
-            keyPassword  = System.getenv('ANDROID_KEY_PASSWORD')   ?: 'android'
+            def ksStorePass = System.getenv('ANDROID_STORE_PASSWORD') ?: 'android'
+            storePassword = ksStorePass
+            keyAlias      = System.getenv('ANDROID_KEY_ALIAS') ?: 'androiddebugkey'
+            // PKCS12 keystores use storePassword as keyPassword — fall back to storePassword
+            keyPassword   = System.getenv('ANDROID_KEY_PASSWORD') ?: ksStorePass
         }
     }
     buildTypes {
