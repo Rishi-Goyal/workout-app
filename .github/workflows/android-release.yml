@@ -1,0 +1,109 @@
+name: Android APK — Build & Release
+
+on:
+  # Publish a release whenever a version tag is pushed (e.g. v1.0.0)
+  push:
+    tags:
+      - "v*"
+  # Also allow manual builds from the Actions tab (no release created)
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Optional release notes"
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # needed to create GitHub Releases
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Source ──────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Runtimes ────────────────────────────────────────────────────────────
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      # ── Android SDK licenses (pre-installed on ubuntu-latest) ────────────────
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+
+      # ── Caches ──────────────────────────────────────────────────────────────
+      - name: Cache Gradle wrapper & caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # ── JS dependencies ──────────────────────────────────────────────────────
+      - name: Install JS dependencies
+        run: npm ci --legacy-peer-deps
+
+      # ── Android build ────────────────────────────────────────────────────────
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          # Inject the OpenAI key so expo-constants can embed it at build time.
+          # Add EXPO_PUBLIC_OPENAI_API_KEY in your repo's Settings → Secrets.
+          EXPO_PUBLIC_OPENAI_API_KEY: ${{ secrets.EXPO_PUBLIC_OPENAI_API_KEY }}
+
+      # ── Rename & collect ─────────────────────────────────────────────────────
+      - name: Rename APK
+        run: |
+          VERSION="${GITHUB_REF_NAME:-manual}"
+          APK_SRC="android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_DST="android/app/build/outputs/apk/debug/DungeonFit-${VERSION}.apk"
+          mv "$APK_SRC" "$APK_DST"
+          echo "APK_PATH=$APK_DST"  >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION"   >> "$GITHUB_ENV"
+
+      # Always upload the APK as a workflow artifact (downloadable from the run)
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DungeonFit-${{ env.VERSION }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+
+      # ── GitHub Release (tag builds only) ────────────────────────────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DungeonFit ${{ env.VERSION }}"
+          files: ${{ env.APK_PATH }}
+          generate_release_notes: true
+          body: |
+            ## DungeonFit ${{ env.VERSION }}
+
+            ${{ github.event.inputs.notes }}
+
+            ### Install on Android
+            1. Download **DungeonFit-${{ env.VERSION }}.apk** below
+            2. On your device: **Settings → Apps → Install unknown apps** → allow your browser/Files app
+            3. Open the downloaded APK and tap **Install**
+
+            > **Note:** This is a debug build intended for testing.
+            > An OpenAI API key is required for AI quest generation — set it up in the app on first launch.
