@@ -40,6 +40,8 @@ export interface UserProfile {
   equipment: Equipment[];
   muscleStrengths: MuscleStrengths;
   createdAt: string;
+  bodyWeight?: number;       // kg (defaults to 70 if not set)
+  weightUnit?: 'kg' | 'lbs'; // display preference (default 'kg')
 }
 
 export interface CharacterStats {
@@ -60,6 +62,12 @@ export interface Character {
   floorsCleared: number;
 }
 
+export interface SetLog {
+  setNumber: number;
+  repsCompleted: number;
+  weight: number | 'bodyweight'; // kg or bodyweight
+}
+
 export interface Quest {
   id: string;
   exerciseName: string;
@@ -72,6 +80,8 @@ export interface Quest {
   xpReward: number;
   status: QuestStatus;
   xpEarned: number;
+  suggestedWeight?: number | 'bodyweight'; // kg
+  loggedSets?: SetLog[];
 }
 
 export interface DungeonSession {

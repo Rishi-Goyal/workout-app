@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DungeonSession, Quest, QuestStatus, RawQuest } from '../types';
+import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog } from '../types';
 import { getXPReward } from '../lib/xp';
 
 interface SessionStore {
@@ -9,7 +9,7 @@ interface SessionStore {
   startSession: (floor: number, rawQuests: RawQuest[]) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
-  markQuest: (questId: string, status: QuestStatus) => void;
+  markQuest: (questId: string, status: QuestStatus, loggedSets?: SetLog[]) => void;
   finalizeSession: () => DungeonSession | null;
   clearSession: () => void;
 }
@@ -44,7 +44,7 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
   setLoading: (v) => set({ isLoading: v }),
   setError: (e) => set({ error: e }),
 
-  markQuest: (questId, status) => {
+  markQuest: (questId, status, loggedSets) => {
     const session = get().activeSession;
     if (!session) return;
     const quests = session.quests.map((q) => {
@@ -55,7 +55,7 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
           : status === 'half_complete'
           ? getXPReward(q.difficulty, true)
           : 0;
-      return { ...q, status, xpEarned };
+      return { ...q, status, xpEarned, ...(loggedSets ? { loggedSets } : {}) };
     });
     set({ activeSession: { ...session, quests } });
   },
