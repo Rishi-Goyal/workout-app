@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, Layout, FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
 import { COLORS } from '@/lib/constants';
-import type { Quest, QuestStatus } from '@/types';
+import { getSwapOptions, swapExercise } from '@/lib/questGenerator';
+import { useProfileStore } from '@/stores/useProfileStore';
+import { useSessionStore } from '@/stores/useSessionStore';
+import type { Quest, QuestStatus, MuscleGroup } from '@/types';
+import type { Exercise } from '@/lib/exerciseDatabase';
 
 interface QuestCardProps {
   quest: Quest;
@@ -30,6 +35,43 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
   const diff = DIFF_BADGE[quest.difficulty];
   const isBoss = quest.difficulty === 'boss';
   const isSkipped = quest.status === 'skipped';
+  const [showSwap, setShowSwap] = useState(false);
+  const { muscleXP, profile } = useProfileStore();
+
+  const swapOptions = showSwap && profile
+    ? getSwapOptions(quest.exerciseName, muscleXP, profile.equipment)
+    : null;
+
+  const handleSwap = (exercise: Exercise) => {
+    const updated = swapExercise(
+      {
+        exerciseName: quest.exerciseName,
+        description: quest.description,
+        targetMuscles: quest.targetMuscles,
+        sets: quest.sets,
+        reps: quest.reps,
+        restSeconds: quest.restSeconds,
+        difficulty: quest.difficulty,
+        xpReward: quest.xpReward,
+      },
+      exercise.id,
+    );
+    if (updated) {
+      // Update the quest in the session store
+      const session = useSessionStore.getState().activeSession;
+      if (session) {
+        const quests = session.quests.map((q) =>
+          q.id === quest.id
+            ? { ...q, exerciseName: updated.exerciseName, targetMuscles: updated.targetMuscles }
+            : q
+        );
+        useSessionStore.setState({
+          activeSession: { ...session, quests },
+        });
+      }
+    }
+    setShowSwap(false);
+  };
 
   return (
     <Animated.View
@@ -79,10 +121,44 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
         ))}
       </View>
 
+      {/* Swap panel */}
+      {showSwap && swapOptions && (
+        <Animated.View entering={FadeInDown.duration(200)} style={styles.swapPanel}>
+          <Text style={styles.swapTitle}>SWAP EXERCISE</Text>
+
+          {swapOptions.easier.length > 0 && (
+            <View style={styles.swapSection}>
+              <Text style={styles.swapLabel}>Easier</Text>
+              {swapOptions.easier.map((ex) => (
+                <Pressable key={ex.id} style={styles.swapOption} onPress={() => handleSwap(ex)}>
+                  <Text style={styles.swapOptionName}>{ex.name}</Text>
+                  <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {swapOptions.harder.length > 0 && (
+            <View style={styles.swapSection}>
+              <Text style={styles.swapLabel}>Harder</Text>
+              {swapOptions.harder.map((ex) => (
+                <Pressable key={ex.id} style={styles.swapOption} onPress={() => handleSwap(ex)}>
+                  <Text style={styles.swapOptionName}>{ex.name}</Text>
+                  <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {swapOptions.easier.length === 0 && swapOptions.harder.length === 0 && (
+            <Text style={styles.noSwaps}>No alternatives available for your level and equipment.</Text>
+          )}
+        </Animated.View>
+      )}
+
       {/* Action area */}
       {quest.status === 'pending' && !disabled && (
         <Animated.View entering={FadeIn} style={styles.actions}>
-          {/* Primary CTA — opens the guided workout screen */}
           <PressableButton
             label="⚔️  Accept Quest"
             variant="primary"
@@ -90,7 +166,13 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
             style={{ flex: 1 }}
             onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
           />
-          {/* Quick-action shortcuts for experienced users */}
+          <PressableButton
+            label="🔄"
+            variant="ghost"
+            size="sm"
+            style={{ minWidth: 44 }}
+            onPress={() => setShowSwap(!showSwap)}
+          />
           <PressableButton
             label="✕"
             variant="danger"
@@ -156,4 +238,42 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 6, marginTop: 4 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   statusText: { fontSize: 13, fontWeight: '600' },
+
+  // Swap panel
+  swapPanel: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  swapTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  swapSection: { gap: 4 },
+  swapLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.gold,
+    marginBottom: 2,
+  },
+  swapOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  swapOptionName: { fontSize: 13, fontWeight: '600', color: COLORS.text, flex: 1 },
+  swapOptionDiff: { fontSize: 11, color: COLORS.textMuted },
+  noSwaps: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' },
 });

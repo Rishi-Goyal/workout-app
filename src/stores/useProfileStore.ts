@@ -4,13 +4,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, Character, MuscleGroup } from '../types';
 import { createCharacter, applyLevelUpStats } from '../lib/character';
 import { applyXP } from '../lib/xp';
+import {
+  type MuscleXP,
+  DEFAULT_MUSCLE_XP,
+  calculateMuscleXP,
+  applyMuscleXP,
+} from '../lib/muscleXP';
+import type { QuestDifficulty } from '../types';
+
+interface MuscleXPResult {
+  levelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
+}
 
 interface ProfileStore {
   profile: UserProfile | null;
   character: Character | null;
+  muscleXP: MuscleXP;
   setProfile: (profile: UserProfile) => void;
   updateMuscleStrength: (muscle: MuscleGroup, value: number) => void;
   awardXP: (amount: number) => { leveledUp: boolean; levelsGained: number };
+  awardMuscleXP: (
+    primaryMuscles: MuscleGroup[],
+    secondaryMuscles: MuscleGroup[],
+    difficulty: QuestDifficulty,
+    completion: 'complete' | 'half_complete',
+  ) => MuscleXPResult;
   incrementFloorsCleared: () => void;
   resetProfile: () => void;
 }
@@ -20,6 +38,7 @@ export const useProfileStore = create<ProfileStore>()(
     (set, get) => ({
       profile: null,
       character: null,
+      muscleXP: DEFAULT_MUSCLE_XP,
 
       setProfile: (profile) => {
         const existing = get().character;
@@ -41,13 +60,21 @@ export const useProfileStore = create<ProfileStore>()(
         return { leveledUp, levelsGained };
       },
 
+      awardMuscleXP: (primaryMuscles, secondaryMuscles, difficulty, completion) => {
+        const current = get().muscleXP;
+        const awards = calculateMuscleXP(primaryMuscles, secondaryMuscles, difficulty, completion);
+        const { muscleXP: updated, levelUps } = applyMuscleXP(current, awards);
+        set({ muscleXP: updated });
+        return { levelUps };
+      },
+
       incrementFloorsCleared: () => {
         const c = get().character;
         if (!c) return;
         set({ character: { ...c, floorsCleared: c.floorsCleared + 1 } });
       },
 
-      resetProfile: () => set({ profile: null, character: null }),
+      resetProfile: () => set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP }),
     }),
     {
       name: 'dungeon-profile',
