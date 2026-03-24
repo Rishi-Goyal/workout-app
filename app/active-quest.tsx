@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
-import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
+import ExerciseGif from '@/components/dungeon/ExerciseGif';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
@@ -101,7 +101,7 @@ export default function ActiveQuestScreen() {
 
         <Animated.View entering={FadeInDown.duration(300).delay(120)} style={styles.tabs}>
           <PressableButton
-            label="🎬 Animation"
+            label="🎬 Exercise"
             variant={tab === 'animation' ? 'primary' : 'ghost'}
             size="sm"
             style={styles.tab}
@@ -119,7 +119,7 @@ export default function ActiveQuestScreen() {
         <Animated.View entering={FadeInDown.duration(400).delay(180)} key={tab} style={styles.tabContent}>
           {tab === 'animation'
             ? (
-              <ExerciseAnimator
+              <ExerciseGif
                 exerciseName={quest.exerciseName}
                 muscles={quest.targetMuscles as MuscleGroup[]}
               />

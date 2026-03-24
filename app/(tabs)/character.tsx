@@ -27,7 +27,6 @@ export default function CharacterScreen() {
           character={character}
           profile={profile}
           muscleXP={muscleXP}
-          showMuscles
         />
 
         {/* Class lore card */}

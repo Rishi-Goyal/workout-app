@@ -31,6 +31,13 @@ const CARD_BORDER: Record<QuestStatus, string> = {
   skipped:       COLORS.border,
 };
 
+const DIFF_ACCENT: Record<Quest['difficulty'], string> = {
+  easy:   COLORS.jade,
+  medium: COLORS.gold,
+  hard:   COLORS.orange,
+  boss:   COLORS.crimson,
+};
+
 export default function QuestCard({ quest, onAction, disabled }: QuestCardProps) {
   const diff = DIFF_BADGE[quest.difficulty];
   const isBoss = quest.difficulty === 'boss';
@@ -73,16 +80,21 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
     setShowSwap(false);
   };
 
+  const accentColor = DIFF_ACCENT[quest.difficulty];
+
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
       layout={Layout.springify()}
       style={[
         styles.card,
-        { borderColor: CARD_BORDER[quest.status], opacity: isSkipped ? 0.45 : 1 },
+        { borderColor: CARD_BORDER[quest.status], opacity: isSkipped ? 0.4 : 1 },
         isBoss && quest.status === 'pending' && styles.bossCard,
       ]}
     >
+      {/* Colored left accent bar */}
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
       {/* Header */}
       <View style={styles.row}>
         <Text style={styles.name} numberOfLines={2}>{quest.exerciseName}</Text>
@@ -94,29 +106,25 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
 
       {/* Stats */}
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statVal}>{quest.sets}</Text>
-          <Text style={styles.statLbl}>Sets</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statVal}>{quest.reps}</Text>
-          <Text style={styles.statLbl}>Reps</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statVal}>{quest.restSeconds}s</Text>
-          <Text style={styles.statLbl}>Rest</Text>
-        </View>
-        <View style={[styles.statItem, styles.xpItem]}>
-          <Text style={styles.xpVal}>+{quest.xpReward}</Text>
-          <Text style={styles.statLbl}>XP</Text>
-        </View>
+        {[
+          { val: String(quest.sets),            lbl: 'Sets' },
+          { val: String(quest.reps),            lbl: 'Reps' },
+          { val: `${quest.restSeconds}s`,       lbl: 'Rest' },
+          { val: `+${quest.xpReward}`,          lbl: 'XP', gold: true },
+        ].map(({ val, lbl, gold }) => (
+          <View key={lbl} style={[styles.statItem, gold && styles.xpItem]}>
+            <Text style={[styles.statVal, gold && { color: COLORS.gold }]}>{val}</Text>
+            <Text style={styles.statLbl}>{lbl}</Text>
+          </View>
+        ))}
       </View>
 
       {/* Muscle chips */}
       <View style={styles.muscles}>
         {quest.targetMuscles.map((m) => (
-          <View key={m} style={styles.muscleChip}>
-            <Text style={styles.muscleText}>{m}</Text>
+          <View key={m} style={[styles.muscleChip, { borderColor: accentColor + '55' }]}>
+            <View style={[styles.muscleDot, { backgroundColor: accentColor }]} />
+            <Text style={[styles.muscleText, { color: accentColor }]}>{m}</Text>
           </View>
         ))}
       </View>
@@ -218,23 +226,56 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 16,
+    paddingRight: 16,
+    paddingLeft: 20,       // leave room for accent bar
     borderWidth: 1,
     gap: 10,
+    overflow: 'hidden',
   },
-  bossCard: { backgroundColor: 'rgba(127,0,0,0.18)' },
+  accentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  bossCard: { backgroundColor: 'rgba(100,0,0,0.20)' },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  name: { fontSize: 15, fontWeight: '700', color: COLORS.text, flex: 1 },
-  desc: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' },
+  name: { fontSize: 15, fontWeight: '800', color: COLORS.text, flex: 1, letterSpacing: 0.2 },
+  desc: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', lineHeight: 17 },
   statsRow: { flexDirection: 'row', gap: 4 },
-  statItem: { flex: 1, alignItems: 'center', backgroundColor: COLORS.bg, borderRadius: 8, padding: 8 },
-  xpItem: { backgroundColor: 'rgba(245,158,11,0.08)' },
-  statVal: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  xpVal: { fontSize: 15, fontWeight: '700', color: COLORS.gold },
-  statLbl: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
-  muscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  muscleChip: { backgroundColor: COLORS.border, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  muscleText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.bg,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  xpItem: {
+    backgroundColor: 'rgba(245,166,35,0.07)',
+    borderColor: 'rgba(245,166,35,0.25)',
+  },
+  statVal: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  statLbl: { fontSize: 9, color: COLORS.textMuted, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  muscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  muscleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  muscleDot: { width: 5, height: 5, borderRadius: 2.5 },
+  muscleText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
   actions: { flexDirection: 'row', gap: 6, marginTop: 4 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   statusText: { fontSize: 13, fontWeight: '600' },

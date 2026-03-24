@@ -1,29 +1,33 @@
 import { View, Text, StyleSheet } from 'react-native';
 import XPBar from './XPBar';
-import AnimatedBar from '@/components/ui/AnimatedBar';
 import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
-import { maxStatValue } from '@/lib/character';
 import { muscleLevelTitle, muscleXPProgress, type MuscleXP } from '@/lib/muscleXP';
 import type { Character, UserProfile, MuscleGroup } from '@/types';
 
-const STAT_CONFIG = [
-  { key: 'strength' as const, label: 'Strength', icon: '⚔️', color: COLORS.gold },
-  { key: 'endurance' as const, label: 'Endurance', icon: '🔥', color: '#ef4444' },
-  { key: 'agility' as const, label: 'Agility', icon: '🗡️', color: COLORS.jade },
-  { key: 'vitality' as const, label: 'Vitality', icon: '🛡️', color: COLORS.violet },
-];
+const MUSCLE_COLORS: Record<string, string> = {
+  chest: '#ef4444',
+  back: '#3b82f6',
+  shoulders: '#f59e0b',
+  biceps: '#8b5cf6',
+  triceps: '#ec4899',
+  core: '#10b981',
+  quads: '#06b6d4',
+  hamstrings: '#f97316',
+  glutes: '#e879f9',
+  calves: '#14b8a6',
+};
 
-const MUSCLE_CONFIG: { key: MuscleGroup; label: string; icon: string }[] = [
-  { key: 'chest',      label: 'Chest',      icon: '🫁' },
-  { key: 'back',       label: 'Back',       icon: '🔙' },
-  { key: 'shoulders',  label: 'Shoulders',  icon: '🦾' },
-  { key: 'biceps',     label: 'Biceps',     icon: '💪' },
-  { key: 'triceps',    label: 'Triceps',    icon: '🔱' },
-  { key: 'core',       label: 'Core',       icon: '🎯' },
-  { key: 'quads',      label: 'Quads',      icon: '🦵' },
-  { key: 'hamstrings', label: 'Hamstrings', icon: '🏃' },
-  { key: 'glutes',     label: 'Glutes',     icon: '🍑' },
-  { key: 'calves',     label: 'Calves',     icon: '🦶' },
+const MUSCLE_CONFIG: { key: MuscleGroup; label: string }[] = [
+  { key: 'chest',      label: 'Chest' },
+  { key: 'back',       label: 'Back' },
+  { key: 'shoulders',  label: 'Shoulders' },
+  { key: 'biceps',     label: 'Biceps' },
+  { key: 'triceps',    label: 'Triceps' },
+  { key: 'core',       label: 'Core' },
+  { key: 'quads',      label: 'Quads' },
+  { key: 'hamstrings', label: 'Hamstrings' },
+  { key: 'glutes',     label: 'Glutes' },
+  { key: 'calves',     label: 'Calves' },
 ];
 
 interface CharacterPanelProps {
@@ -31,14 +35,12 @@ interface CharacterPanelProps {
   profile: UserProfile;
   muscleXP?: MuscleXP;
   compact?: boolean;
-  showMuscles?: boolean;
 }
 
 export default function CharacterPanel({
-  character, profile, muscleXP, compact = false, showMuscles = false,
+  character, profile, muscleXP, compact = false,
 }: CharacterPanelProps) {
   const classDef = CLASS_DEFINITIONS[character.class];
-  const maxStat = maxStatValue(character.level);
 
   return (
     <View style={styles.card}>
@@ -59,44 +61,26 @@ export default function CharacterPanel({
       {/* XP Bar */}
       <XPBar character={character} />
 
-      {/* Character Stats */}
-      {!compact && (
-        <View style={styles.stats}>
-          {STAT_CONFIG.map((s) => (
-            <AnimatedBar
-              key={s.key}
-              value={(character.stats[s.key] / maxStat) * 100}
-              color={s.color}
-              height={6}
-              label={`${s.icon} ${s.label}`}
-              rightLabel={String(character.stats[s.key].toFixed(1))}
-            />
-          ))}
-        </View>
-      )}
-
-      {/* Muscle Levels */}
-      {showMuscles && muscleXP && (
+      {/* Muscle Levels — primary stats */}
+      {muscleXP && (
         <View style={styles.muscleSection}>
-          <Text style={styles.muscleSectionTitle}>MUSCLE LEVELS</Text>
+          {!compact && <Text style={styles.muscleSectionTitle}>MUSCLE LEVELS</Text>}
           <View style={styles.muscleGrid}>
             {MUSCLE_CONFIG.map((m) => {
               const data = muscleXP[m.key];
               const progress = muscleXPProgress(data);
+              const barColor = MUSCLE_COLORS[m.key] ?? COLORS.jade;
               return (
                 <View key={m.key} style={styles.muscleItem}>
-                  <View style={styles.muscleHeader}>
-                    <Text style={styles.muscleIcon}>{m.icon}</Text>
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.muscleNameRow}>
-                        <Text style={styles.muscleName}>{m.label}</Text>
-                        <Text style={styles.muscleLevel}>Lv.{data.level}</Text>
-                      </View>
-                      <Text style={styles.muscleTier}>{muscleLevelTitle(data.level)}</Text>
-                    </View>
+                  <View style={styles.muscleNameRow}>
+                    <Text style={styles.muscleName}>{m.label}</Text>
+                    <Text style={styles.muscleLevel}>Lv.{data.level}</Text>
                   </View>
+                  {!compact && (
+                    <Text style={styles.muscleTier}>{muscleLevelTitle(data.level)}</Text>
+                  )}
                   <View style={styles.muscleBarBg}>
-                    <View style={[styles.muscleBarFill, { width: `${progress}%` }]} />
+                    <View style={[styles.muscleBarFill, { width: `${progress}%`, backgroundColor: barColor }]} />
                   </View>
                 </View>
               );
@@ -106,7 +90,7 @@ export default function CharacterPanel({
       )}
 
       {/* Lore */}
-      {!compact && !showMuscles && (
+      {!compact && (
         <Text style={styles.lore}>{classDef.description}</Text>
       )}
     </View>
@@ -128,12 +112,8 @@ const styles = StyleSheet.create({
   levelBlock: { alignItems: 'flex-end' },
   levelNum: { fontSize: 22, fontWeight: '800', color: COLORS.gold },
   floorsText: { fontSize: 11, color: COLORS.textMuted },
-  stats: { gap: 8 },
   lore: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 10 },
   muscleSection: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 12,
     gap: 10,
   },
   muscleSectionTitle: {
@@ -143,9 +123,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   muscleGrid: { gap: 8 },
-  muscleItem: { gap: 4 },
-  muscleHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  muscleIcon: { fontSize: 16 },
+  muscleItem: { gap: 3 },
   muscleNameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   muscleName: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   muscleLevel: { fontSize: 12, fontWeight: '700', color: COLORS.gold },

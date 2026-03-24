@@ -4,7 +4,7 @@
     {
       "name": "dungeonfit-web",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["./scripts/serve-dist.js"],
+      "runtimeArgs": ["node_modules/expo/bin/cli", "start", "--web", "--port", "8082"],
       "port": 8082
     }
   ]

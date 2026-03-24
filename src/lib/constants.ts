@@ -89,14 +89,29 @@ export const TITLES_BY_LEVEL: { maxLevel: number; title: string }[] = [
 ];
 
 export const COLORS = {
-  bg: '#0d0a0e',
-  surface: '#1a1625',
-  surfaceHover: '#221d30',
-  border: '#2e2540',
-  gold: '#f59e0b',
-  crimson: '#dc2626',
-  jade: '#10b981',
-  violet: '#8b5cf6',
-  text: '#e8dcc8',
-  textMuted: '#9988aa',
+  // Backgrounds
+  bg:           '#080610',       // deeper black-purple
+  surface:      '#12101e',       // card background
+  surfaceHover: '#1a1830',       // hover / elevated card
+  surfaceAccent:'#1e1a2e',       // slightly warmer card
+
+  // Borders
+  border:       '#2a2240',       // standard border
+  borderLight:  '#38306a',       // brighter border for focus states
+
+  // Brand
+  gold:         '#f5a623',       // warmer gold
+  goldLight:    '#fbbf24',       // lighter gold for gradients
+  goldDim:      '#c47c0f',       // dimmed gold
+  crimson:      '#e53e3e',
+  jade:         '#0ea472',
+  jadeLight:    '#10b981',
+  violet:       '#7c3aed',
+  violetLight:  '#8b5cf6',
+  orange:       '#f97316',
+
+  // Text
+  text:         '#ede8f0',       // slightly cooler white
+  textSecondary:'#c4bad4',       // secondary labels
+  textMuted:    '#7a6d8a',       // muted / placeholder
 };
