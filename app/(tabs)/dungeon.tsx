@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,11 +11,11 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { COLORS } from '@/lib/constants';
-import type { QuestStatus, DungeonSession } from '@/types';
+import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
 
 export default function DungeonScreen() {
   const { activeSession, isLoading, markQuest, finalizeSession } = useSessionStore();
-  const { awardXP, incrementFloorsCleared } = useProfileStore();
+  const { awardXP, awardMuscleXP, incrementFloorsCleared } = useProfileStore();
   const addSession = useHistoryStore((s) => s.addSession);
 
   const [summary, setSummary] = useState<{
@@ -23,6 +23,7 @@ export default function DungeonScreen() {
     xpGained: number;
     didLevelUp: boolean;
     newLevel?: number;
+    muscleLevelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
   } | null>(null);
 
   const handleQuestAction = useCallback((questId: string, status: QuestStatus) => {
@@ -32,12 +33,40 @@ export default function DungeonScreen() {
   const handleFinalize = () => {
     const finalized = finalizeSession();
     if (!finalized) return;
+
+    // Award character XP
     const xpGained = finalized.totalXPEarned;
     const { leveledUp, levelsGained } = awardXP(xpGained);
     const newLevel = leveledUp ? useProfileStore.getState().character?.level : undefined;
+
+    // Award muscle XP for each completed/half-completed quest
+    const allMuscleLevelUps: Array<{ muscle: MuscleGroup; newLevel: number }> = [];
+    for (const quest of finalized.quests) {
+      if (quest.status === 'complete' || quest.status === 'half_complete') {
+        const primary = quest.targetMuscles.length > 0
+          ? [quest.targetMuscles[0]]
+          : [];
+        const secondary = quest.targetMuscles.slice(1);
+        const completion = quest.status === 'complete' ? 'complete' : 'half_complete';
+        const { levelUps } = awardMuscleXP(
+          primary as MuscleGroup[],
+          secondary as MuscleGroup[],
+          quest.difficulty,
+          completion,
+        );
+        allMuscleLevelUps.push(...levelUps);
+      }
+    }
+
     incrementFloorsCleared();
     addSession(finalized);
-    setSummary({ session: finalized, xpGained, didLevelUp: leveledUp, newLevel });
+    setSummary({
+      session: finalized,
+      xpGained,
+      didLevelUp: leveledUp,
+      newLevel,
+      muscleLevelUps: allMuscleLevelUps,
+    });
   };
 
   const handleSummaryClose = () => {
@@ -126,6 +155,7 @@ export default function DungeonScreen() {
           xpGained={summary.xpGained}
           didLevelUp={summary.didLevelUp}
           newLevel={summary.newLevel}
+          muscleLevelUps={summary.muscleLevelUps}
           onClose={handleSummaryClose}
         />
       )}

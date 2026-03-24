@@ -102,3 +102,6 @@ export interface SuggestQuestsPayload {
   recentSessions: DungeonSession[];
   currentFloor: number;
 }
+
+// ─── Muscle XP (re-exported from muscleXP.ts for convenience) ─────────────
+export type { MuscleXP } from '@/lib/muscleXP';

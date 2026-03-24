@@ -1,21 +1,20 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import CharacterPanel from '@/components/character/CharacterPanel';
 import FloorMap from '@/components/dungeon/FloorMap';
 import PressableButton from '@/components/ui/PressableButton';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
-import { fetchQuests } from '@/lib/openai';
+import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { COLORS } from '@/lib/constants';
-
-const OPENAI_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
+import type { MuscleGroup } from '@/types';
 
 export default function HomeScreen() {
-  const { profile, character } = useProfileStore();
+  const { profile, character, muscleXP } = useProfileStore();
   const sessions = useHistoryStore((s) => s.sessions);
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
   const { startSession, setLoading, setError, isLoading } = useSessionStore();
@@ -26,20 +25,33 @@ export default function HomeScreen() {
   const currentFloor = character.floorsCleared + 1;
   const isBoss = currentFloor % 5 === 0 && currentFloor > 0;
 
-  const handleEnter = async () => {
+  // Get routine info for display
+  const routineInfo = getDungeonRoutineInfo(profile.goal, currentFloor);
+
+  const handleEnter = () => {
     setEntering(true);
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchQuests(
-        { profile, character, recentSessions: getRecent(3), currentFloor },
-        OPENAI_KEY
-      );
-      startSession(currentFloor, result.quests);
+      const rawQuests = generateQuests({
+        equipment: profile.equipment,
+        goal: profile.goal,
+        muscleXP,
+        muscleStrengths: profile.muscleStrengths,
+        currentFloor,
+        recentSessions: getRecent(3),
+      });
+
+      if (rawQuests.length === 0) {
+        Alert.alert('No quests available', 'Try adding more equipment to unlock exercises.');
+        return;
+      }
+
+      startSession(currentFloor, rawQuests);
       router.push('/(tabs)/dungeon');
     } catch (e) {
-      Alert.alert('Could not reach the dungeon', 'Check your connection and try again.');
-      setError('Failed to fetch quests');
+      Alert.alert('Quest generation failed', 'Something went wrong preparing your quests.');
+      setError('Failed to generate quests');
     } finally {
       setLoading(false);
       setEntering(false);
@@ -57,7 +69,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Character Panel */}
-        <CharacterPanel character={character} profile={profile} />
+        <CharacterPanel character={character} profile={profile} muscleXP={muscleXP} />
 
         {/* Dungeon Entrance */}
         <View style={[styles.entranceCard, isBoss && styles.bossCard]}>
@@ -68,6 +80,22 @@ export default function HomeScreen() {
               <Text style={styles.bossBadgeText}>⚠️  BOSS FLOOR</Text>
             </View>
           )}
+
+          {/* Routine info */}
+          <Animated.View entering={FadeInDown.duration(300).delay(100)} style={styles.routineInfo}>
+            <Text style={styles.routineSplit}>{routineInfo.splitName}</Text>
+            <Text style={styles.routineDay}>{routineInfo.dayName}</Text>
+            {routineInfo.targetMuscles.length > 0 && (
+              <View style={styles.routineMuscles}>
+                {routineInfo.targetMuscles.map((m: MuscleGroup) => (
+                  <View key={m} style={styles.muscleChip}>
+                    <Text style={styles.muscleChipText}>{m}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Animated.View>
+
           <Text style={styles.floorHint}>
             {isBoss ? 'A powerful guardian blocks the path...' : '3 quests await beyond the door'}
           </Text>
@@ -116,6 +144,22 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(220,38,38,0.4)',
   },
   bossBadgeText: { color: '#f87171', fontSize: 12, fontWeight: '700' },
+  routineInfo: {
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.15)',
+  },
+  routineSplit: { fontSize: 11, color: COLORS.textMuted, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600' },
+  routineDay: { fontSize: 16, fontWeight: '700', color: COLORS.gold },
+  routineMuscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4, justifyContent: 'center' },
+  muscleChip: { backgroundColor: COLORS.border, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  muscleChipText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
   floorHint: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
   enterBtn: { width: '100%', marginTop: 6 },
   section: {

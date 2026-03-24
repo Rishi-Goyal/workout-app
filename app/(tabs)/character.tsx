@@ -7,7 +7,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
 
 export default function CharacterScreen() {
-  const { profile, character } = useProfileStore();
+  const { profile, character, muscleXP } = useProfileStore();
   const sessions = useHistoryStore((s) => s.sessions);
 
   if (!profile || !character) return null;
@@ -22,8 +22,13 @@ export default function CharacterScreen() {
 
         <Text style={styles.title}>Character Sheet</Text>
 
-        {/* Full character panel */}
-        <CharacterPanel character={character} profile={profile} />
+        {/* Full character panel with muscle levels */}
+        <CharacterPanel
+          character={character}
+          profile={profile}
+          muscleXP={muscleXP}
+          showMuscles
+        />
 
         {/* Class lore card */}
         <View style={[styles.card, styles.loreCard]}>
