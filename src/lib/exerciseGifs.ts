@@ -21,17 +21,19 @@ interface ExerciseDBResult {
 // In-memory cache to avoid re-fetching
 const gifCache = new Map<string, string | null>();
 
-/**
- * Normalise an exercise name into a search-friendly slug.
- */
+/** Create an AbortSignal that times out after ms — Hermes-safe (no AbortSignal.timeout). */
+function makeTimeoutSignal(ms: number): AbortSignal {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
+/** Normalise an exercise name into a search-friendly slug. */
 function normalise(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 }
 
-/**
- * Score how well an API result name matches the query.
- * Higher = better match.
- */
+/** Score how well an API result name matches the query. Higher = better. */
 function matchScore(query: string, result: string): number {
   const q = normalise(query);
   const r = normalise(result);
@@ -55,13 +57,12 @@ export async function fetchExerciseGif(exerciseName: string): Promise<string | n
     const encodedName = encodeURIComponent(normalise(exerciseName));
     const res = await fetch(
       `${EXERCISEDB_BASE}/exercises/search?query=${encodedName}&limit=5`,
-      { signal: AbortSignal.timeout(5000) },
+      { signal: makeTimeoutSignal(5000) },
     );
     if (res.ok) {
       const data = await res.json();
       const exercises: ExerciseDBResult[] = data?.exercises ?? data?.data ?? [];
       if (exercises.length > 0) {
-        // Pick the best-matching result
         const best = exercises.reduce((a, b) =>
           matchScore(exerciseName, a.name) >= matchScore(exerciseName, b.name) ? a : b,
         );
@@ -77,13 +78,12 @@ export async function fetchExerciseGif(exerciseName: string): Promise<string | n
 
   // Fallback: Free Exercise DB static images on GitHub CDN
   try {
-    // Exercise IDs in free-exercise-db use underscores and title case
     const freeDbId = exerciseName
       .split(' ')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join('_');
     const url = `${FREE_DB_BASE}/${freeDbId}/0.jpg`;
-    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    const res = await fetch(url, { method: 'HEAD', signal: makeTimeoutSignal(3000) });
     if (res.ok) {
       gifCache.set(cacheKey, url);
       return url;
