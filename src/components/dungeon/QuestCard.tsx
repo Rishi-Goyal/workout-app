@@ -107,10 +107,10 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
       {/* Stats */}
       <View style={styles.statsRow}>
         {[
-          { val: String(quest.sets),            lbl: 'Sets' },
-          { val: String(quest.reps),            lbl: 'Reps' },
-          { val: `${quest.restSeconds}s`,       lbl: 'Rest' },
-          { val: `+${quest.xpReward}`,          lbl: 'XP', gold: true },
+          { val: String(quest.sets),                                         lbl: 'Sets' },
+          { val: quest.holdSeconds ? `${quest.holdSeconds}s` : quest.reps, lbl: quest.holdSeconds ? 'Hold' : 'Reps' },
+          { val: `${quest.restSeconds}s`,                                   lbl: 'Rest' },
+          { val: `+${quest.xpReward}`,                                      lbl: 'XP', gold: true },
         ].map(({ val, lbl, gold }) => (
           <View key={lbl} style={[styles.statItem, gold && styles.xpItem]}>
             <Text style={[styles.statVal, gold && { color: COLORS.gold }]}>{val}</Text>

@@ -60,6 +60,10 @@ export interface Exercise {
   strengthStandards?: StrengthStandard;
   /** Tags for filtering (e.g. "compound", "isolation", "powerlifting", "bodyweight") */
   tags: string[];
+  /** True for isometric/static holds — use holdSeconds instead of reps */
+  isStatic?: boolean;
+  /** Default hold duration in seconds for static exercises */
+  defaultHoldSeconds?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,9 +281,11 @@ const backExercises: Exercise[] = [
     movementPattern: 'pull',
     difficultyLevel: 1,
     equipment: ['pull_up_bar'],
-    formCues: ['Full arm extension', 'Depress shoulder blades', 'Build hang time before pulling'],
+    formCues: ['Full arm extension', 'Depress shoulder blades', 'Breathe steadily', 'Build hang time gradually'],
     progression: { easierExerciseId: null, harderExerciseId: 'australian-pull-up' },
-    tags: ['bodyweight', 'beginner', 'grip', 'prehab'],
+    tags: ['bodyweight', 'beginner', 'grip', 'prehab', 'isometric'],
+    isStatic: true,
+    defaultHoldSeconds: 30,
   },
   {
     id: 'australian-pull-up',
@@ -800,7 +806,9 @@ const coreExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Lower back pressed into floor', 'Tuck then extend legs', 'Arms overhead', 'Hold for time'],
     progression: { easierExerciseId: 'dead-bug', harderExerciseId: 'plank' },
-    tags: ['bodyweight', 'beginner', 'anti-extension', 'gymnastics'],
+    tags: ['bodyweight', 'beginner', 'anti-extension', 'gymnastics', 'isometric'],
+    isStatic: true,
+    defaultHoldSeconds: 20,
   },
   {
     id: 'plank',
@@ -810,9 +818,11 @@ const coreExercises: Exercise[] = [
     movementPattern: 'core',
     difficultyLevel: 2,
     equipment: ['bodyweight_only'],
-    formCues: ['Forearms or hands', 'Straight line head-to-heel', 'No sagging hips or piked butt', 'Hold 30–60 s'],
+    formCues: ['Forearms or hands', 'Straight line head-to-heel', 'No sagging hips or piked butt', 'Brace core, breathe steadily'],
     progression: { easierExerciseId: 'hollow-body-hold', harderExerciseId: 'ab-wheel-rollout' },
     tags: ['bodyweight', 'beginner', 'anti-extension', 'isometric'],
+    isStatic: true,
+    defaultHoldSeconds: 30,
   },
   {
     id: 'hanging-knee-raise',

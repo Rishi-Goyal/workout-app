@@ -23,6 +23,7 @@ type Phase = 'idle' | 'active' | 'resting' | 'done';
 interface WorkoutTimerProps {
   sets: number;
   reps: string;
+  holdSeconds?: number; // set for isometric/static exercises
   restSeconds: number;
   suggestedWeight?: number | 'bodyweight';
   weightUnit?: 'kg' | 'lbs';
@@ -100,7 +101,8 @@ const wStyles = StyleSheet.create({
 });
 
 export default function WorkoutTimer({
-  sets, reps, restSeconds,
+  sets, reps, holdSeconds,
+  restSeconds,
   suggestedWeight = 'bodyweight',
   weightUnit = 'kg',
   onComplete, onHalf, onSkip,
@@ -108,9 +110,11 @@ export default function WorkoutTimer({
   const [phase, setPhase]           = useState<Phase>('idle');
   const [currentSet, setCurrentSet] = useState(1);
   const [restLeft, setRestLeft]     = useState(restSeconds);
+  const [holdLeft, setHoldLeft]     = useState(holdSeconds ?? 0);
   const [currentWeight, setWeight]  = useState<number | 'bodyweight'>(suggestedWeight);
   const [loggedSets, setLoggedSets] = useState<SetLog[]>([]);
   const intervalRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdElapsedRef              = useRef(0);
 
   const pulse = useSharedValue(1);
 
@@ -118,13 +122,55 @@ export default function WorkoutTimer({
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  function logCurrentSet() {
-    const repCount = parseInt(reps, 10) || 0;
-    const entry: SetLog = { setNumber: currentSet, repsCompleted: repCount, weight: currentWeight };
+  function logCurrentSet(timeHeld?: number) {
+    const entry: SetLog = {
+      setNumber: currentSet,
+      repsCompleted: holdSeconds ? 0 : (parseInt(reps, 10) || 0),
+      ...(timeHeld !== undefined && { timeCompleted: timeHeld }),
+      weight: currentWeight,
+    };
     const updated = [...loggedSets, entry];
     setLoggedSets(updated);
     return updated;
   }
+
+  // Start hold countdown for static exercises
+  const startHold = useCallback(() => {
+    if (!holdSeconds) return;
+    setHoldLeft(holdSeconds);
+    holdElapsedRef.current = 0;
+    let remaining = holdSeconds;
+    clearTimer();
+    intervalRef.current = setInterval(() => {
+      remaining -= 1;
+      holdElapsedRef.current += 1;
+      setHoldLeft(remaining);
+      if (remaining <= 0) {
+        clearTimer();
+        // Auto-advance: log set and start rest (or finish)
+        const elapsed = holdSeconds;
+        const entry: SetLog = { setNumber: currentSet, repsCompleted: 0, timeCompleted: elapsed, weight: currentWeight };
+        const updated = [...loggedSets, entry];
+        setLoggedSets(updated);
+        if (currentSet >= sets) {
+          setPhase('done');
+        } else {
+          setPhase('resting');
+          setRestLeft(restSeconds);
+          let r = restSeconds;
+          intervalRef.current = setInterval(() => {
+            r -= 1;
+            setRestLeft(r);
+            if (r <= 0) {
+              clearTimer();
+              setCurrentSet(s => s + 1);
+              setPhase('active');
+            }
+          }, 1000);
+        }
+      }
+    }, 1000);
+  }, [currentSet, sets, restSeconds, loggedSets, currentWeight, holdSeconds]);
 
   const startRest = useCallback(() => {
     const updated = logCurrentSet();
@@ -149,9 +195,13 @@ export default function WorkoutTimer({
 
   useEffect(() => {
     if (phase === 'active') {
-      pulse.value = withTiming(1.15, { duration: 500, easing: Easing.inOut(Easing.quad) }, () => {
-        pulse.value = withTiming(1, { duration: 500 });
-      });
+      if (holdSeconds) {
+        startHold();
+      } else {
+        pulse.value = withTiming(1.15, { duration: 500, easing: Easing.inOut(Easing.quad) }, () => {
+          pulse.value = withTiming(1, { duration: 500 });
+        });
+      }
     }
   }, [phase, currentSet]);
 
@@ -163,7 +213,9 @@ export default function WorkoutTimer({
   if (phase === 'idle') {
     return (
       <View style={styles.container}>
-        <Text style={styles.setsLabel}>{sets} sets × {reps} reps</Text>
+        <Text style={styles.setsLabel}>
+          {sets} sets × {holdSeconds ? `${holdSeconds}s hold` : `${reps} reps`}
+        </Text>
         <Text style={styles.subtitle}>Rest {restSeconds}s between sets</Text>
 
         {/* Suggested weight */}
@@ -195,6 +247,67 @@ export default function WorkoutTimer({
 
   // ── Active ────────────────────────────────────────────────────────────────
   if (phase === 'active') {
+    // ── Static / isometric hold mode ──────────────────────────────────────
+    if (holdSeconds) {
+      const progress = holdLeft / holdSeconds;
+      const ringColor = holdLeft <= 5 ? COLORS.crimson : COLORS.jade;
+      return (
+        <View style={styles.container}>
+          <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
+          <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
+          <View style={styles.ringWrapper}>
+            <RingTimer progress={progress} color={ringColor} />
+            <View style={styles.ringCenter}>
+              <Text style={[styles.restNumber, { color: ringColor }]}>{holdLeft}</Text>
+              <Text style={styles.restSec}>sec</Text>
+            </View>
+          </View>
+
+          <View style={styles.setDots}>
+            {Array.from({ length: sets }).map((_, i) => (
+              <View key={i} style={[styles.dot, i < currentSet - 1 && styles.dotDone, i === currentSet - 1 && styles.dotActive]} />
+            ))}
+          </View>
+
+          <PressableButton
+            label={currentSet < sets ? `✓ Done hold — rest ${restSeconds}s` : '✓ Final hold done!'}
+            variant="success"
+            size="lg"
+            onPress={() => {
+              clearTimer();
+              const elapsed = holdSeconds - holdLeft;
+              const entry: SetLog = { setNumber: currentSet, repsCompleted: 0, timeCompleted: Math.max(elapsed, 1), weight: currentWeight };
+              const updated = [...loggedSets, entry];
+              setLoggedSets(updated);
+              if (currentSet >= sets) {
+                setPhase('done');
+              } else {
+                setPhase('resting');
+                setRestLeft(restSeconds);
+                let r = restSeconds;
+                intervalRef.current = setInterval(() => {
+                  r -= 1;
+                  setRestLeft(r);
+                  if (r <= 0) {
+                    clearTimer();
+                    setCurrentSet(s => s + 1);
+                    setPhase('active');
+                  }
+                }, 1000);
+              }
+            }}
+            style={styles.mainBtn}
+          />
+
+          <View style={styles.bail}>
+            <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
+            <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
+          </View>
+        </View>
+      );
+    }
+
+    // ── Normal rep mode ───────────────────────────────────────────────────
     return (
       <View style={styles.container}>
         <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
@@ -285,7 +398,7 @@ export default function WorkoutTimer({
           <Text style={styles.summaryTitle}>YOUR WORKOUT</Text>
           {loggedSets.map(s => (
             <Text key={s.setNumber} style={styles.summaryRow}>
-              Set {s.setNumber}  ·  {formatWeight(s.weight, weightUnit)}  ·  {s.repsCompleted} reps
+              Set {s.setNumber}  ·  {formatWeight(s.weight, weightUnit)}  ·  {s.timeCompleted ? `${s.timeCompleted}s hold` : `${s.repsCompleted} reps`}
             </Text>
           ))}
         </View>
@@ -308,6 +421,7 @@ const styles = StyleSheet.create({
   mainBtn:      { minWidth: 220 },
   bail:         { flexDirection: 'row', gap: 10, marginTop: 4 },
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
+  holdLabel:    { fontSize: 28, fontWeight: '900', letterSpacing: 4 },
   goText:       { fontSize: 56, fontWeight: '900', color: COLORS.gold },
   repsText:     { fontSize: 22, fontWeight: '700', color: COLORS.text },
   ringWrapper:  { position: 'relative', width: 110, height: 110, alignItems: 'center', justifyContent: 'center' },

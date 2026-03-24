@@ -139,6 +139,7 @@ export default function ActiveQuestScreen() {
           <WorkoutTimer
             sets={quest.sets}
             reps={quest.reps}
+            holdSeconds={quest.holdSeconds}
             restSeconds={quest.restSeconds}
             suggestedWeight={suggestedWeight}
             weightUnit={weightUnit}

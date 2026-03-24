@@ -141,7 +141,19 @@ function getSetsReps(
   goal: FitnessGoal,
   difficulty: QuestDifficulty,
   muscleStrength: number,
-): { sets: number; reps: string; restSeconds: number } {
+  exercise?: Exercise,
+): { sets: number; reps: string; restSeconds: number; holdSeconds?: number } {
+  // Static/isometric exercises: use hold time instead of reps
+  if (exercise?.isStatic) {
+    const factor = 0.7 + (muscleStrength / 100) * 0.6; // 0.7 to 1.3
+    const base = exercise.defaultHoldSeconds ?? 30;
+    let holdSeconds = Math.round(base * factor);
+    let sets = 3;
+    if (difficulty === 'easy') { sets = 2; holdSeconds = Math.max(10, holdSeconds - 5); }
+    if (difficulty === 'hard' || difficulty === 'boss') { sets = 4; holdSeconds = holdSeconds + 10; }
+    return { sets, reps: '—', restSeconds: 60, holdSeconds };
+  }
+
   // Muscle strength 0-100, scale factor
   const factor = 0.7 + (muscleStrength / 100) * 0.6; // 0.7 to 1.3
 
@@ -278,7 +290,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
         )
       : muscleStrengths[primaryMuscle] ?? 50;
 
-    const { sets, reps, restSeconds } = getSetsReps(goal, questDifficulty, avgStrength);
+    const { sets, reps, restSeconds, holdSeconds } = getSetsReps(goal, questDifficulty, avgStrength, exercise);
 
     quests.push({
       exerciseName: exercise.name,
@@ -286,6 +298,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
       targetMuscles: [exercise.primaryMuscle, ...exercise.secondaryMuscles],
       sets,
       reps,
+      ...(holdSeconds !== undefined && { holdSeconds }),
       restSeconds,
       difficulty: questDifficulty,
       xpReward: XP_REWARDS[questDifficulty],

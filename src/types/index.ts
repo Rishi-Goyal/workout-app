@@ -65,6 +65,7 @@ export interface Character {
 export interface SetLog {
   setNumber: number;
   repsCompleted: number;
+  timeCompleted?: number; // seconds, for static/isometric exercises
   weight: number | 'bodyweight'; // kg or bodyweight
 }
 
@@ -75,6 +76,7 @@ export interface Quest {
   targetMuscles: MuscleGroup[];
   sets: number;
   reps: string;
+  holdSeconds?: number; // set for isometric/static exercises instead of reps
   restSeconds: number;
   difficulty: QuestDifficulty;
   xpReward: number;
