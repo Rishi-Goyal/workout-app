@@ -1,11 +1,12 @@
 /**
  * InstructionsPanel — full how-to guide for an exercise.
- * Shows numbered steps, phase indicators, form cues, and equipment.
+ * Shows YouTube form tutorial video, numbered steps, form cues, and equipment.
  */
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
+import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import type { MuscleGroup, Equipment } from '@/types';
 
 const TYPE_LABEL: Record<ExerciseType, string> = {
@@ -60,6 +61,13 @@ export default function InstructionsPanel({
 
   return (
     <View style={styles.container}>
+
+      {/* YouTube form tutorial video */}
+      <ExerciseVideo
+        exerciseId={exerciseId}
+        exerciseName={exerciseName}
+        muscles={muscles}
+      />
 
       {/* Movement type pill */}
       <View style={[styles.typePill, { backgroundColor: color + '18', borderColor: color + '40' }]}>
