@@ -11,6 +11,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
 import ExerciseGif from '@/components/dungeon/ExerciseGif';
+import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
@@ -52,7 +53,7 @@ export default function ActiveQuestScreen() {
   const { activeSession, markQuest } = useSessionStore();
   const { profile } = useProfileStore();
   const quest = activeSession?.quests.find(q => q.id === questId);
-  const [tab, setTab] = useState<'animation' | 'muscles'>('animation');
+  const [tab, setTab] = useState<'animation' | 'howto' | 'muscles'>('animation');
 
   if (!quest) {
     return (
@@ -108,6 +109,13 @@ export default function ActiveQuestScreen() {
             onPress={() => setTab('animation')}
           />
           <PressableButton
+            label="📋 How To"
+            variant={tab === 'howto' ? 'primary' : 'ghost'}
+            size="sm"
+            style={styles.tab}
+            onPress={() => setTab('howto')}
+          />
+          <PressableButton
             label="💪 Muscles"
             variant={tab === 'muscles' ? 'primary' : 'ghost'}
             size="sm"
@@ -116,20 +124,30 @@ export default function ActiveQuestScreen() {
           />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(400).delay(180)} key={tab} style={styles.tabContent}>
-          {tab === 'animation'
-            ? (
-              <ExerciseGif
-                exerciseName={quest.exerciseName}
-                muscles={quest.targetMuscles as MuscleGroup[]}
-              />
-            ) : (
-              <MuscleMap
-                targets={quest.targetMuscles as MuscleGroup[]}
-                secondary={secondary}
-              />
-            )
-          }
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(180)}
+          key={tab}
+          style={[styles.tabContent, tab === 'howto' && styles.tabContentInstructions]}
+        >
+          {tab === 'animation' && (
+            <ExerciseGif
+              exerciseName={quest.exerciseName}
+              muscles={quest.targetMuscles as MuscleGroup[]}
+            />
+          )}
+          {tab === 'howto' && (
+            <InstructionsPanel
+              exerciseId={quest.exerciseId ?? ''}
+              exerciseName={quest.exerciseName}
+              muscles={quest.targetMuscles as MuscleGroup[]}
+            />
+          )}
+          {tab === 'muscles' && (
+            <MuscleMap
+              targets={quest.targetMuscles as MuscleGroup[]}
+              secondary={secondary}
+            />
+          )}
         </Animated.View>
 
         <View style={styles.divider} />
@@ -188,6 +206,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     minHeight: 220,
     justifyContent: 'center',
+  },
+  tabContentInstructions: {
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    minHeight: 0,
   },
   divider:      { height: 1, backgroundColor: COLORS.border },
   sectionLabel: {

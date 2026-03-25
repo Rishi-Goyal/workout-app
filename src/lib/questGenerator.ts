@@ -293,6 +293,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     const { sets, reps, restSeconds, holdSeconds } = getSetsReps(goal, questDifficulty, avgStrength, exercise);
 
     quests.push({
+      exerciseId: exercise.id,
       exerciseName: exercise.name,
       description: randomDescription(questDifficulty),
       targetMuscles: [exercise.primaryMuscle, ...exercise.secondaryMuscles],
@@ -358,6 +359,7 @@ export function swapExercise(
 
   return {
     ...quest,
+    exerciseId: exercise.id,
     exerciseName: exercise.name,
     targetMuscles: [exercise.primaryMuscle, ...exercise.secondaryMuscles],
   };

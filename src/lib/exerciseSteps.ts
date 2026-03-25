@@ -1,0 +1,542 @@
+/**
+ * Step-by-step exercise instructions for all exercises in the database.
+ * Each entry has 4–6 clear, action-oriented steps a beginner can follow.
+ */
+
+export const EXERCISE_STEPS: Record<string, string[]> = {
+  // ─── CHEST ──────────────────────────────────────────────────────────────
+  'wall-push-up': [
+    'Stand facing a wall, about arm\'s length away. Place palms flat on the wall at shoulder height and width.',
+    'Step feet back slightly so your body forms a diagonal line — keep it rigid from head to heels.',
+    'Bend your elbows to lower your chest toward the wall. Elbows should flare about 45° from your sides.',
+    'When your chest nearly touches the wall, press through your palms to push back to the start. That\'s one rep.',
+  ],
+  'incline-push-up': [
+    'Place your hands on a raised surface (bench, step, or counter) shoulder-width apart.',
+    'Step feet back until your body forms a straight line — no sagging hips or arched lower back.',
+    'Lower your chest to the surface by bending your elbows, keeping them at roughly 45° from your torso.',
+    'Press powerfully through your palms until arms are fully extended. Control every rep.',
+  ],
+  'push-up': [
+    'Start in a high plank: hands slightly wider than shoulders, fingers pointing forward, body in a straight line from head to heels.',
+    'Brace your core and squeeze your glutes to keep the body rigid throughout the movement.',
+    'Lower your chest toward the floor by bending your elbows at ~45° to your torso. Don\'t let hips sag or hike.',
+    'Touch or hover the chest just above the floor, then press hard through your palms back to the start.',
+    'Breathe in on the way down, breathe out as you press up. Full range of motion every rep.',
+  ],
+  'diamond-push-up': [
+    'Form a diamond shape with your hands directly under your sternum — thumbs and index fingers touching.',
+    'Set up in a rigid plank position: body straight from head to heels, core and glutes braced.',
+    'Lower your chest toward your hands. Elbows will track backward and stay close to your sides.',
+    'Press through your triceps to full arm extension. Focus on the squeeze at the top.',
+  ],
+  'archer-push-up': [
+    'Get into a wide push-up position — hands much wider than shoulders, fingers pointing outward.',
+    'Shift your weight to one side as you bend that arm, keeping the other arm straight and extended laterally.',
+    'Lower until your bent-arm shoulder is near the floor. Your straight arm acts as a counterbalance.',
+    'Press through the bent arm to return to centre, then alternate sides. Control the movement — no collapsing.',
+  ],
+  'one-arm-push-up': [
+    'Set up in a push-up position with feet wide for base of support. Place one hand behind your back or at your hip.',
+    'Keep hips square to the floor throughout — resist the urge to rotate toward your working arm.',
+    'Lower under full control by bending your elbow. Think about keeping a straight line from shoulder to foot.',
+    'Press through your palm explosively back to the top. If you can\'t, regress to archer push-ups first.',
+    'Complete all reps on one side before switching.',
+  ],
+  'machine-chest-press': [
+    'Adjust the seat so the handles are at mid-chest height when seated. Sit tall with back flat against the pad.',
+    'Grip the handles with palms facing forward or inward (depends on machine). Feet flat on the floor.',
+    'Press the handles forward until your arms are nearly fully extended. Think "chest pushing", not "arms pushing".',
+    'Slowly return the handles to the start position — feel the stretch across your chest at the end.',
+  ],
+  'dumbbell-bench-press': [
+    'Sit on the end of a bench holding dumbbells on your thighs. Lie back, using your knees to help kick the weights up.',
+    'Hold dumbbells just outside your chest, palms facing forward. Retract your shoulder blades and plant your feet.',
+    'Press the dumbbells up and slightly inward, finishing with a slight arc so they almost touch at the top.',
+    'Lower under control, elbows at roughly 45–75° from torso, until upper arms are parallel to the floor.',
+    'Press again immediately from that stretch. Don\'t lock out fully between reps to maintain tension.',
+  ],
+  'barbell-bench-press': [
+    'Lie on the bench, eyes under the bar. Grip the bar just outside shoulder width with a full thumbs-around grip.',
+    'Arch your upper back, retract and depress your shoulder blades, and plant your feet firmly. Create full-body tension.',
+    'Un-rack the bar and bring it over your lower chest. This is your start position.',
+    'Lower the bar in a slight arc to your nipple line. Elbows at ~75° — not flared out, not tucked in.',
+    'Drive the bar back up in the same arc, pressing your feet into the floor for leg drive. Lock out at the top.',
+  ],
+  'paused-bench-press': [
+    'Set up as you would for a regular bench press: back arched, shoulder blades retracted, feet planted.',
+    'Lower the bar to your chest — same bar path as a standard bench press.',
+    'Let the bar settle on your chest. Hold completely still for 1–2 seconds. No bouncing. Maintain all your tension.',
+    'After the pause, drive the bar up explosively to full lock-out. The pause removes momentum — it\'s much harder.',
+  ],
+  'incline-barbell-press': [
+    'Set the bench to 30–45°. Higher angles shift more stress to the front deltoids, so 30° is usually ideal for upper chest.',
+    'Lie back and grip the bar just outside shoulder width. Un-rack and position it over your upper chest.',
+    'Lower the bar to your upper chest near the clavicle line. Elbows at ~75°.',
+    'Press back to the start, contracting your upper chest. Lock out and repeat.',
+  ],
+  'incline-dumbbell-press': [
+    'Set bench to 30–45°. Sit at the end holding dumbbells on your thighs, then lean back as you kick them up.',
+    'Hold dumbbells at chest level with a slight inward angle. Retract shoulder blades, plant feet.',
+    'Press up in a slight arc until the dumbbells are close to touching overhead. Feel the upper chest contract.',
+    'Lower slowly for a full stretch. Upper arms should reach parallel to the floor.',
+  ],
+  'cable-chest-fly': [
+    'Set pulleys to chest height (or adjust for upper/lower chest emphasis). Grab a handle in each hand.',
+    'Step forward until there\'s tension in the cables. Stand with a slight forward lean, one foot forward for balance.',
+    'With a slight, fixed elbow bend, bring your hands together in front of your chest in a wide arc.',
+    'Squeeze your chest hard at the centre for 1 second, then slowly return to the start feeling the full stretch.',
+  ],
+  'dumbbell-fly': [
+    'Lie on a flat bench holding dumbbells above your chest, arms nearly extended, palms facing each other.',
+    'With a slight, fixed elbow bend (treat your arms like stiff arcs), lower the dumbbells out to the sides.',
+    'Lower until you feel a deep stretch across your chest — upper arms roughly parallel to the floor.',
+    'Drive the dumbbells back together in the same arc. Squeeze the chest at the top. Avoid going too heavy.',
+  ],
+  'weighted-dip': [
+    'Attach weight via a dip belt or hold a dumbbell between your feet. Mount parallel bars with locked-out arms.',
+    'Lean your torso forward 15–30° — the forward lean targets the chest more than staying upright (which hits triceps).',
+    'Lower yourself by bending the elbows until your shoulders drop just below your elbows.',
+    'Drive through your palms to full lock-out. Control the descent on every rep.',
+  ],
+
+  // ─── BACK ───────────────────────────────────────────────────────────────
+  'dead-hang': [
+    'Jump or step up to grip a pull-up bar with an overhand grip slightly wider than shoulder width.',
+    'Let your body hang freely. Fully extend your arms and let your shoulders rise toward your ears (passive hang).',
+    'Now actively "pack" your shoulders: depress the shoulder blades away from your ears without bending your arms.',
+    'Breathe steadily and hold for the target time. Focus on grip and shoulder stability.',
+  ],
+  'australian-pull-up': [
+    'Set a bar at about waist height. Lie underneath it and grip it overhand, shoulder-width apart.',
+    'Extend your legs in front of you with heels on the floor. Your body should be at a diagonal angle.',
+    'Keeping your body rigid, pull your chest up to the bar by retracting your shoulder blades and driving elbows back.',
+    'Pause at the top, then lower slowly back to full arm extension. The lower the bar, the harder it is.',
+  ],
+  'lat-pulldown': [
+    'Sit at the lat pulldown machine. Grab the bar wider than shoulder width with an overhand grip. Secure your thighs under the pads.',
+    'Lean back slightly (15–20°) and pull your shoulder blades down and together before initiating the pull.',
+    'Drive your elbows toward your hips to pull the bar down to your upper chest. Think "elbows to back pockets".',
+    'Pause at the bottom with a hard lat squeeze, then slowly release the bar back to full arm extension.',
+    'Avoid swinging your torso or using momentum. The lats do the work.',
+  ],
+  'pull-up': [
+    'Hang from a pull-up bar with an overhand (pronated) grip, hands shoulder-width or slightly wider.',
+    'From a dead hang, depress your shoulder blades (pull them down) to start engaging your lats.',
+    'Pull your elbows down and back, driving your chin up toward and over the bar.',
+    'Pause briefly at the top, then lower yourself under complete control to a full dead hang.',
+    'Never use momentum or kipping for strength work. Each rep clean from dead hang.',
+  ],
+  'chin-up': [
+    'Hang from a pull-up bar with an underhand (supinated) grip, hands about shoulder-width apart.',
+    'Engage your lats by pulling your shoulder blades down. Arms fully extended at the start.',
+    'Pull your elbows toward your hips — the underhand grip recruits your biceps significantly.',
+    'Pull until your chest reaches the bar or chin clears it. Lower slowly to full extension.',
+  ],
+  'weighted-pull-up': [
+    'Attach extra weight via a dip belt. For lighter loads, hold a dumbbell between crossed feet.',
+    'Hang with an overhand grip, body straight, arms fully extended. No swinging.',
+    'Pull yourself up using the same technique as a bodyweight pull-up: elbows down and back, chin over bar.',
+    'Lower under full control. The added weight makes the eccentric phase extremely challenging and productive.',
+  ],
+  'dumbbell-row': [
+    'Place your knee and same-side hand on a bench for support. Your torso should be nearly parallel to the floor.',
+    'Hold a dumbbell in the free hand, arm hanging straight down. Keep your back flat and neutral.',
+    'Row the dumbbell up toward your hip — not your shoulder. Think about driving your elbow behind your torso.',
+    'Feel the lat fully contract at the top, then lower slowly for a full stretch in the shoulder blade.',
+    'Complete all reps on one side before switching. Don\'t rotate your hips to generate momentum.',
+  ],
+  'barbell-bent-over-row': [
+    'Stand with feet shoulder-width. Hinge at the hips until your torso is at roughly 45° to the floor, knees softly bent.',
+    'Grip the bar just outside shoulder width (overhand). Let it hang at arm\'s length — this is the start.',
+    'Brace your core and pull the bar to your lower sternum / upper abdomen. Drive elbows back and slightly up.',
+    'Retract and depress your shoulder blades hard at the top — hold for a moment.',
+    'Lower with control back to the starting position. Maintain the hip hinge throughout every rep.',
+  ],
+  'pendlay-row': [
+    'Set up exactly like a bent-over row but with the bar resting on the floor between every rep. Torso nearly horizontal.',
+    'Brace your core hard — this position puts real demand on your lower back.',
+    'Explosively row the bar from the floor to your lower chest. Use more force than a standard bent-over row.',
+    'Lower the bar completely back to the floor. Reset your brace and go again. Each rep starts dead.',
+  ],
+  'seated-cable-row': [
+    'Sit at the cable row station. Grab the attachment (V-bar or straight bar). Sit upright — back neutral, not rounded.',
+    'Start with arms extended, feeling a stretch in your mid-back. Don\'t let your lower back round.',
+    'Pull the handle into your lower abdomen, driving your elbows past your torso. Squeeze shoulder blades together.',
+    'Hold the squeeze at full contraction, then slowly extend your arms back to start. Control the stretch.',
+  ],
+  'deadlift': [
+    'Stand with the bar over your mid-foot. Grip just outside your legs (double overhand). Hip-width stance.',
+    'Hinge down to the bar: hips higher than knees, shoulders slightly in front of or over the bar. Back flat.',
+    'Take a big breath, brace your core 360° (like absorbing a punch). Engage your lats by "bending the bar".',
+    '"Push the floor away" — think of it as a leg press, not just picking up the bar. Bar stays dragged up the legs.',
+    'As the bar passes your knees, drive your hips forward to lock out. Stand tall: hips and knees fully extended.',
+    'To lower: push hips back first, then let knees bend once the bar passes them. Control all the way down.',
+  ],
+  'sumo-deadlift': [
+    'Stand with feet much wider than shoulder width, toes pointed outward 30–45°. Bar over mid-foot.',
+    'Grip the bar inside your legs with straight arms. Knees should track in the same direction as your toes.',
+    'Get tight: chest up, hips low, back flat. Push your knees out as you begin the pull.',
+    'Drive the floor apart with your feet (hip abduction) while pressing the floor down. Bar stays close to your body.',
+    'Lock out hips and knees at the top. Lower by hinging at the hips first, then bending the knees.',
+  ],
+  'back-extension': [
+    'Position yourself on a back extension bench (or lie face-down on the floor). Your hips are at the edge of the pad.',
+    'Start with your torso hanging down, back relaxed. Arms crossed on your chest or behind your head.',
+    'Raise your torso by squeezing your glutes and lower back until your body forms a straight line.',
+    'Hold for a second at the top — feel the glute and lower back contraction — then lower slowly.',
+  ],
+  'good-morning': [
+    'Load a barbell across your upper traps (high bar position). Stand with feet shoulder-width.',
+    'Take a breath, brace your core, and maintain a soft bend in your knees throughout.',
+    'Hinge forward at the hips — push them back — until your torso is roughly 45° to the floor. Keep back flat.',
+    'Drive your hips forward and stand back up, squeezing glutes at the top. Start very light — this is a technique exercise.',
+  ],
+  'face-pull': [
+    'Set a cable pulley at face height. Attach a rope. Grab each end with palms facing inward.',
+    'Step back until the cable is taut. Stand tall with feet shoulder-width, slight bend in knees.',
+    'Pull the rope toward your forehead, letting your elbows flare up and out wide. Think "W shape" at the end.',
+    'At the end position, externally rotate your shoulders — thumbs pointing back behind you. This is the key.',
+    'Slowly return to start. Use light weight — this is a prehab/health exercise, not a max-effort movement.',
+  ],
+
+  // ─── SHOULDERS ──────────────────────────────────────────────────────────
+  'band-pull-apart': [
+    'Hold a resistance band in front of you at shoulder height, hands slightly wider than shoulder width, palms down.',
+    'With straight arms, pull the band apart by moving both hands outward until it touches your chest.',
+    'Squeeze your rear delts and upper back hard at the end position.',
+    'Slowly return to start. Use a light band and do high reps (15–30). This is a warm-up and prehab tool.',
+  ],
+  'lateral-raise': [
+    'Stand holding dumbbells at your sides, palms facing in. Slight bend in elbows — maintain this throughout.',
+    'Raise both arms out to the sides simultaneously, leading with your elbows, not your hands.',
+    'Stop when your arms reach shoulder height and your upper arms are parallel to the floor. Avoid going higher.',
+    'Lower slowly over 2–3 seconds. The eccentric (lowering) phase builds the most muscle here.',
+  ],
+  'seated-db-press': [
+    'Sit upright on a bench (or chair) with back support. Hold dumbbells at ear level, elbows at 90°, palms forward.',
+    'Press the dumbbells up and slightly inward in an arc overhead. Stop just before full lock-out to keep tension.',
+    'Lower back to ear level under control. Avoid arching your lower back excessively — keep your core braced.',
+    'Breathe out on the press, breathe in on the way down.',
+  ],
+  'barbell-overhead-press': [
+    'Hold the bar with a grip just outside shoulder width. Rest it on your front delts/upper chest — not your hands alone.',
+    'Take a big breath, brace your core, and squeeze your glutes. Create full-body tension from the floor up.',
+    'As you begin to press, move your head back slightly so the bar has a clear path. Then bring your head forward once the bar passes your forehead.',
+    'Press the bar in a straight vertical line until fully locked out overhead. Arms should be slightly in front of your ears at lockout.',
+    'Lower under control back to the front delts. Breathe in on the way down.',
+  ],
+  'push-press': [
+    'Set up the same as an overhead press. Take a breath and brace hard.',
+    'Dip your knees slightly (just 2–4 inches). This is a quick, controlled knee bend — not a squat.',
+    'Aggressively drive through your legs, using the leg drive to initiate the bar\'s upward movement.',
+    'As the bar accelerates off your shoulders, press with your arms to lock out overhead. The legs do most of the initial work.',
+    'Lower the bar back to your shoulders under control. Reset your brace before the next rep.',
+  ],
+  'upright-row': [
+    'Hold a barbell (or dumbbells) with an overhand grip wider than shoulder width. Stand tall.',
+    'Pull the bar up along your body, leading with your elbows. Elbows should always be higher than the bar.',
+    'Pull to the level of your lower chest or upper abs — not all the way to chin level, which stresses the shoulder joint.',
+    'Lower under control to full arm extension. Use a wider grip to reduce shoulder impingement risk.',
+  ],
+  'reverse-fly': [
+    'Hold light dumbbells. Hinge forward at the hips until your torso is roughly 45° to the floor. Back flat.',
+    'Let the dumbbells hang below your chest, palms facing each other. Slight elbow bend — keep it fixed.',
+    'Raise both arms out to the sides by squeezing your rear deltoids and upper back. Lead with your elbows.',
+    'Stop when your arms are roughly parallel to the floor. Hold for a beat, then lower slowly.',
+  ],
+  'arnold-press': [
+    'Sit on a bench holding dumbbells in front of your shoulders at chin height, palms facing you. Elbows together.',
+    'As you begin to press up, rotate your palms away from you (outward). By the time the dumbbells reach ear level, palms fully face forward.',
+    'Continue pressing overhead to near full extension, maintaining the now-forward grip.',
+    'Reverse the motion on the way down: rotate palms back toward you as you lower to chin level. That\'s one rep.',
+  ],
+
+  // ─── BICEPS ─────────────────────────────────────────────────────────────
+  'resistance-band-curl': [
+    'Stand on the centre of the band, holding one end in each hand, arms extended, palms facing forward.',
+    'Pin your elbows against your sides — they must not move during the curl.',
+    'Curl your hands toward your shoulders, squeezing your biceps hard at the top.',
+    'Lower slowly back to full extension. The band increases resistance as you curl up, which is unique to bands.',
+  ],
+  'dumbbell-curl': [
+    'Stand holding dumbbells at your sides, palms facing forward. Pin your elbows to your sides.',
+    'Curl one or both dumbbells toward your shoulders. As you curl, twist your wrists so your pinky rotates toward your shoulder (supination).',
+    'Squeeze hard at the top. Hold for a moment, feeling the bicep fully contracted.',
+    'Lower slowly to full arm extension — don\'t let the dumbbells swing. Control every rep.',
+  ],
+  'hammer-curl': [
+    'Hold dumbbells at your sides with a neutral grip — thumbs pointing up, palms facing your body.',
+    'Keep this grip throughout the entire movement (no rotation, unlike a standard curl).',
+    'Curl both dumbbells toward your shoulders, elbows staying at your sides.',
+    'Lower slowly. The neutral grip emphasises the brachialis and brachioradialis in addition to the bicep.',
+  ],
+  'barbell-curl': [
+    'Stand holding the bar with an underhand (supinated) grip, hands shoulder-width apart. Bar at hip level.',
+    'Pin your elbows against your sides. Start with arms fully extended.',
+    'Curl the bar up in an arc toward your chin, letting your elbows move forward slightly at peak contraction.',
+    'Squeeze at the top, then lower slowly under complete control to full extension. No swinging.',
+  ],
+  'preacher-curl': [
+    'Sit at a preacher curl bench. Drape the back of your upper arms over the angled pad. Arms fully extended.',
+    'Grip the bar (EZ-bar recommended) with an underhand grip. The pad prevents any body English.',
+    'Curl the bar toward your chin, stopping just before full contraction to keep tension.',
+    'Lower all the way to full extension — this full stretch is what makes the preacher curl so effective. Don\'t let the bar slam down.',
+  ],
+  'incline-dumbbell-curl': [
+    'Set a bench to 45–60°. Sit back and let your arms hang freely behind your torso. Dumbbells hang at sides.',
+    'This stretched start position puts the long head of the bicep under significant tension immediately.',
+    'Curl both dumbbells up simultaneously, keeping your upper arms fixed. The elbows should stay behind your torso.',
+    'Lower slowly back to the stretched start — this is the most productive phase. Control the eccentric.',
+  ],
+  'cable-curl': [
+    'Attach a straight bar or EZ-bar to the low pulley. Stand facing the cable machine.',
+    'Grip the attachment with a supinated (underhand) grip. Pin elbows to your sides.',
+    'Curl the bar toward your chin. The cable provides constant tension throughout the range of motion.',
+    'Squeeze at the top, then slowly lower to full extension. The constant tension is the advantage over dumbbells.',
+  ],
+
+  // ─── TRICEPS ────────────────────────────────────────────────────────────
+  'tricep-pushdown-band': [
+    'Anchor the band overhead (door frame or high pulley). Hold the bottom of the band with both hands, elbows at sides.',
+    'Start with elbows bent at ~90°, hands at chest level. Upper arms pinned to your sides throughout.',
+    'Push your hands down and straighten your arms fully. Lock out hard at the bottom — feel the tricep contract.',
+    'Let the band pull your hands back up slowly. Control the entire eccentric phase.',
+  ],
+  'tricep-pushdown': [
+    'Stand at a cable machine with a rope or straight bar attached at the high pulley. Grip it overhand.',
+    'Pin your elbows to your sides — they don\'t move. Stand tall with a slight forward lean.',
+    'Push the attachment down until your arms are fully extended. Lock out completely. Spread the rope ends apart for extra contraction.',
+    'Slowly let the rope rise back, controlling the stretch. Don\'t let your elbows drift forward.',
+  ],
+  'overhead-tricep-extension': [
+    'Hold one dumbbell with both hands, or a cable attachment overhead. Arms fully extended above your head.',
+    'Keep your elbows pointing straight up toward the ceiling. This is the key cue — don\'t let them flare out.',
+    'Lower the weight behind your head by bending only at the elbows, until you feel a deep stretch in your triceps.',
+    'Press back to the starting position above your head. The long head of the tricep does most of the work here.',
+  ],
+  'skull-crusher': [
+    'Lie on a bench holding an EZ-bar or straight bar above your face, arms extended. Grip just inside shoulder width.',
+    'Keeping your upper arms absolutely vertical (elbows pointing at the ceiling), lower the bar toward your forehead.',
+    'You can lower to your forehead, nose, or even behind your head — experiment with what you feel most.',
+    'Press back to the top by straightening your elbows. Upper arms stay fixed; only forearms move.',
+  ],
+  'close-grip-bench': [
+    'Lie on a bench. Grip the bar shoulder-width — not as narrow as you think. Too narrow causes wrist pain.',
+    'Un-rack and hold the bar over your lower chest. Tuck your elbows to roughly 45° from your torso.',
+    'Lower the bar to your lower chest, maintaining the elbow tuck. This puts maximum stress on the triceps.',
+    'Press powerfully to full lock-out, squeezing the triceps hard at the top.',
+  ],
+  'bench-dip': [
+    'Sit on the edge of a bench. Place your hands beside your hips, fingers pointing forward, gripping the bench edge.',
+    'Slide your hips off the bench, supporting yourself with your arms. Extend your legs out in front of you.',
+    'Lower your body by bending your elbows until your upper arms are roughly parallel to the floor.',
+    'Press through your palms to straighten your arms and return to start. Keep your back close to the bench.',
+  ],
+  'parallel-bar-dip': [
+    'Grip the parallel bars and push up to the start position: arms locked out, body upright.',
+    'Stay as upright as possible to emphasise the triceps over the chest.',
+    'Lower your body by bending your elbows until upper arms are parallel to the floor. Elbows track close to your body.',
+    'Press back to full lock-out. Squeeze the triceps hard at the top of every rep.',
+  ],
+
+  // ─── CORE ───────────────────────────────────────────────────────────────
+  'dead-bug': [
+    'Lie on your back with arms pointing straight up toward the ceiling and knees at 90° (tabletop position).',
+    'Press your lower back firmly into the floor. Maintain this contact throughout the entire exercise.',
+    'Slowly lower your right arm overhead and your left leg toward the floor simultaneously — opposite limbs.',
+    'Stop just above the floor, then bring both back to the start. Repeat with left arm and right leg. Breathe out during each extension.',
+  ],
+  'hollow-body-hold': [
+    'Lie on your back. Press your lower back completely into the floor by engaging your abs and tilting your pelvis.',
+    'Raise your legs to about 45° and lift your shoulder blades off the floor. Arms extend overhead.',
+    'You should feel like a hollowed-out boat shape — head and legs off the floor, lower back pressed down.',
+    'Hold for the target time. If your lower back lifts off the floor, tuck your legs higher (make the hold easier).',
+  ],
+  'plank': [
+    'Get into a forearm plank: elbows under shoulders, forearms on the floor, body in a straight line.',
+    'Brace your abs as if bracing for a punch. Squeeze your glutes and quads. Don\'t hold your breath.',
+    'Look at a spot on the floor just in front of your hands. Keep your neck neutral.',
+    'Hold for the target time. If your hips drop or hike, stop — form breaks make this exercise useless.',
+  ],
+  'hanging-knee-raise': [
+    'Hang from a pull-up bar with a shoulder-width overhand grip. Let your body be still before starting.',
+    'Brace your core and slowly pull your knees up toward your chest. Don\'t swing to generate momentum.',
+    'Pull knees as high as you can, trying to curl your pelvis toward your ribs at the top.',
+    'Lower your legs slowly back to the hanging position. Control the descent completely.',
+  ],
+  'hanging-leg-raise': [
+    'Hang from a pull-up bar. Keep your legs as straight as possible throughout.',
+    'Brace your core, then raise your legs by flexing at the hips until they\'re parallel to the floor or higher.',
+    'At the top, posteriorly tilt your pelvis (curl your tailbone toward your head) for maximum ab contraction.',
+    'Lower your legs slowly — resist the temptation to let them swing down.',
+  ],
+  'ab-wheel-rollout': [
+    'Kneel on the floor and grip the ab wheel handles. Position it directly under your shoulders.',
+    'Brace your core hard. Slowly roll the wheel out in front of you as far as you can while keeping your lower back flat.',
+    'The moment your hips want to sag or your back wants to arch, that\'s your end point.',
+    'Pull the wheel back toward your knees using your abs alone — not by pulling with your arms or pushing with your hips.',
+  ],
+  'standing-ab-wheel': [
+    'Stand with the ab wheel on the floor in front of your feet. This is an elite-level movement — master the kneeling version first.',
+    'Hinge at the hips and place the wheel on the floor. Keep legs as straight as possible.',
+    'Brace maximally and roll out until your body is nearly horizontal. Lower back must stay flat.',
+    'Return by contracting your abs and pulling the wheel back under you. If you break form, regress to kneeling.',
+  ],
+  'cable-crunch': [
+    'Attach a rope to a high pulley. Kneel facing the machine about 1–2 feet away. Grab the rope ends beside your head.',
+    'Hinge at the spine — not the hips. Your butt should stay in place throughout.',
+    'Crunch your elbows toward your knees, rounding your spine. The cable pulls from above, making you resist and flex.',
+    'Hold the contracted position for a moment, then slowly unwind back to start.',
+  ],
+  'russian-twist': [
+    'Sit on the floor with knees bent. Lean back to roughly 45°, keeping your back flat (not rounded).',
+    'Lift your feet off the floor and hold them there for the harder variation. Clasp hands together or hold a weight.',
+    'Rotate your torso to one side, touch (or nearly touch) the floor beside your hip. That\'s one half-rep.',
+    'Rotate to the other side. Count each side as one rep. The rotation should come from your spine, not just your arms.',
+  ],
+
+  // ─── QUADS ──────────────────────────────────────────────────────────────
+  'bodyweight-squat': [
+    'Stand with feet shoulder-width apart, toes slightly turned out (10–30°). Arms at sides or extended forward.',
+    'Initiate the movement by pushing your knees out and hinging your hips back simultaneously.',
+    'Lower until your hip crease is at or below your knee level. Keep your chest up and back neutral.',
+    'Drive through your whole foot to stand back up. Press your knees outward as you rise.',
+  ],
+  'goblet-squat': [
+    'Hold a dumbbell or kettlebell vertically at your chest with both hands, elbows pointing down.',
+    'Stand feet shoulder-width, toes out. The weight counterbalances you and helps you sit more upright.',
+    'Squat down, pushing knees out over your toes. At the bottom, your elbows can push against your inner knees to help open up.',
+    'Drive through the floor to stand. The goblet squat is ideal for learning squat mechanics.',
+  ],
+  'dumbbell-squat': [
+    'Hold dumbbells at your sides or in a racked position at shoulder height. Stand feet shoulder-width.',
+    'Take a breath and brace your core. Squat by simultaneously pushing hips back and bending knees.',
+    'Lower until thighs are parallel to the floor or deeper. Keep your torso as upright as possible.',
+    'Drive through your feet to stand. Squeeze glutes at the top.',
+  ],
+  'barbell-back-squat': [
+    'Position the bar across your upper traps (high bar) or lower traps/rear delts (low bar). Grip the bar just outside your shoulders.',
+    'Step back with two controlled steps. Feet shoulder-width, toes out. Brace your core 360° — like a weight belt made of muscle.',
+    'Begin the descent by pushing your knees out and hinging your hips back. Stay as upright as the bar position allows.',
+    'Descend until your hip crease is below your knee (parallel). Keep your knees tracking your toes throughout.',
+    'Drive forcefully through the floor, pressing knees out as you rise. Big breath stays in until you reach the top.',
+  ],
+  'front-squat': [
+    'Rest the bar on your front deltoids and clavicle. Keep elbows HIGH and parallel to the floor throughout — this is the key.',
+    'Stand feet shoulder-width, toes out. The bar position demands a very upright torso.',
+    'Brace your core and descend straight down — the front squat has a more vertical bar path than the back squat.',
+    'Keep elbows up and torso vertical. If your elbows drop, the bar rolls forward. Deep knee bend is essential here.',
+    'Drive straight up, maintaining high elbows and upright position.',
+  ],
+  'pause-squat': [
+    'Set up and descend exactly as you would for a back squat.',
+    'At the bottom (hip crease below knees), stop and hold completely still for 2–3 seconds.',
+    'Don\'t relax. Maintain all your tension — core braced, knees out, chest up. The pause must be motionless.',
+    'After the pause, drive up explosively. This develops strength out of the "hole" and catches any technique breakdowns.',
+  ],
+  'leg-press': [
+    'Sit in the leg press machine. Place feet hip-width apart in the middle of the platform. Back flat against the pad.',
+    'Release the safety handles. Lower the sled by bending your knees toward your chest until they reach 90°.',
+    'Press the platform away by extending your knees. Do not lock out completely — keep a slight bend at the top.',
+    'Keep your lower back in contact with the seat throughout. Foot placement higher = more glutes/hamstrings.',
+  ],
+  'lunge': [
+    'Stand tall with dumbbells at your sides (or just bodyweight). Take a large step forward with one foot.',
+    'Lower your body by bending both knees to roughly 90°. Your back knee should almost touch the floor.',
+    'Your front knee stays over your ankle — don\'t let it collapse inward.',
+    'Drive through your front heel to step forward with your rear leg, then step into the next lunge. Alternate legs with each step.',
+  ],
+  'bulgarian-split-squat': [
+    'Stand about 2 feet in front of a bench. Place your rear foot on the bench (laces down or toe on bench).',
+    'Your front foot should be positioned far enough that your shin stays vertical when you squat.',
+    'Lower straight down by bending your front knee. Keep your torso upright and core braced.',
+    'Descend until your rear knee nearly touches the floor — or as deep as your flexibility allows.',
+    'Drive through your front foot to return to the top. This unilateral exercise exposes imbalances between legs.',
+  ],
+  'leg-extension': [
+    'Sit in the leg extension machine. Adjust the shin pad to rest just above your ankles.',
+    'Grip the handles. Start with knees bent at 90°.',
+    'Extend your legs smoothly until fully straight. Squeeze the quads hard at the top for 1 second.',
+    'Lower slowly under control. Avoid letting the weight stack slam down between reps.',
+  ],
+  'step-up': [
+    'Stand facing a bench or box. Place your full foot (heel included) on the surface.',
+    'Drive through the heel of your lead leg to step up. Don\'t push off your rear foot — that\'s cheating.',
+    'Stand fully upright on top of the box, extending your hip and knee completely.',
+    'Lower the other foot back to the floor in a controlled way. Complete all reps on one side, then switch.',
+  ],
+
+  // ─── POSTERIOR CHAIN ────────────────────────────────────────────────────
+  'glute-bridge': [
+    'Lie on your back with knees bent, feet flat on the floor about hip-width apart and close to your butt.',
+    'Brace your core. Drive your heels into the floor and push your hips toward the ceiling.',
+    'At the top, your body forms a straight line from knees to shoulders. Squeeze your glutes as hard as you can.',
+    'Hold for 1–2 seconds, then lower your hips slowly back to the floor. Don\'t let your lower back do the lifting.',
+  ],
+  'hip-thrust': [
+    'Sit against a bench with a padded barbell across your hip crease. Upper back rests on the bench edge.',
+    'Plant both feet flat, knees at 90° when hips are extended. Feet should be directly under your knees at the top.',
+    'Brace your core, chin tucked. Drive your heels down and thrust your hips upward.',
+    'Stop when your body is parallel to the floor — avoid hyperextending your lower back.',
+    'Squeeze your glutes hard at the top for 1 second. Lower under control, letting your hips descend below bench level.',
+  ],
+  'romanian-deadlift': [
+    'Stand holding a barbell (or dumbbells) in front of your thighs with a shoulder-width grip. Knees have a soft bend.',
+    'Keeping the bar close to your legs, push your hips back to hinge forward. Back stays completely neutral.',
+    'Lower the bar along your shins until you feel a strong stretch in your hamstrings — usually mid-shin.',
+    'Drive your hips forward to return to standing. Think "hips push into the bar" rather than "lift with the back".',
+    'Squeeze glutes at the top. This is a hip hinge — not a squat and not a back exercise.',
+  ],
+  'single-leg-rdl': [
+    'Stand on one leg holding a dumbbell in the opposite hand. Soft bend in the standing knee.',
+    'Hinge at your hip, pushing your free leg back as your torso tips forward. Keep your hips square to the floor.',
+    'Lower until you feel the hamstring stretch of your standing leg. Your back leg and torso form a straight line.',
+    'Drive your standing hip forward to return to standing. Use a wall for balance assistance when learning.',
+  ],
+  'nordic-curl': [
+    'Kneel on a soft surface. Anchor your feet under a barbell, loaded dumbbell, or have a partner hold them.',
+    'Keep your body straight from knees to head. Cross your arms on your chest or extend them forward as a counterbalance.',
+    'Lower your body toward the floor as slowly as possible, using only your hamstrings to resist gravity.',
+    'When you can no longer control it, catch yourself with your hands and push back to the starting position.',
+  ],
+  'leg-curl': [
+    'For lying: face-down on the machine, pad resting just above your heels. Hips pressed into the pad throughout.',
+    'Curl your heels toward your glutes in a smooth, controlled motion.',
+    'Squeeze the hamstrings hard at full flexion for 1 second.',
+    'Lower slowly back to full extension. The eccentric (lowering) phase is the most important part.',
+  ],
+  'kettlebell-swing': [
+    'Stand with feet shoulder-width. Place the kettlebell on the floor about a foot in front of you.',
+    'Hinge at the hips to grab the handle. Hike the bell back between your legs — like a snapping motion.',
+    'Explosively snap your hips forward (not a squat — a hip thrust). The bell floats up to shoulder height due to the hip power.',
+    'Let the bell arc back down and hike it back between your legs immediately. The movement is ballistic.',
+    'Power comes entirely from the hips and glutes. Arms are just a connection — they don\'t pull the bell up.',
+  ],
+
+  // ─── CALVES ─────────────────────────────────────────────────────────────
+  'seated-calf-raise': [
+    'Sit in the seated calf raise machine. Place the balls of your feet on the platform, heels hanging off.',
+    'Release the safety. Lower your heels as far as possible to get a full stretch in the soleus.',
+    'Press the balls of your feet down to raise your heels as high as possible. Squeeze hard at the top.',
+    'Lower slowly over 2–3 seconds. High reps (15–20) work well here.',
+  ],
+  'standing-calf-raise': [
+    'Stand with the balls of your feet on a raised edge (step or calf raise machine). Heels hanging off.',
+    'Lower your heels below the step level for a full stretch in the gastrocnemius. Hold the stretch for 1 second.',
+    'Drive up onto your toes as high as possible. Squeeze at the top — hold for 1 second.',
+    'Lower slowly back to the stretched position. Full range of motion is essential for calf development.',
+  ],
+  'single-leg-calf-raise': [
+    'Stand on one foot on a step edge. Lightly hold a wall or rail for balance only.',
+    'Lower your heel below the step for a full stretch. Feel the full bodyweight load on one calf.',
+    'Press up onto your toes as high as you can. Squeeze at the top.',
+    'Lower slowly. This is significantly harder than the two-legged version — start with your weaker leg.',
+  ],
+  'leg-press-calf-raise': [
+    'Sit in the leg press machine. Place only the balls of your feet at the bottom edge of the footplate.',
+    'Unlock the machine but keep your legs nearly straight throughout (straight knee targets gastrocnemius).',
+    'Plantar-flex (push through your toes) to full extension. Squeeze at the top.',
+    'Lower your heels below the footplate edge for a full stretch. Allows heavy loading without spinal compression.',
+  ],
+};
