@@ -71,6 +71,7 @@ export interface SetLog {
 
 export interface Quest {
   id: string;
+  exerciseId?: string;
   exerciseName: string;
   description: string;
   targetMuscles: MuscleGroup[];

@@ -16,6 +16,7 @@
  */
 
 import type { MuscleGroup, Equipment } from '../types';
+import { EXERCISE_STEPS } from './exerciseSteps';
 
 // ---------------------------------------------------------------------------
 // Core types
@@ -64,6 +65,8 @@ export interface Exercise {
   isStatic?: boolean;
   /** Default hold duration in seconds for static exercises */
   defaultHoldSeconds?: number;
+  /** Step-by-step how-to instructions (populated from exerciseSteps.ts at runtime) */
+  steps?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1225,9 +1228,9 @@ export const ALL_EXERCISES: Exercise[] = [
   ...calfExercises,
 ];
 
-/** Keyed lookup map for O(1) access by exercise ID */
+/** Keyed lookup map for O(1) access by exercise ID — steps merged in at init time */
 export const EXERCISE_MAP: Record<string, Exercise> = Object.fromEntries(
-  ALL_EXERCISES.map((e) => [e.id, e])
+  ALL_EXERCISES.map((e) => [e.id, { ...e, steps: EXERCISE_STEPS[e.id] }])
 );
 
 /** Get all exercises for a given muscle group */
