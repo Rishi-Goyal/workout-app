@@ -61,7 +61,8 @@ describe('buildPrompt', () => {
 
   it('user prompt includes character class and level', () => {
     const { user } = buildPrompt(makePayload());
-    expect(user).toContain('Warrior');
+    // All new characters start as Wanderer; class is derived from muscle XP later
+    expect(user).toContain('Wanderer');
     expect(user).toContain('Lv1');
   });
 
