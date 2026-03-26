@@ -1,22 +1,22 @@
 /**
  * ExerciseGif — loads and displays a real exercise GIF from ExerciseDB API.
- * Falls back gracefully to the stick-figure ExerciseAnimator if no GIF is found.
+ * Falls back gracefully to a "no preview" placeholder if no GIF is found.
  */
 import { useState, useEffect } from 'react';
 import { View, Image, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { fetchExerciseGif } from '@/lib/exerciseGifs';
-import ExerciseAnimator from './ExerciseAnimator';
 import { COLORS } from '@/lib/constants';
 import type { MuscleGroup } from '@/types';
 
 interface ExerciseGifProps {
   exerciseName: string;
-  muscles: MuscleGroup[];
+  /** muscles prop kept for API compatibility but no longer drives a fallback animation */
+  muscles?: MuscleGroup[];
 }
 
-type State = 'loading' | 'loaded' | 'fallback';
+type State = 'loading' | 'loaded' | 'empty';
 
-export default function ExerciseGif({ exerciseName, muscles }: ExerciseGifProps) {
+export default function ExerciseGif({ exerciseName }: ExerciseGifProps) {
   const [state, setState] = useState<State>('loading');
   const [gifUrl, setGifUrl] = useState<string | null>(null);
 
@@ -27,12 +27,8 @@ export default function ExerciseGif({ exerciseName, muscles }: ExerciseGifProps)
 
     fetchExerciseGif(exerciseName).then((url) => {
       if (cancelled) return;
-      if (url) {
-        setGifUrl(url);
-        setState('loaded');
-      } else {
-        setState('fallback');
-      }
+      setState(url ? 'loaded' : 'empty');
+      if (url) setGifUrl(url);
     });
 
     return () => { cancelled = true; };
@@ -42,7 +38,7 @@ export default function ExerciseGif({ exerciseName, muscles }: ExerciseGifProps)
     return (
       <View style={styles.center}>
         <ActivityIndicator color={COLORS.gold} size="large" />
-        <Text style={styles.loadingText}>Loading exercise...</Text>
+        <Text style={styles.loadingText}>Loading preview…</Text>
       </View>
     );
   }
@@ -60,8 +56,8 @@ export default function ExerciseGif({ exerciseName, muscles }: ExerciseGifProps)
     );
   }
 
-  // Fallback to stick figure animator
-  return <ExerciseAnimator exerciseName={exerciseName} muscles={muscles} />;
+  // No GIF available — caller should show ExerciseVideo or steps instead
+  return null;
 }
 
 const styles = StyleSheet.create({

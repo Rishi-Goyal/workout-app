@@ -9,27 +9,29 @@ import { xpToNextLevel } from '@/lib/xp';
 import { GOAL_TO_CLASS } from '@/lib/constants';
 import type { Character } from '@/types';
 
-// ─── classFromGoal ────────────────────────────────────────────────────────────
+// ─── classFromGoal (deprecated) ───────────────────────────────────────────────
+// classFromGoal is deprecated — all goals now map to 'Wanderer' as a
+// starting class; actual class is derived from muscle XP via deriveClassFromMuscles.
 
 describe('classFromGoal', () => {
-  it('maps strength → Warrior', () => {
-    expect(classFromGoal('strength')).toBe('Warrior');
+  it('maps strength → Wanderer (deprecated, all goals start as Wanderer)', () => {
+    expect(classFromGoal('strength')).toBe('Wanderer');
   });
 
-  it('maps endurance → Berserker', () => {
-    expect(classFromGoal('endurance')).toBe('Berserker');
+  it('maps endurance → Wanderer', () => {
+    expect(classFromGoal('endurance')).toBe('Wanderer');
   });
 
-  it('maps calisthenics → Rogue', () => {
-    expect(classFromGoal('calisthenics')).toBe('Rogue');
+  it('maps calisthenics → Wanderer', () => {
+    expect(classFromGoal('calisthenics')).toBe('Wanderer');
   });
 
-  it('maps balanced → Paladin', () => {
-    expect(classFromGoal('balanced')).toBe('Paladin');
+  it('maps balanced → Wanderer', () => {
+    expect(classFromGoal('balanced')).toBe('Wanderer');
   });
 
-  it('maps weight_loss → Paladin', () => {
-    expect(classFromGoal('weight_loss')).toBe('Paladin');
+  it('maps weight_loss → Wanderer', () => {
+    expect(classFromGoal('weight_loss')).toBe('Wanderer');
   });
 
   it('every goal has a corresponding class', () => {
@@ -45,17 +47,17 @@ describe('classFromGoal', () => {
 
 describe('titleForLevel', () => {
   const cases: [number, string][] = [
-    [1, 'Initiate'],
-    [2, 'Initiate'],
-    [3, 'Initiate'],
-    [4, 'Wanderer'],
-    [7, 'Wanderer'],
-    [8, 'Iron Knight'],
-    [12, 'Iron Knight'],
-    [13, 'Stone Warden'],
-    [25, 'Shadow Blade'],
-    [26, 'Dungeon Slayer'],
-    [51, 'Eternal Conqueror'],
+    [1,   'Initiate'],
+    [2,   'Initiate'],
+    [3,   'Initiate'],
+    [4,   'Seeker'],
+    [7,   'Seeker'],
+    [8,   'Veteran'],
+    [12,  'Veteran'],
+    [13,  'Stone Warden'],
+    [25,  'Shadow Blade'],
+    [26,  'Dungeon Slayer'],
+    [51,  'Eternal Conqueror'],
     [100, 'Eternal Conqueror'],
   ];
 
@@ -85,12 +87,12 @@ describe('createCharacter', () => {
     expect(c.xpToNextLevel).toBe(xpToNextLevel(1));
   });
 
-  it('assigns the correct class for each goal', () => {
-    expect(createCharacter('strength').class).toBe('Warrior');
-    expect(createCharacter('endurance').class).toBe('Berserker');
-    expect(createCharacter('calisthenics').class).toBe('Rogue');
-    expect(createCharacter('balanced').class).toBe('Paladin');
-    expect(createCharacter('weight_loss').class).toBe('Paladin');
+  it('always starts as Wanderer regardless of goal (class is derived from muscle XP later)', () => {
+    expect(createCharacter('strength').class).toBe('Wanderer');
+    expect(createCharacter('endurance').class).toBe('Wanderer');
+    expect(createCharacter('calisthenics').class).toBe('Wanderer');
+    expect(createCharacter('balanced').class).toBe('Wanderer');
+    expect(createCharacter('weight_loss').class).toBe('Wanderer');
   });
 
   it('starts with base stats of 5 in all attributes', () => {
@@ -126,8 +128,8 @@ describe('applyLevelUpStats', () => {
     };
   }
 
-  it('Warrior gains +1 to strength, +0.5 to others on 1 level-up', () => {
-    const c = makeCharAtLevel(2, 'Warrior');
+  it('Mirror Knight gains +1 to strength, +0.5 to others on 1 level-up', () => {
+    const c = makeCharAtLevel(2, 'Mirror Knight');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.strength).toBe(6);
     expect(updated.stats.endurance).toBe(5.5);
@@ -142,38 +144,38 @@ describe('applyLevelUpStats', () => {
     expect(updated.stats.strength).toBe(5.5);
   });
 
-  it('Rogue gains +1 to agility, +0.5 to others', () => {
-    const c = makeCharAtLevel(2, 'Rogue');
+  it('Iron Monk gains +1 to agility, +0.5 to others', () => {
+    const c = makeCharAtLevel(2, 'Iron Monk');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.agility).toBe(6);
     expect(updated.stats.strength).toBe(5.5);
   });
 
-  it('Paladin gains +1 to vitality, +0.5 to others', () => {
-    const c = makeCharAtLevel(2, 'Paladin');
+  it('Wanderer gains +1 to vitality, +0.5 to others', () => {
+    const c = makeCharAtLevel(2, 'Wanderer');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.vitality).toBe(6);
     expect(updated.stats.strength).toBe(5.5);
   });
 
   it('scales gains for multiple levels gained at once', () => {
-    const c = makeCharAtLevel(3, 'Warrior');
+    const c = makeCharAtLevel(3, 'Mirror Knight');
     const updated = applyLevelUpStats(c, 3);
     expect(updated.stats.strength).toBe(8); // 5 + 3*1
     expect(updated.stats.endurance).toBe(6.5); // 5 + 3*0.5
   });
 
   it('does not mutate the original character', () => {
-    const c = makeCharAtLevel(2, 'Warrior');
+    const c = makeCharAtLevel(2, 'Wanderer');
     const original = { ...c.stats };
     applyLevelUpStats(c, 1);
     expect(c.stats.strength).toBe(original.strength);
   });
 
   it('updates the title after leveling up', () => {
-    const c = makeCharAtLevel(4, 'Warrior'); // level 4 = Wanderer
+    const c = makeCharAtLevel(4, 'Wanderer'); // level 4 → 'Seeker'
     const updated = applyLevelUpStats(c, 1);
-    expect(updated.title).toBe('Wanderer');
+    expect(updated.title).toBe('Seeker');
   });
 });
 
