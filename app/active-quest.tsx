@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeInUp, FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
-import ExerciseGif from '@/components/dungeon/ExerciseGif';
+import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import Badge from '@/components/ui/Badge';
@@ -56,7 +56,7 @@ export default function ActiveQuestScreen() {
   const { profile } = useProfileStore();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
-  const [tab, setTab] = useState<'animation' | 'howto' | 'muscles'>('animation');
+  const [tab, setTab] = useState<'video' | 'steps' | 'muscles'>('video');
 
   if (!quest) {
     return (
@@ -118,18 +118,18 @@ export default function ActiveQuestScreen() {
 
         <Animated.View entering={FadeInDown.duration(300).delay(120)} style={styles.tabs}>
           <PressableButton
-            label="🎬 Exercise"
-            variant={tab === 'animation' ? 'primary' : 'ghost'}
+            label="▶ Video"
+            variant={tab === 'video' ? 'primary' : 'ghost'}
             size="sm"
             style={styles.tab}
-            onPress={() => setTab('animation')}
+            onPress={() => setTab('video')}
           />
           <PressableButton
-            label="📋 How To"
-            variant={tab === 'howto' ? 'primary' : 'ghost'}
+            label="📋 Steps"
+            variant={tab === 'steps' ? 'primary' : 'ghost'}
             size="sm"
             style={styles.tab}
-            onPress={() => setTab('howto')}
+            onPress={() => setTab('steps')}
           />
           <PressableButton
             label="💪 Muscles"
@@ -144,20 +144,24 @@ export default function ActiveQuestScreen() {
           entering={FadeIn.duration(220)}
           exiting={FadeOut.duration(120)}
           key={tab}
-          style={[styles.tabContent, tab === 'howto' && styles.tabContentInstructions]}
+          style={[styles.tabContent, tab !== 'muscles' && styles.tabContentFlush]}
         >
-          {tab === 'animation' && (
-            <ExerciseGif
-              exerciseName={quest.exerciseName}
-              muscles={quest.targetMuscles as MuscleGroup[]}
-            />
-          )}
-          {tab === 'howto' && (
-            <InstructionsPanel
+          {tab === 'video' && (
+            <ExerciseVideo
               exerciseId={quest.exerciseId ?? ''}
               exerciseName={quest.exerciseName}
               muscles={quest.targetMuscles as MuscleGroup[]}
+              fallbackSteps={exerciseEntry?.steps ?? exerciseEntry?.formCues ?? []}
             />
+          )}
+          {tab === 'steps' && (
+            <View style={styles.stepsCard}>
+              <InstructionsPanel
+                exerciseId={quest.exerciseId ?? ''}
+                exerciseName={quest.exerciseName}
+                muscles={quest.targetMuscles as MuscleGroup[]}
+              />
+            </View>
           )}
           {tab === 'muscles' && (
             <MuscleMap
@@ -215,20 +219,24 @@ const styles = StyleSheet.create({
   questDesc:    { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' },
   tabs:         { flexDirection: 'row', gap: 8 },
   tab:          { flex: 1 },
-  tabContent:   {
+  tabContent: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
     minHeight: 220,
     justifyContent: 'center',
   },
-  tabContentInstructions: {
+  // Video + Steps tabs have left-aligned, naturally-sized content
+  tabContentFlush: {
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     minHeight: 0,
+    padding: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   divider:      { height: 1, backgroundColor: COLORS.border },
   sectionLabel: {
@@ -244,6 +252,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  stepsCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
