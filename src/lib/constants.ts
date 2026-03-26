@@ -89,29 +89,29 @@ export const TITLES_BY_LEVEL: { maxLevel: number; title: string }[] = [
 ];
 
 export const COLORS = {
-  // Backgrounds
-  bg:           '#080610',       // deeper black-purple
-  surface:      '#12101e',       // card background
-  surfaceHover: '#1a1830',       // hover / elevated card
-  surfaceAccent:'#1e1a2e',       // slightly warmer card
+  // Backgrounds — deep indigo-black
+  bg:           '#07061a',
+  surface:      '#0e0c24',
+  surfaceHover: '#141230',
+  surfaceAccent:'#18153c',
 
   // Borders
-  border:       '#2a2240',       // standard border
-  borderLight:  '#38306a',       // brighter border for focus states
+  border:       '#1e1a40',
+  borderLight:  '#2e2a60',
 
-  // Brand
-  gold:         '#f5a623',       // warmer gold
-  goldLight:    '#fbbf24',       // lighter gold for gradients
-  goldDim:      '#c47c0f',       // dimmed gold
+  // Brand — Indigo / Violet primary palette
+  gold:         '#6366f1',       // indigo — primary action (key name kept for minimal diff)
+  goldLight:    '#818cf8',       // lighter indigo
+  goldDim:      '#4338ca',       // deeper indigo
   crimson:      '#e53e3e',
   jade:         '#0ea472',
   jadeLight:    '#10b981',
-  violet:       '#7c3aed',
-  violetLight:  '#8b5cf6',
+  violet:       '#a855f7',       // vivid purple accent
+  violetLight:  '#c084fc',
   orange:       '#f97316',
 
   // Text
-  text:         '#ede8f0',       // slightly cooler white
-  textSecondary:'#c4bad4',       // secondary labels
-  textMuted:    '#7a6d8a',       // muted / placeholder
+  text:         '#edeaf8',
+  textSecondary:'#c4b8e4',
+  textMuted:    '#7a6d9a',
 };

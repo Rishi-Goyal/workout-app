@@ -2,6 +2,7 @@
  * InstructionsPanel — full how-to guide for an exercise.
  * Shows YouTube form tutorial video, numbered steps, form cues, and equipment.
  */
+import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
@@ -46,7 +47,7 @@ interface InstructionsPanelProps {
   muscles: MuscleGroup[];
 }
 
-export default function InstructionsPanel({
+function InstructionsPanel({
   exerciseId,
   exerciseName,
   muscles,
@@ -62,11 +63,12 @@ export default function InstructionsPanel({
   return (
     <View style={styles.container}>
 
-      {/* YouTube form tutorial video */}
+      {/* YouTube form tutorial video with offline fallback */}
       <ExerciseVideo
         exerciseId={exerciseId}
         exerciseName={exerciseName}
         muscles={muscles}
+        fallbackSteps={steps}
       />
 
       {/* Movement type pill */}
@@ -125,6 +127,8 @@ export default function InstructionsPanel({
     </View>
   );
 }
+
+export default memo(InstructionsPanel);
 
 const styles = StyleSheet.create({
   container: {

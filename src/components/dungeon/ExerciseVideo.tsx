@@ -68,6 +68,8 @@ interface ExerciseVideoProps {
   exerciseId: string;
   exerciseName: string;
   muscles: MuscleGroup[];
+  /** Step-by-step instructions shown when offline / video unavailable */
+  fallbackSteps?: string[];
 }
 
 function buildYouTubeEmbedUrl(exerciseName: string, videoId?: string): string {
@@ -109,7 +111,7 @@ function buildEmbedHtml(exerciseName: string, videoId?: string): string {
 </html>`;
 }
 
-export default function ExerciseVideo({ exerciseId, exerciseName, muscles }: ExerciseVideoProps) {
+export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallbackSteps }: ExerciseVideoProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const type = inferExerciseType(exerciseName, muscles);
@@ -118,6 +120,30 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles }: Exe
   const html = buildEmbedHtml(exerciseName, videoId);
 
   if (error) {
+    // Rich offline fallback: show step-by-step instructions if available
+    if (fallbackSteps && fallbackSteps.length > 0) {
+      return (
+        <View style={[styles.fallbackBox, { borderColor: color + '30' }]}>
+          <View style={styles.fallbackHeader}>
+            <Text style={styles.fallbackIcon}>📵</Text>
+            <View>
+              <Text style={[styles.fallbackTitle, { color }]}>Offline — Text Guide</Text>
+              <Text style={styles.fallbackSub}>Video unavailable without connection</Text>
+            </View>
+          </View>
+          <View style={styles.fallbackSteps}>
+            {fallbackSteps.map((step, i) => (
+              <View key={i} style={styles.fallbackStep}>
+                <View style={[styles.fallbackNum, { backgroundColor: color + '20', borderColor: color + '50' }]}>
+                  <Text style={[styles.fallbackNumText, { color }]}>{i + 1}</Text>
+                </View>
+                <Text style={styles.fallbackStepText}>{step}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={[styles.errorBox, { borderColor: color + '30' }]}>
         <Text style={styles.errorIcon}>🎬</Text>
@@ -226,4 +252,32 @@ const styles = StyleSheet.create({
   errorIcon: { fontSize: 32 },
   errorTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   errorSub: { fontSize: 12, color: COLORS.textMuted },
+
+  // Offline text fallback
+  fallbackBox: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    gap: 12,
+  },
+  fallbackHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fallbackIcon: { fontSize: 24 },
+  fallbackTitle: { fontSize: 13, fontWeight: '700' },
+  fallbackSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  fallbackSteps: { gap: 8 },
+  fallbackStep: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  fallbackNum: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  fallbackNumText: { fontSize: 11, fontWeight: '800' },
+  fallbackStepText: { flex: 1, fontSize: 12, color: COLORS.text, lineHeight: 18 },
 });

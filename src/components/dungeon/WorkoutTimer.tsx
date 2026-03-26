@@ -17,6 +17,7 @@ import { COLORS } from '@/lib/constants';
 import PressableButton from '@/components/ui/PressableButton';
 import { formatWeight } from '@/lib/weights';
 import type { SetLog } from '@/types';
+import type { ExerciseLastLog } from '@/stores/useHistoryStore';
 
 type Phase = 'idle' | 'active' | 'resting' | 'done';
 
@@ -27,6 +28,7 @@ interface WorkoutTimerProps {
   restSeconds: number;
   suggestedWeight?: number | 'bodyweight';
   weightUnit?: 'kg' | 'lbs';
+  lastSessionLog?: ExerciseLastLog | null;
   onComplete: (loggedSets: SetLog[]) => void;
   onHalf: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
@@ -91,9 +93,9 @@ function WeightSelector({
 
 const wStyles = StyleSheet.create({
   row:         { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  btn:         { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
+  btn:         { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(99,102,241,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)' },
   btnText:     { color: COLORS.gold, fontSize: 22, fontWeight: '700', lineHeight: 28 },
-  display:     { flex: 1, alignItems: 'center', backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 4, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)' },
+  display:     { flex: 1, alignItems: 'center', backgroundColor: 'rgba(99,102,241,0.08)', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 4, borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)' },
   displayBW:   { backgroundColor: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.3)' },
   weightText:  { fontSize: 18, fontWeight: '800', color: COLORS.gold },
   weightTextBW:{ color: COLORS.jade },
@@ -105,6 +107,7 @@ export default function WorkoutTimer({
   restSeconds,
   suggestedWeight = 'bodyweight',
   weightUnit = 'kg',
+  lastSessionLog,
   onComplete, onHalf, onSkip,
 }: WorkoutTimerProps) {
   const [phase, setPhase]           = useState<Phase>('idle');
@@ -228,6 +231,19 @@ export default function WorkoutTimer({
             </Text>
           )}
         </View>
+
+        {/* Progressive overload: last session data */}
+        {lastSessionLog && (
+          <View style={styles.lastSessionBox}>
+            <Text style={styles.lastSessionLabel}>LAST SESSION</Text>
+            <Text style={styles.lastSessionData}>
+              {formatWeight(lastSessionLog.weight, weightUnit)} · {lastSessionLog.reps} reps · {lastSessionLog.sets} sets
+            </Text>
+            <Text style={styles.lastSessionDate}>
+              {new Date(lastSessionLog.sessionDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.setDots}>
           {Array.from({ length: sets }).map((_, i) => (
@@ -433,6 +449,10 @@ const styles = StyleSheet.create({
   weightSection: { width: '100%', gap: 8, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.border },
   weightHeader:  { fontSize: 10, color: COLORS.textMuted, letterSpacing: 2, fontWeight: '700', textAlign: 'center' },
   suggestedHint: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' },
+  lastSessionBox: { width: '100%', backgroundColor: 'rgba(99,102,241,0.08)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(99,102,241,0.25)', alignItems: 'center', gap: 2 },
+  lastSessionLabel: { fontSize: 9, color: COLORS.gold, letterSpacing: 2, fontWeight: '700' },
+  lastSessionData: { fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  lastSessionDate: { fontSize: 10, color: COLORS.textMuted },
   lastSetInfo:   { fontSize: 12, color: COLORS.jade, fontWeight: '600' },
   summaryBox:    { width: '100%', backgroundColor: 'rgba(16,185,129,0.06)', borderRadius: 12, padding: 12, gap: 4, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
   summaryTitle:  { fontSize: 10, color: COLORS.jade, letterSpacing: 2, fontWeight: '700', marginBottom: 4 },
