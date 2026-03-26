@@ -18,6 +18,8 @@ const config = {
   moduleNameMapper: {
     // Resolve @/ path alias → src/
     '^@/(.*)$': '<rootDir>/src/$1',
+    // expo-constants uses ESM internally — provide a lightweight CJS mock
+    'expo-constants': '<rootDir>/__mocks__/expo-constants.js',
   },
 
   // Don't transform anything in node_modules — all deps we use ship CJS.

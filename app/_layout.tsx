@@ -25,12 +25,18 @@ class RootErrorBoundary extends Component<{ children: React.ReactNode }, EBState
 
 function AppNavigator() {
   const profile = useProfileStore((s) => s.profile);
+  const checkForUpdate = useProfileStore((s) => s.checkForUpdate);
 
   useEffect(() => {
     if (profile === null) {
       router.replace('/setup');
     }
   }, [profile]);
+
+  // Fire-and-forget on every app launch; silently no-ops on network failure
+  useEffect(() => {
+    checkForUpdate();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#080610' }}>
