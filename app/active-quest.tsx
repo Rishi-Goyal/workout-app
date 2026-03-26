@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
 import ExerciseGif from '@/components/dungeon/ExerciseGif';
@@ -18,6 +18,7 @@ import PressableButton from '@/components/ui/PressableButton';
 
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getSuggestedWeight } from '@/lib/weights';
 import { COLORS } from '@/lib/constants';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
@@ -52,6 +53,7 @@ export default function ActiveQuestScreen() {
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const { activeSession, markQuest } = useSessionStore();
   const { profile } = useProfileStore();
+  const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
   const [tab, setTab] = useState<'animation' | 'howto' | 'muscles'>('animation');
 
@@ -78,6 +80,7 @@ export default function ActiveQuestScreen() {
     : 'bodyweight';
 
   const weightUnit = profile?.weightUnit ?? 'kg';
+  const lastSessionLog = getLastExerciseLog(quest.exerciseName);
   const secondary = inferSecondary(quest.targetMuscles as MuscleGroup[]);
   const diff = DIFF_BADGE[quest.difficulty];
 
@@ -125,7 +128,8 @@ export default function ActiveQuestScreen() {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.duration(400).delay(180)}
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(120)}
           key={tab}
           style={[styles.tabContent, tab === 'howto' && styles.tabContentInstructions]}
         >
@@ -161,6 +165,7 @@ export default function ActiveQuestScreen() {
             restSeconds={quest.restSeconds}
             suggestedWeight={suggestedWeight}
             weightUnit={weightUnit}
+            lastSessionLog={lastSessionLog}
             onComplete={logs => handleMark('complete', logs)}
             onHalf={logs => handleMark('half_complete', logs)}
             onSkip={() =>
@@ -233,12 +238,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: 'rgba(99,102,241,0.08)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.2)',
+    borderColor: 'rgba(99,102,241,0.2)',
   },
   xpLabel:      { fontSize: 13, color: COLORS.textMuted },
   xpValue:      { fontSize: 18, fontWeight: '800', color: COLORS.gold },

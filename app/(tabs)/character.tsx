@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     gap: 12,
   },
-  loreCard: { borderColor: 'rgba(245,120,20,0.2)' },
+  loreCard: { borderColor: 'rgba(99,102,241,0.25)' },
   classHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   classIcon: { fontSize: 28 },
   className: { fontSize: 20, fontWeight: '700' },

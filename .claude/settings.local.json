@@ -170,7 +170,8 @@
       "Bash(find /c/Users/rishi/AppData/Roaming/Claude -name *.dxt -o -name dxt-*)",
       "Bash(find /c/Users/rishi/AppData -maxdepth 5 -name *claude* -type d)",
       "Bash(find /c/Users/rishi/AppData/Roaming/Claude -name *.json -path *dxt*)",
-      "Bash(find /c/Users/rishi/AppData/Roaming/Claude/claude-code-sessions -name *.json)"
+      "Bash(find /c/Users/rishi/AppData/Roaming/Claude/claude-code-sessions -name *.json)",
+      "Bash(grep -E \"\\(package\\\\.json|tsconfig|\\\\.ts$|\\\\.tsx$\\)\")"
     ]
   }
 }

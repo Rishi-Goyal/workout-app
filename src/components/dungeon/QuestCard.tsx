@@ -43,11 +43,16 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
   const isBoss = quest.difficulty === 'boss';
   const isSkipped = quest.status === 'skipped';
   const [showSwap, setShowSwap] = useState(false);
+  const [pendingSwap, setPendingSwap] = useState<Exercise | null>(null);
   const { muscleXP, profile } = useProfileStore();
 
   const swapOptions = showSwap && profile
     ? getSwapOptions(quest.exerciseName, muscleXP, profile.equipment)
     : null;
+
+  const confirmSwap = (exercise: Exercise) => {
+    setPendingSwap(exercise);
+  };
 
   const handleSwap = (exercise: Exercise) => {
     const updated = swapExercise(
@@ -78,6 +83,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
       }
     }
     setShowSwap(false);
+    setPendingSwap(null);
   };
 
   const accentColor = DIFF_ACCENT[quest.difficulty];
@@ -130,7 +136,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
       </View>
 
       {/* Swap panel */}
-      {showSwap && swapOptions && (
+      {showSwap && swapOptions && !pendingSwap && (
         <Animated.View entering={FadeInDown.duration(200)} style={styles.swapPanel}>
           <Text style={styles.swapTitle}>SWAP EXERCISE</Text>
 
@@ -138,7 +144,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
             <View style={styles.swapSection}>
               <Text style={styles.swapLabel}>Easier</Text>
               {swapOptions.easier.map((ex) => (
-                <Pressable key={ex.id} style={styles.swapOption} onPress={() => handleSwap(ex)}>
+                <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
                   <Text style={styles.swapOptionName}>{ex.name}</Text>
                   <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
                 </Pressable>
@@ -150,7 +156,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
             <View style={styles.swapSection}>
               <Text style={styles.swapLabel}>Harder</Text>
               {swapOptions.harder.map((ex) => (
-                <Pressable key={ex.id} style={styles.swapOption} onPress={() => handleSwap(ex)}>
+                <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
                   <Text style={styles.swapOptionName}>{ex.name}</Text>
                   <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
                 </Pressable>
@@ -161,6 +167,42 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
           {swapOptions.easier.length === 0 && swapOptions.harder.length === 0 && (
             <Text style={styles.noSwaps}>No alternatives available for your level and equipment.</Text>
           )}
+        </Animated.View>
+      )}
+
+      {/* Swap confirmation step */}
+      {pendingSwap && (
+        <Animated.View entering={FadeInDown.duration(200)} style={styles.swapConfirm}>
+          <Text style={styles.swapConfirmTitle}>CONFIRM SWAP</Text>
+          <View style={styles.swapConfirmCard}>
+            <Text style={styles.swapConfirmName}>{pendingSwap.name}</Text>
+            <View style={styles.swapConfirmMeta}>
+              {[pendingSwap.primaryMuscle].concat(pendingSwap.secondaryMuscles ?? []).slice(0, 3).map((m: string) => (
+                <View key={m} style={styles.swapConfirmChip}>
+                  <Text style={styles.swapConfirmChipText}>{m}</Text>
+                </View>
+              ))}
+              <View style={[styles.swapConfirmChip, styles.swapDiffChip]}>
+                <Text style={styles.swapConfirmDiff}>Diff {pendingSwap.difficultyLevel}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.swapConfirmActions}>
+            <PressableButton
+              label="✓ Swap"
+              variant="success"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => handleSwap(pendingSwap)}
+            />
+            <PressableButton
+              label="Cancel"
+              variant="ghost"
+              size="sm"
+              style={{ flex: 1 }}
+              onPress={() => setPendingSwap(null)}
+            />
+          </View>
         </Animated.View>
       )}
 
@@ -258,8 +300,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   xpItem: {
-    backgroundColor: 'rgba(245,166,35,0.07)',
-    borderColor: 'rgba(245,166,35,0.25)',
+    backgroundColor: 'rgba(99,102,241,0.07)',
+    borderColor: 'rgba(99,102,241,0.25)',
   },
   statVal: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   statLbl: { fontSize: 9, color: COLORS.textMuted, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -317,4 +359,43 @@ const styles = StyleSheet.create({
   swapOptionName: { fontSize: 13, fontWeight: '600', color: COLORS.text, flex: 1 },
   swapOptionDiff: { fontSize: 11, color: COLORS.textMuted },
   noSwaps: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' },
+
+  // Swap confirmation
+  swapConfirm: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '50',
+  },
+  swapConfirmTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.gold,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  swapConfirmCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  swapConfirmName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  swapConfirmMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  swapConfirmChip: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  swapConfirmChipText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
+  swapDiffChip: { borderColor: COLORS.gold + '40', backgroundColor: 'rgba(99,102,241,0.08)' },
+  swapConfirmDiff: { fontSize: 10, color: COLORS.gold, fontWeight: '700' },
+  swapConfirmActions: { flexDirection: 'row', gap: 8 },
 });
