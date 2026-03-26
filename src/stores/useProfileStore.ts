@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, Character, MuscleGroup } from '../types';
-import { createCharacter, applyLevelUpStats } from '../lib/character';
+import { createCharacter, applyLevelUpStats, deriveClassFromMuscles } from '../lib/character';
 import { applyXP } from '../lib/xp';
 import {
   type MuscleXP,
@@ -64,7 +64,15 @@ export const useProfileStore = create<ProfileStore>()(
         const current = get().muscleXP;
         const awards = calculateMuscleXP(primaryMuscles, secondaryMuscles, difficulty, completion);
         const { muscleXP: updated, levelUps } = applyMuscleXP(current, awards);
-        set({ muscleXP: updated });
+
+        // Re-derive class from the updated muscle distribution after every session
+        const character = get().character;
+        const newClass = deriveClassFromMuscles(updated);
+        const updatedCharacter = character
+          ? { ...character, class: newClass }
+          : character;
+
+        set({ muscleXP: updated, character: updatedCharacter });
         return { levelUps };
       },
 
@@ -79,37 +87,35 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
-      /**
-       * Called when the stored schema version is older than `version`.
-       * Always safe to add fields here — any new field not present in
-       * the stored blob will be filled in by `merge` below.
-       */
+      version: 2,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
-        // v0 → v1: muscleXP was added; seed defaults if absent
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
-        // Ensure character has floorsCleared (added in an early revision)
         if (s.character && typeof s.character === 'object') {
           const c = s.character as Record<string, unknown>;
           if (c.floorsCleared === undefined) c.floorsCleared = 0;
+          // v1 → v2: re-derive class from muscles (old class names are invalid)
+          // Will be properly set in merge below once muscleXP is available
         }
         return s as unknown as Partial<ProfileStore>;
       },
-      /**
-       * Deep-merge so that new fields in the initial state are never lost
-       * when loading a stored blob that pre-dates them.
-       * muscleXP is spread separately so new muscle groups get their defaults.
-       */
       merge: (persistedState: unknown, currentState: ProfileStore): ProfileStore => {
         const s = (persistedState ?? {}) as Partial<ProfileStore>;
+        const mergedMuscleXP = { ...currentState.muscleXP, ...(s.muscleXP ?? {}) };
+
+        // Always re-derive class so old stored values ('Warrior', 'Paladin', etc.) are corrected
+        const derivedClass = deriveClassFromMuscles(mergedMuscleXP);
+        const mergedCharacter = s.character
+          ? { ...s.character, class: derivedClass }
+          : currentState.character;
+
         return {
           ...currentState,
           ...s,
-          muscleXP: { ...currentState.muscleXP, ...(s.muscleXP ?? {}) },
+          muscleXP: mergedMuscleXP,
+          character: mergedCharacter,
         };
       },
-      /** Only persist data fields — never accidentally persist store methods. */
       partialize: (state: ProfileStore) => ({
         profile: state.profile,
         character: state.character,

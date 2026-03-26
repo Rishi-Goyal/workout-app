@@ -28,21 +28,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏰" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="dungeon"
-        options={{
           title: 'Dungeon',
           tabBarIcon: ({ focused }) => <TabIcon emoji="⚔️" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="character"
+        name="muscles"
         options={{
-          title: 'Character',
+          title: 'Muscles',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💪" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: 'Stats',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🧙" focused={focused} />,
         }}
       />
@@ -52,6 +52,15 @@ export default function TabsLayout() {
           title: 'Log',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📜" focused={focused} />,
         }}
+      />
+      {/* Hidden tabs — kept for file existence, not shown in tab bar */}
+      <Tabs.Screen
+        name="dungeon"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="character"
+        options={{ href: null }}
       />
     </Tabs>
   );

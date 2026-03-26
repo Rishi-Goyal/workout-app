@@ -27,7 +27,16 @@ export type MuscleGroup =
   | 'glutes'
   | 'calves';
 
-export type CharacterClass = 'Warrior' | 'Berserker' | 'Rogue' | 'Paladin';
+export type CharacterClass =
+  | 'Wanderer'       // Beginner — all balanced low
+  | 'Mirror Knight'  // Push dominant (chest/shoulders/triceps)
+  | 'Phantom'        // Pull dominant (back/biceps)
+  | 'Earthshaker'    // Legs dominant
+  | 'Iron Monk'      // Core specialist
+  | 'Iron Knight'    // Upper body balanced, legs neglected
+  | 'Colossus'       // Legs + Core, upper neglected
+  | 'Berserker'      // High overall, chaotic imbalance
+  | 'Paragon';       // All zones balanced and high
 export type QuestDifficulty = 'easy' | 'medium' | 'hard' | 'boss';
 export type QuestStatus = 'pending' | 'complete' | 'half_complete' | 'skipped';
 export type SessionStatus = 'active' | 'completed' | 'abandoned';

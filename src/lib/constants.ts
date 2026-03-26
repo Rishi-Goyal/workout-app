@@ -34,31 +34,70 @@ export const FITNESS_GOALS: { value: FitnessGoal; label: string; description: st
 
 export const CLASS_DEFINITIONS: Record<
   CharacterClass,
-  { description: string; primaryStat: keyof CharacterStats; icon: string; color: string }
+  { tagline: string; description: string; primaryStat: keyof CharacterStats; icon: string; color: string }
 > = {
-  Warrior: {
-    description: 'Masters of iron and steel. Warriors channel their fury into explosive compound lifts.',
+  Wanderer: {
+    tagline: 'Every legend begins here.',
+    description: 'A fresh adventurer stepping into the dungeon. Your muscles are a blank canvas — the real question is which ones you\'ll neglect first.',
+    primaryStat: 'vitality',
+    icon: '🌿',
+    color: '#6b7280',
+  },
+  'Mirror Knight': {
+    tagline: 'International Chest Day. Every day.',
+    description: 'A push-day devotee. Chest, shoulders, and triceps forged in countless bench press sets. Legs? The mirror doesn\'t show those.',
+    primaryStat: 'strength',
+    icon: '🪞',
+    color: '#6366f1',
+  },
+  Phantom: {
+    tagline: 'Built in the shadows. Nobody watches back day.',
+    description: 'You row, you pull, you conquer — silently, without applause. Your back could carry the whole party. Your biceps are frankly intimidating.',
+    primaryStat: 'strength',
+    icon: '👻',
+    color: '#8b5cf6',
+  },
+  Earthshaker: {
+    tagline: 'Leg day is not a day. It\'s a lifestyle.',
+    description: 'The ground trembles when you squat. Your quads are architectural marvels. Upper body training is a formality you tolerate twice a month.',
+    primaryStat: 'endurance',
+    icon: '🌋',
+    color: '#f97316',
+  },
+  'Iron Monk': {
+    tagline: 'The plank has no end. Only you do.',
+    description: 'Your core is a fortress. You have performed planks that outlasted civilisations. Other muscles are decorative by comparison.',
+    primaryStat: 'agility',
+    icon: '🏯',
+    color: '#14b8a6',
+  },
+  'Iron Knight': {
+    tagline: 'Upper body warrior. Legs are on sabbatical.',
+    description: 'Push and pull in perfect harmony — your upper body is a sculpture. Below the waist exists a philosophical void you have chosen not to address.',
     primaryStat: 'strength',
     icon: '⚔️',
     color: '#f59e0b',
   },
-  Berserker: {
-    description: 'Unstoppable forces of endurance. Berserkers thrive in high-volume, relentless sessions.',
+  Colossus: {
+    tagline: 'A moving mountain with a concrete core.',
+    description: 'Legs like pillars, core like bedrock. Your lower half is an engineering achievement. You could squat a car. You could probably outrun nothing.',
     primaryStat: 'endurance',
-    icon: '🔥',
+    icon: '💥',
     color: '#ef4444',
   },
-  Rogue: {
-    description: 'Swift and precise. Rogues excel at bodyweight mastery and calisthenics.',
-    primaryStat: 'agility',
-    icon: '🗡️',
-    color: '#10b981',
+  Berserker: {
+    tagline: 'Untamed. Unpredictable. Unstoppable.',
+    description: 'Some muscles are elite. Some are neglected. All of it is loud. You don\'t train in balance — you train in chaos, and somehow it works.',
+    primaryStat: 'endurance',
+    icon: '🔥',
+    color: '#f43f5e',
   },
-  Paladin: {
-    description: 'Guardians of balance. Paladins train every aspect of fitness with discipline.',
+  Paragon: {
+    tagline: 'Statistically rare. Suspiciously perfect.',
+    description: 'Every muscle group trained to near-equal mastery. No skip days, no excuses, no imbalance. The dungeon respects you. We all do.',
     primaryStat: 'vitality',
-    icon: '🛡️',
-    color: '#8b5cf6',
+    icon: '🏆',
+    color: '#eab308',
   },
 };
 
@@ -69,22 +108,23 @@ export const XP_BY_DIFFICULTY: Record<QuestDifficulty, number> = {
   boss: 300,
 };
 
+/** @deprecated Class is now derived from muscle XP via deriveClassFromMuscles() */
 export const GOAL_TO_CLASS: Record<FitnessGoal, CharacterClass> = {
-  strength: 'Warrior',
-  endurance: 'Berserker',
-  calisthenics: 'Rogue',
-  balanced: 'Paladin',
-  weight_loss: 'Paladin',
+  strength:     'Wanderer',
+  endurance:    'Wanderer',
+  calisthenics: 'Wanderer',
+  balanced:     'Wanderer',
+  weight_loss:  'Wanderer',
 };
 
 export const TITLES_BY_LEVEL: { maxLevel: number; title: string }[] = [
-  { maxLevel: 3, title: 'Initiate' },
-  { maxLevel: 7, title: 'Wanderer' },
-  { maxLevel: 12, title: 'Iron Knight' },
-  { maxLevel: 18, title: 'Stone Warden' },
-  { maxLevel: 25, title: 'Shadow Blade' },
-  { maxLevel: 35, title: 'Dungeon Slayer' },
-  { maxLevel: 50, title: 'Abyssal Champion' },
+  { maxLevel: 3,        title: 'Initiate' },
+  { maxLevel: 7,        title: 'Seeker' },
+  { maxLevel: 12,       title: 'Veteran' },
+  { maxLevel: 18,       title: 'Stone Warden' },
+  { maxLevel: 25,       title: 'Shadow Blade' },
+  { maxLevel: 35,       title: 'Dungeon Slayer' },
+  { maxLevel: 50,       title: 'Abyssal Champion' },
   { maxLevel: Infinity, title: 'Eternal Conqueror' },
 ];
 
