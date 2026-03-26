@@ -6,12 +6,24 @@ interface Props { selected: Equipment[]; onChange: (e: Equipment[]) => void; }
 
 export default function EquipmentPicker({ selected, onChange }: Props) {
   const toggle = (eq: Equipment) => {
-    onChange(selected.includes(eq) ? selected.filter((e) => e !== eq) : [...selected, eq]);
+    if (selected.includes(eq)) {
+      // Deselect — but always keep at least bodyweight_only if nothing else remains
+      const next = selected.filter((e) => e !== eq);
+      onChange(next.length === 0 ? ['bodyweight_only'] : next);
+    } else if (eq === 'bodyweight_only') {
+      // "No Equipment" selected → clear everything else
+      onChange(['bodyweight_only']);
+    } else {
+      // Real equipment selected → add it and remove bodyweight_only
+      onChange([...selected.filter((e) => e !== 'bodyweight_only'), eq]);
+    }
   };
+
   return (
     <View style={styles.grid}>
       {EQUIPMENT_LIST.map((eq) => {
         const isSelected = selected.includes(eq.value);
+        const isBodyweightOnly = eq.value === 'bodyweight_only';
         return (
           <Pressable
             key={eq.value}
@@ -19,11 +31,16 @@ export default function EquipmentPicker({ selected, onChange }: Props) {
             style={({ pressed }) => [
               styles.cell,
               isSelected && styles.selected,
+              isBodyweightOnly && styles.bodyweightCell,
+              isBodyweightOnly && isSelected && styles.bodyweightSelected,
               pressed && { opacity: 0.7 },
             ]}
           >
             <Text style={styles.icon}>{eq.icon}</Text>
             <Text style={[styles.label, isSelected && { color: COLORS.gold }]}>{eq.label}</Text>
+            {isBodyweightOnly && (
+              <Text style={styles.bodyweightHint}>Clears other selections</Text>
+            )}
           </Pressable>
         );
       })}
@@ -43,7 +60,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  selected: { borderColor: COLORS.gold, backgroundColor: 'rgba(245,158,11,0.07)' },
+  selected: { borderColor: COLORS.gold, backgroundColor: 'rgba(99,102,241,0.07)' },
+  bodyweightCell: { width: '100%', flexDirection: 'row', gap: 10, justifyContent: 'center' },
+  bodyweightSelected: { borderColor: COLORS.jade, backgroundColor: 'rgba(14,164,114,0.07)' },
   icon: { fontSize: 28 },
   label: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, textAlign: 'center' },
+  bodyweightHint: { fontSize: 10, color: COLORS.textMuted, fontStyle: 'italic' },
 });

@@ -223,9 +223,14 @@ export default function WorkoutTimer({
 
         {/* Suggested weight */}
         <View style={styles.weightSection}>
-          <Text style={styles.weightHeader}>STARTING WEIGHT</Text>
+          <Text style={styles.weightHeader}>
+            {currentWeight === 'bodyweight' ? 'BODYWEIGHT EXERCISE' : 'STARTING WEIGHT'}
+          </Text>
           <WeightSelector value={currentWeight} onChange={setWeight} unit={weightUnit} />
-          {suggestedWeight !== currentWeight && (
+          {currentWeight === 'bodyweight' && (
+            <Text style={styles.suggestedHint}>Optional: tap display to add extra weight</Text>
+          )}
+          {currentWeight !== 'bodyweight' && suggestedWeight !== currentWeight && (
             <Text style={styles.suggestedHint}>
               Suggested: {formatWeight(suggestedWeight, weightUnit)}
             </Text>

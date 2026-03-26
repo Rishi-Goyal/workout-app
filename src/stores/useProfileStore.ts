@@ -79,6 +79,42 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      /**
+       * Called when the stored schema version is older than `version`.
+       * Always safe to add fields here — any new field not present in
+       * the stored blob will be filled in by `merge` below.
+       */
+      migrate: (persistedState: unknown, _fromVersion: number) => {
+        const s = (persistedState ?? {}) as Record<string, unknown>;
+        // v0 → v1: muscleXP was added; seed defaults if absent
+        if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
+        // Ensure character has floorsCleared (added in an early revision)
+        if (s.character && typeof s.character === 'object') {
+          const c = s.character as Record<string, unknown>;
+          if (c.floorsCleared === undefined) c.floorsCleared = 0;
+        }
+        return s as unknown as Partial<ProfileStore>;
+      },
+      /**
+       * Deep-merge so that new fields in the initial state are never lost
+       * when loading a stored blob that pre-dates them.
+       * muscleXP is spread separately so new muscle groups get their defaults.
+       */
+      merge: (persistedState: unknown, currentState: ProfileStore): ProfileStore => {
+        const s = (persistedState ?? {}) as Partial<ProfileStore>;
+        return {
+          ...currentState,
+          ...s,
+          muscleXP: { ...currentState.muscleXP, ...(s.muscleXP ?? {}) },
+        };
+      },
+      /** Only persist data fields — never accidentally persist store methods. */
+      partialize: (state: ProfileStore) => ({
+        profile: state.profile,
+        character: state.character,
+        muscleXP: state.muscleXP,
+      }),
     }
   )
 );

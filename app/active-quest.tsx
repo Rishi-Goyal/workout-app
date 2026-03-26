@@ -20,6 +20,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getSuggestedWeight } from '@/lib/weights';
+import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
 import { COLORS } from '@/lib/constants';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
 
@@ -68,16 +69,28 @@ export default function ActiveQuestScreen() {
     );
   }
 
-  const suggestedWeight: number | 'bodyweight' = profile
-    ? getSuggestedWeight(
-        quest.exerciseName,
-        quest.targetMuscles as MuscleGroup[],
-        profile.bodyWeight ?? 70,
-        profile.muscleStrengths,
-        profile.equipment,
-        profile.goal,
-      )
-    : 'bodyweight';
+  // Use the exercise DB's equipment field for accurate bodyweight detection.
+  // The keyword-based getSuggestedWeight check uses the user's equipment list
+  // which is wrong for exercises like Back Extension (bodyweight_only) when
+  // the user has a barbell.
+  const exerciseEntry = quest.exerciseId ? EXERCISE_MAP[quest.exerciseId] : undefined;
+  const isBodyweightOnly =
+    exerciseEntry !== undefined &&
+    exerciseEntry.equipment.length > 0 &&
+    exerciseEntry.equipment.every(e => e === 'bodyweight_only');
+
+  const suggestedWeight: number | 'bodyweight' = isBodyweightOnly
+    ? 'bodyweight'
+    : profile
+      ? getSuggestedWeight(
+          quest.exerciseName,
+          quest.targetMuscles as MuscleGroup[],
+          profile.bodyWeight ?? 70,
+          profile.muscleStrengths,
+          profile.equipment,
+          profile.goal,
+        )
+      : 'bodyweight';
 
   const weightUnit = profile?.weightUnit ?? 'kg';
   const lastSessionLog = getLastExerciseLog(quest.exerciseName);

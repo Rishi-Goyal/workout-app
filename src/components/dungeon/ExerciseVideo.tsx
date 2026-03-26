@@ -1,13 +1,13 @@
 /**
  * ExerciseVideo — embeds a YouTube form tutorial video for any exercise.
  *
- * Uses a YouTube search embed so it always finds the most relevant
- * professional form video without needing a curated ID list.
- * Falls back to a branded placeholder if WebView fails.
+ * Uses curated video IDs for key exercises.
+ * For all other exercises shows a step-by-step text guide instead of a
+ * broken search embed (YouTube removed the listType=search embed feature).
  */
-import { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { COLORS } from '@/lib/constants';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
 import type { MuscleGroup } from '@/types';
@@ -72,21 +72,10 @@ interface ExerciseVideoProps {
   fallbackSteps?: string[];
 }
 
-function buildYouTubeEmbedUrl(exerciseName: string, videoId?: string): string {
-  if (videoId) {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=0&modestbranding=1&rel=0&showinfo=0&color=white`;
-  }
-  // YouTube search embed — finds most relevant form tutorial automatically
-  const query = encodeURIComponent(`${exerciseName} proper form technique`);
-  return `https://www.youtube.com/results?search_query=${query}&sp=EgIQAQ%253D%253D`;
-}
-
-// Inline HTML for the YouTube embed to avoid CORS issues in WebView
-function buildEmbedHtml(exerciseName: string, videoId?: string): string {
-  // Use youtube-nocookie.com to avoid cookie consent + Error 153 on Android WebView
-  const embedSrc = videoId
-    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&modestbranding=1&rel=0&color=white&playsinline=1&origin=https://dungeonfit.app`
-    : `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(exerciseName + ' proper form tutorial')}&autoplay=0&modestbranding=1&rel=0&playsinline=1&origin=https://dungeonfit.app`;
+// Inline HTML for the curated YouTube embed to avoid CORS issues in WebView
+// Uses youtube-nocookie.com to avoid cookie consent + Error 153 on Android WebView
+function buildEmbedHtml(exerciseName: string, videoId: string): string {
+  const embedSrc = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&modestbranding=1&rel=0&color=white&playsinline=1&origin=https://dungeonfit.app`;
 
   return `<!DOCTYPE html>
 <html>
@@ -111,37 +100,84 @@ function buildEmbedHtml(exerciseName: string, videoId?: string): string {
 </html>`;
 }
 
+function StepGuide({
+  color,
+  fallbackSteps,
+  title,
+  subtitle,
+  icon,
+}: {
+  color: string;
+  fallbackSteps: string[];
+  title: string;
+  subtitle: string;
+  icon: string;
+}) {
+  return (
+    <View style={[styles.fallbackBox, { borderColor: color + '30' }]}>
+      <View style={styles.fallbackHeader}>
+        <Text style={styles.fallbackIcon}>{icon}</Text>
+        <View>
+          <Text style={[styles.fallbackTitle, { color }]}>{title}</Text>
+          <Text style={styles.fallbackSub}>{subtitle}</Text>
+        </View>
+      </View>
+      <View style={styles.fallbackSteps}>
+        {fallbackSteps.map((step, i) => (
+          <View key={i} style={styles.fallbackStep}>
+            <View style={[styles.fallbackNum, { backgroundColor: color + '20', borderColor: color + '50' }]}>
+              <Text style={[styles.fallbackNumText, { color }]}>{i + 1}</Text>
+            </View>
+            <Text style={styles.fallbackStepText}>{step}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallbackSteps }: ExerciseVideoProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const type = inferExerciseType(exerciseName, muscles);
   const color = TYPE_COLOR[type];
   const videoId = CURATED_VIDEOS[exerciseId];
+
+  // No curated video: show step guide immediately (avoids deprecated search embed)
+  if (!videoId) {
+    if (fallbackSteps && fallbackSteps.length > 0) {
+      return (
+        <StepGuide
+          color={color}
+          fallbackSteps={fallbackSteps}
+          title="Step-by-Step Guide"
+          subtitle="Follow these form cues for best results"
+          icon="📋"
+        />
+      );
+    }
+    return (
+      <View style={[styles.errorBox, { borderColor: color + '30' }]}>
+        <Text style={styles.errorIcon}>🎬</Text>
+        <Text style={styles.errorTitle}>No tutorial available</Text>
+        <Text style={styles.errorSub}>Search "{exerciseName} form" on YouTube</Text>
+      </View>
+    );
+  }
+
   const html = buildEmbedHtml(exerciseName, videoId);
 
   if (error) {
-    // Rich offline fallback: show step-by-step instructions if available
+    // Offline fallback: show step-by-step instructions if available
     if (fallbackSteps && fallbackSteps.length > 0) {
       return (
-        <View style={[styles.fallbackBox, { borderColor: color + '30' }]}>
-          <View style={styles.fallbackHeader}>
-            <Text style={styles.fallbackIcon}>📵</Text>
-            <View>
-              <Text style={[styles.fallbackTitle, { color }]}>Offline — Text Guide</Text>
-              <Text style={styles.fallbackSub}>Video unavailable without connection</Text>
-            </View>
-          </View>
-          <View style={styles.fallbackSteps}>
-            {fallbackSteps.map((step, i) => (
-              <View key={i} style={styles.fallbackStep}>
-                <View style={[styles.fallbackNum, { backgroundColor: color + '20', borderColor: color + '50' }]}>
-                  <Text style={[styles.fallbackNumText, { color }]}>{i + 1}</Text>
-                </View>
-                <Text style={styles.fallbackStepText}>{step}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <StepGuide
+          color={color}
+          fallbackSteps={fallbackSteps}
+          title="Offline — Text Guide"
+          subtitle="Video unavailable without connection"
+          icon="📵"
+        />
       );
     }
     return (
@@ -179,9 +215,9 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
       </View>
       <View style={styles.sourceRow}>
         <Text style={styles.sourceText}>📺 YouTube · Form tutorial</Text>
-        {videoId && <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
+        <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
           <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
-        </View>}
+        </View>
       </View>
     </View>
   );

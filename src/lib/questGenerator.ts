@@ -69,8 +69,12 @@ function getWorkoutDay(splitType: WorkoutSplitType, floor: number): WorkoutDay |
   return activeDays[floor % activeDays.length];
 }
 
-/** Check if user has ANY of the required equipment */
+/** Check if user has ANY of the required equipment.
+ *  bodyweight_only exercises are always accessible — if you have equipment
+ *  you can still do push-ups, planks, etc. */
 function canDoExercise(exercise: Exercise, available: Equipment[]): boolean {
+  // Bodyweight exercises are available to everyone
+  if (exercise.equipment.includes('bodyweight_only')) return true;
   const avail = new Set(available);
   return exercise.equipment.some(eq => avail.has(eq));
 }

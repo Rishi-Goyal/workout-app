@@ -8,7 +8,7 @@ export const EQUIPMENT_LIST: { value: Equipment; label: string; icon: string }[]
   { value: 'resistance_bands', label: 'Resistance Bands', icon: '🔗' },
   { value: 'bench', label: 'Bench', icon: '🪑' },
   { value: 'cable_machine', label: 'Cable Machine', icon: '⚙️' },
-  { value: 'bodyweight_only', label: 'Bodyweight Only', icon: '🧍' },
+  { value: 'bodyweight_only', label: 'No Equipment', icon: '🧍' },
 ];
 
 export const MUSCLE_GROUPS: { value: MuscleGroup; label: string }[] = [
