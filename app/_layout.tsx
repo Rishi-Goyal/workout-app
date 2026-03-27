@@ -4,6 +4,7 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { setupWorkoutChannel } from '@/lib/workoutNotification';
 
 // Top-level error boundary — shows a readable message instead of blank screen on crash
 interface EBState { error: Error | null }
@@ -36,6 +37,8 @@ function AppNavigator() {
   // Fire-and-forget on every app launch; silently no-ops on network failure
   useEffect(() => {
     checkForUpdate();
+    // Set up Android notification channel for active-workout persistent notification
+    setupWorkoutChannel();
   }, []);
 
   return (

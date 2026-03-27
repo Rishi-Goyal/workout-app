@@ -1,8 +1,13 @@
 /**
- * ExerciseVideo — opens a curated YouTube form tutorial in the YouTube app.
- * Replaced inline WebView embed with Linking.openURL for new-arch compatibility.
+ * ExerciseVideo — shows a real YouTube thumbnail and opens the video in an
+ * in-app Chrome Custom Tab (expo-web-browser) so the user never leaves the app.
+ *
+ * WebView was dropped because react-native-webview is incompatible with
+ * RN 0.83 bridgeless/Fabric. expo-web-browser's openBrowserAsync() uses
+ * Android Chrome Custom Tabs — a native activity that slides up over the app.
  */
-import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { COLORS } from '@/lib/constants';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
 import type { MuscleGroup } from '@/types';
@@ -101,8 +106,14 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
   const color = TYPE_COLOR[type];
   const videoId = CURATED_VIDEOS[exerciseId];
 
-  const openVideo = () => {
-    Linking.openURL(`https://www.youtube.com/watch?v=${videoId}`);
+  const openVideo = async () => {
+    // Chrome Custom Tab slides up over the app — user watches and taps back
+    await WebBrowser.openBrowserAsync(`https://www.youtube.com/watch?v=${videoId}`, {
+      toolbarColor: '#0d0a0e',
+      controlsColor: '#6366f1',
+      showTitle: true,
+      enableBarCollapsing: true,
+    });
   };
 
   // No curated video: show text guide
@@ -127,31 +138,46 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
     );
   }
 
+  // YouTube thumbnail — always available at hqdefault (480×360)
+  const thumbnailUri = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
   return (
     <View style={styles.container}>
       <Pressable
         style={({ pressed }) => [
           styles.videoCard,
-          { borderColor: color + '40', opacity: pressed ? 0.75 : 1 },
+          { borderColor: color + '40', opacity: pressed ? 0.85 : 1 },
         ]}
         onPress={openVideo}
       >
-        {/* Thumbnail placeholder with play icon */}
-        <View style={[styles.thumbArea, { backgroundColor: color + '12' }]}>
-          <View style={[styles.playButton, { borderColor: color, backgroundColor: color + '20' }]}>
-            <Text style={[styles.playIcon, { color }]}>▶</Text>
+        {/* Real YouTube thumbnail */}
+        <View style={styles.thumbWrapper}>
+          <Image
+            source={{ uri: thumbnailUri }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+          {/* Dark overlay + play button centred on the thumbnail */}
+          <View style={styles.thumbOverlay}>
+            <View style={[styles.playButton, { borderColor: '#fff', backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+              <Text style={styles.playIcon}>▶</Text>
+            </View>
           </View>
-          <Text style={[styles.watchLabel, { color }]}>Watch on YouTube</Text>
+          {/* Bottom gradient label */}
+          <View style={styles.thumbLabel}>
+            <Text style={styles.thumbLabelText}>Tap to watch · opens in-app</Text>
+          </View>
         </View>
+
         <View style={styles.cardFooter}>
-          <Text style={styles.footerText}>📺 Form tutorial · opens YouTube</Text>
+          <Text style={styles.footerText}>📺 Form tutorial · curated for this exercise</Text>
           <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
             <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
           </View>
         </View>
       </Pressable>
 
-      {/* Show step guide below if available */}
+      {/* Step guide below thumbnail if available */}
       {fallbackSteps && fallbackSteps.length > 0 && (
         <StepGuide
           color={color}
@@ -177,29 +203,48 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: COLORS.surface,
   },
-  thumbArea: {
+  thumbWrapper: {
     width: '100%',
     aspectRatio: 16 / 9,
+    position: 'relative',
+    backgroundColor: '#111',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
   },
   playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   playIcon: {
-    fontSize: 22,
+    fontSize: 24,
+    color: '#fff',
     marginLeft: 4,
   },
-  watchLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+  thumbLabel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  thumbLabelText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
   cardFooter: {
     flexDirection: 'row',

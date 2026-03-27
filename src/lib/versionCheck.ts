@@ -15,7 +15,7 @@ export const RELEASES_URL   = `https://github.com/${REPO}/releases/latest`;
 
 /** Current app version from app.json / app.config.ts (via Expo Constants). */
 export function getCurrentVersion(): string {
-  return Constants.expoConfig?.version ?? '2.0.0';
+  return Constants.expoConfig?.version ?? '3.0.0';
 }
 
 /** Direct link to the GitHub releases page. */

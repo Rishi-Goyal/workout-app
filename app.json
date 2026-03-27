@@ -30,7 +30,16 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6366f1",
+          "androidMode": "default",
+          "androidCollapsedTitle": "DungeonFit"
+        }
+      ]
     ],
     "scheme": "dungeonfit"
   }

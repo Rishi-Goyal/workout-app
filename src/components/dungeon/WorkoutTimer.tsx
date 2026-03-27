@@ -123,6 +123,8 @@ export default function WorkoutTimer({
   // Actual reps the user logged for this set (adjustable before marking done)
   const [repsInput, setRepsInput]    = useState(recommendedReps);
   const [loggedSets, setLoggedSets]  = useState<SetLog[]>([]);
+  // Editable copy of loggedSets shown in the done phase — user can adjust before accepting
+  const [editedSets, setEditedSets]  = useState<SetLog[]>([]);
   // Bonus accumulated across all sets this exercise (shown in rest + done phases)
   const [totalBonus, setTotalBonus]  = useState(0);
   // Bonus for the most recently completed set (shown during rest)
@@ -223,6 +225,10 @@ export default function WorkoutTimer({
           pulse.value = withTiming(1, { duration: 500 });
         });
       }
+    }
+    // Seed the editable summary with the final logged sets when done
+    if (phase === 'done') {
+      setEditedSets(prev => prev.length === 0 ? [...loggedSets] : prev);
     }
   }, [phase, currentSet]);
 
@@ -507,26 +513,96 @@ export default function WorkoutTimer({
     );
   }
 
-  // ── Done ──────────────────────────────────────────────────────────────────
+  // ── Done — editable accept phase ─────────────────────────────────────────
+  /** Update a single field on one row in the editable summary. */
+  function updateEditedSet(index: number, field: 'weight' | 'reps', value: number | 'bodyweight') {
+    setEditedSets(prev =>
+      prev.map((s, i) =>
+        i !== index
+          ? s
+          : field === 'weight'
+            ? { ...s, weight: value as number | 'bodyweight' }
+            : { ...s, repsCompleted: Math.max(0, value as number) },
+      ),
+    );
+  }
+
+  const displaySets = editedSets.length > 0 ? editedSets : loggedSets;
+
   return (
     <View style={styles.container}>
       <Text style={styles.doneIcon}>🏆</Text>
       <Text style={styles.doneText}>All sets complete!</Text>
+      <Text style={styles.doneSubtitle}>Review & adjust before accepting</Text>
 
-      {/* Summary of logged sets */}
-      {loggedSets.length > 0 && (
+      {/* Editable per-set summary */}
+      {displaySets.length > 0 && (
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>YOUR WORKOUT</Text>
-          {loggedSets.map(s => (
-            <View key={s.setNumber} style={styles.summaryRowContainer}>
-              <Text style={styles.summaryRow}>
-                Set {s.setNumber}  ·  {formatWeight(s.weight, weightUnit)}  ·  {s.timeCompleted ? `${s.timeCompleted}s hold` : `${s.repsCompleted} reps`}
-              </Text>
+
+          {displaySets.map((s, i) => (
+            <View key={s.setNumber} style={styles.editRow}>
+              {/* Set label */}
+              <Text style={styles.editSetLabel}>Set {s.setNumber}</Text>
+
+              {/* Weight editor */}
+              <View style={styles.editField}>
+                <Text style={styles.editFieldLabel}>WEIGHT</Text>
+                <WeightSelector
+                  value={s.weight}
+                  onChange={(v) => updateEditedSet(i, 'weight', v)}
+                  unit={weightUnit}
+                />
+              </View>
+
+              {/* Reps editor (hidden for isometric/hold exercises) */}
+              {!holdSeconds && (
+                <View style={styles.editField}>
+                  <Text style={styles.editFieldLabel}>REPS</Text>
+                  <View style={styles.repRow}>
+                    <TouchableOpacity
+                      style={wStyles.btn}
+                      onPress={() => updateEditedSet(i, 'reps', s.repsCompleted - 1)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={wStyles.btnText}>−</Text>
+                    </TouchableOpacity>
+                    <View style={styles.editRepDisplay}>
+                      <Text style={styles.editRepNumber}>{s.repsCompleted}</Text>
+                      {s.repsCompleted !== recommendedReps && (
+                        <Text style={[styles.repTarget, {
+                          color: s.repsCompleted > recommendedReps ? COLORS.jade : COLORS.crimson,
+                        }]}>
+                          target: {recommendedReps}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={wStyles.btn}
+                      onPress={() => updateEditedSet(i, 'reps', s.repsCompleted + 1)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={wStyles.btnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Isometric hold time (read-only) */}
+              {holdSeconds && s.timeCompleted !== undefined && (
+                <View style={styles.editField}>
+                  <Text style={styles.editFieldLabel}>HOLD</Text>
+                  <Text style={styles.holdTime}>{s.timeCompleted}s</Text>
+                </View>
+              )}
+
+              {/* Bonus XP badge */}
               {(s.bonusXPEarned ?? 0) > 0 && (
                 <Text style={styles.summaryBonus}>+{s.bonusXPEarned} 🔥</Text>
               )}
             </View>
           ))}
+
           {totalBonus > 0 && (
             <View style={styles.totalBonusRow}>
               <Text style={styles.totalBonusText}>Total bonus XP: +{totalBonus} 🔥</Text>
@@ -535,8 +611,13 @@ export default function WorkoutTimer({
         </View>
       )}
 
-      <PressableButton label="✓ Complete Quest" variant="success" size="lg" onPress={() => onComplete(loggedSets)} style={styles.mainBtn} />
-      <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
+      <PressableButton
+        label="✓ Accept"
+        variant="success"
+        size="lg"
+        onPress={() => onComplete(displaySets)}
+        style={styles.mainBtn}
+      />
     </View>
   );
 }
@@ -561,6 +642,15 @@ const styles = StyleSheet.create({
   restSec:      { fontSize: 11, color: COLORS.textMuted, marginTop: -4 },
   doneIcon:     { fontSize: 52 },
   doneText:     { fontSize: 22, fontWeight: '800', color: COLORS.jade },
+  doneSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: -6 },
+  // Editable accept phase
+  editRow:      { gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  editSetLabel: { fontSize: 11, color: COLORS.gold, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  editField:    { gap: 4 },
+  editFieldLabel: { fontSize: 9, color: COLORS.textMuted, letterSpacing: 2, fontWeight: '700' },
+  editRepDisplay: { flex: 1, alignItems: 'center' },
+  editRepNumber:  { fontSize: 24, fontWeight: '900', color: COLORS.text },
+  holdTime:     { fontSize: 18, fontWeight: '700', color: COLORS.jade },
   weightSection: { width: '100%', gap: 8, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.border },
   weightHeader:  { fontSize: 10, color: COLORS.textMuted, letterSpacing: 2, fontWeight: '700', textAlign: 'center' },
   suggestedHint: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' },

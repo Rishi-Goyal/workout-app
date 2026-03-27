@@ -3,7 +3,7 @@
  * Computes suggested starting weight from user profile.
  * Saves logged sets per quest on completion.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getSuggestedWeight } from '@/lib/weights';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
 import { COLORS, RADIUS, SPACING } from '@/lib/constants';
+import { showWorkoutNotification, dismissWorkoutNotification } from '@/lib/workoutNotification';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
 
 const DIFF_BADGE = {
@@ -98,6 +99,16 @@ export default function ActiveQuestScreen() {
   const lastSessionLog = getLastExerciseLog(quest.exerciseName);
   const secondary = inferSecondary(quest.targetMuscles as MuscleGroup[]);
   const diff = DIFF_BADGE[quest.difficulty];
+
+  // ── Persistent workout notification ────────────────────────────────────────
+  useEffect(() => {
+    // Show notification as soon as the exercise screen opens
+    showWorkoutNotification(quest.exerciseName, 1, quest.sets);
+    return () => {
+      // Dismiss when navigating away (complete, skip, or back)
+      dismissWorkoutNotification();
+    };
+  }, [quest.exerciseName, quest.sets]);
 
   function handleMark(status: QuestStatus, logs: SetLog[] = []) {
     markQuest(quest!.id, status, logs.length > 0 ? logs : undefined);
