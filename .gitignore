@@ -61,3 +61,12 @@ next-env.d.ts
 
 # Metro
 .metro-health-check*
+
+# Claude Code internal worktrees
+.claude/worktrees/
+
+# Kotlin compiler cache (build artifact)
+android/.kotlin/
+
+# Local APK builds in assets folder
+user_created_assets/*.apk
