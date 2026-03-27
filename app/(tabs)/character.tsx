@@ -1,10 +1,17 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import CharacterPanel from '@/components/character/CharacterPanel';
-import Badge from '@/components/ui/Badge';
+import XPBar from '@/components/character/XPBar';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
-import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
+import { COLORS, CLASS_DEFINITIONS, RADIUS, SPACING } from '@/lib/constants';
+import type { MuscleGroup } from '@/types';
+import Card from '@/components/ui/Card';
+import SectionLabel from '@/components/ui/SectionLabel';
+
+const ALL_MUSCLES: MuscleGroup[] = [
+  'chest', 'back', 'shoulders', 'biceps', 'triceps',
+  'core', 'quads', 'hamstrings', 'glutes', 'calves',
+];
 
 export default function CharacterScreen() {
   const { profile, character, muscleXP } = useProfileStore();
@@ -13,72 +20,77 @@ export default function CharacterScreen() {
   if (!profile || !character) return null;
 
   const classDef = CLASS_DEFINITIONS[character.class];
-  const completed = sessions.filter((s) => s.status === 'completed');
-  const totalXP = sessions.reduce((sum, s) => sum + s.totalXPEarned, 0);
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.title}>Character Sheet</Text>
+        <Text style={styles.title}>Profile</Text>
 
-        {/* Full character panel with muscle levels */}
-        <CharacterPanel
-          character={character}
-          profile={profile}
-          muscleXP={muscleXP}
-        />
+        {/* Identity Card */}
+        <Card padding={20}>
+          <View style={styles.identityCenter}>
+            <View style={styles.classIconCircle}>
+              <Text style={styles.classIconEmoji}>{classDef.icon}</Text>
+            </View>
+            <Text style={styles.characterName}>{profile.name}</Text>
+            <Text style={styles.classLine}>
+              {classDef.icon} {character.class}  ·  Level {character.level}
+            </Text>
+          </View>
+          <View style={styles.xpBarWrapper}>
+            <XPBar character={character} />
+          </View>
+        </Card>
 
-        {/* Class lore card */}
-        <View style={[styles.card, styles.loreCard]}>
-          <View style={styles.classHeader}>
-            <Text style={styles.classIcon}>{classDef.icon}</Text>
-            <Text style={[styles.className, { color: classDef.color }]}>The {character.class}</Text>
+        {/* Key Stats Card */}
+        <Card padding={16}>
+          <SectionLabel>STATS</SectionLabel>
+          <View style={styles.statsGrid}>
+            <View style={styles.statBlock}>
+              <Text style={styles.statValue}>{character.floorsCleared}</Text>
+              <Text style={styles.statLabel}>Workouts</Text>
+            </View>
+            <View style={styles.statBlock}>
+              <Text style={styles.statValue}>{character.level}</Text>
+              <Text style={styles.statLabel}>Level</Text>
+            </View>
+            <View style={styles.statBlock}>
+              <Text style={styles.statValue}>{character.totalXPEarned}</Text>
+              <Text style={styles.statLabel}>Total XP</Text>
+            </View>
+            <View style={styles.statBlock}>
+              <Text style={styles.statValue}>{sessions.length}</Text>
+              <Text style={styles.statLabel}>Sessions</Text>
+            </View>
           </View>
-          <Text style={styles.loreText}>{classDef.description}</Text>
-        </View>
+        </Card>
 
-        {/* Stats summary */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>{character.floorsCleared}</Text>
-            <Text style={styles.statLbl}>Floors</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>{completed.length}</Text>
-            <Text style={styles.statLbl}>Sessions</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNum}>{totalXP}</Text>
-            <Text style={styles.statLbl}>Total XP</Text>
-          </View>
-        </View>
-
-        {/* Session history */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>RECENT EXPEDITIONS</Text>
-          {sessions.length === 0 ? (
-            <Text style={styles.emptyText}>No expeditions yet. Enter the dungeon to begin.</Text>
-          ) : (
-            sessions.slice(0, 20).map((s) => (
-              <View key={s.id} style={styles.sessionRow}>
-                <View style={styles.sessionLeft}>
-                  <Text style={styles.sessionFloor}>Floor {s.floor}</Text>
-                  <Badge
-                    label={s.status}
-                    variant={s.status === 'completed' ? 'jade' : 'muted'}
-                  />
-                </View>
-                <View style={styles.sessionRight}>
-                  <Text style={styles.sessionXP}>+{s.totalXPEarned} XP</Text>
-                  <Text style={styles.sessionDate}>
-                    {new Date(s.startedAt).toLocaleDateString()}
-                  </Text>
-                </View>
+        {/* Muscle Levels Card */}
+        <Card padding={16}>
+          <SectionLabel>MUSCLE LEVELS</SectionLabel>
+          <View style={styles.muscleLevelsGrid}>
+            {ALL_MUSCLES.map((muscle) => (
+              <View key={muscle} style={styles.muscleItem}>
+                <Text style={styles.muscleItemName}>
+                  {muscle.charAt(0).toUpperCase() + muscle.slice(1)}
+                </Text>
+                <Text style={styles.muscleItemLevel}>
+                  Lv.{muscleXP[muscle]?.level ?? 1}
+                </Text>
               </View>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        </Card>
+
+        {/* Class Lore Card */}
+        <Card padding={16}>
+          <View style={styles.loreHeader}>
+            <Text style={styles.loreIcon}>{classDef.icon}</Text>
+            <Text style={[styles.loreName, { color: classDef.color }]}>{character.class}</Text>
+          </View>
+          <Text style={styles.loreTagline}>{classDef.tagline}</Text>
+        </Card>
 
       </ScrollView>
     </SafeAreaView>
@@ -87,46 +99,77 @@ export default function CharacterScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { padding: 20, gap: 16, paddingBottom: 32 },
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.text },
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
+  scroll: { padding: SPACING.screen, gap: SPACING.gap, paddingBottom: 36 },
+
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+
+  // Identity card
+  identityCenter: { alignItems: 'center' },
+  classIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.surfaceAccent,
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  classIconEmoji: { fontSize: 28 },
+  characterName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 12,
+  },
+  classLine: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: 4,
+  },
+  xpBarWrapper: { marginTop: 16 },
+
+  // Stats grid (2×2)
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
-  loreCard: { borderColor: 'rgba(99,102,241,0.25)' },
-  classHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  classIcon: { fontSize: 28 },
-  className: { fontSize: 20, fontWeight: '700' },
-  loreText: { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
-  statsRow: { flexDirection: 'row', gap: 10 },
-  statBox: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  statBlock: {
+    width: '48%',
+    backgroundColor: COLORS.surfaceAccent,
+    borderRadius: RADIUS.sm,
+    padding: 12,
   },
-  statNum: { fontSize: 24, fontWeight: '800', color: COLORS.gold },
-  statLbl: { fontSize: 11, color: COLORS.textMuted, marginTop: 4 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1.5 },
-  emptyText: { fontSize: 13, color: COLORS.textMuted },
-  sessionRow: {
+  statValue: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+
+  // Muscle levels grid (2-column)
+  muscleLevelsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  muscleItem: {
+    width: '48%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  sessionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sessionFloor: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  sessionRight: { alignItems: 'flex-end' },
-  sessionXP: { fontSize: 13, fontWeight: '700', color: COLORS.gold },
-  sessionDate: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  muscleItemName: { fontSize: 13, color: COLORS.textSecondary },
+  muscleItemLevel: { fontSize: 13, color: COLORS.gold, fontWeight: '700' },
+
+  // Class lore card
+  loreHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loreIcon: { fontSize: 20 },
+  loreName: { fontSize: 14, fontWeight: '600' },
+  loreTagline: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
 });

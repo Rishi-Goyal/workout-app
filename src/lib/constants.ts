@@ -129,29 +129,48 @@ export const TITLES_BY_LEVEL: { maxLevel: number; title: string }[] = [
 ];
 
 export const COLORS = {
-  // Backgrounds — deep indigo-black
-  bg:           '#07061a',
-  surface:      '#0e0c24',
-  surfaceHover: '#141230',
-  surfaceAccent:'#18153c',
+  // Backgrounds — pure near-black
+  bg:           '#0a0a0a',
+  surface:      '#171717',
+  surfaceHover: '#1f1f1f',
+  surfaceAccent:'#222222',
 
   // Borders
-  border:       '#1e1a40',
-  borderLight:  '#2e2a60',
+  border:       '#262626',
+  borderLight:  '#333333',
 
-  // Brand — Indigo / Violet primary palette
-  gold:         '#6366f1',       // indigo — primary action (key name kept for minimal diff)
-  goldLight:    '#818cf8',       // lighter indigo
-  goldDim:      '#4338ca',       // deeper indigo
+  // Brand — Blue primary (key names kept for zero-diff in screens)
+  gold:         '#3b82f6',       // blue — primary action
+  goldLight:    '#60a5fa',       // lighter blue
+  goldDim:      '#2563eb',       // deep blue
+
+  // Semantic — kept for gamification moments only
   crimson:      '#e53e3e',
   jade:         '#0ea472',
   jadeLight:    '#10b981',
-  violet:       '#a855f7',       // vivid purple accent
+  violet:       '#a855f7',
   violetLight:  '#c084fc',
   orange:       '#f97316',
 
   // Text
-  text:         '#edeaf8',
-  textSecondary:'#c4b8e4',
-  textMuted:    '#7a6d9a',
+  text:         '#ffffff',
+  textSecondary:'#a3a3a3',
+  textMuted:    '#737373',
 };
+
+/** Border-radius scale — use everywhere, no magic numbers. */
+export const RADIUS = {
+  card:   16,
+  button: 12,
+  pill:   999,
+  sm:     8,
+} as const;
+
+/** Spacing scale — screen padding, card padding, section gaps. */
+export const SPACING = {
+  screen: 16,   // horizontal / vertical screen padding
+  card:   16,   // inner card padding
+  cardLg: 20,   // hero / large card padding
+  gap:    16,   // between sections
+  gapSm:  8,    // between list items
+} as const;

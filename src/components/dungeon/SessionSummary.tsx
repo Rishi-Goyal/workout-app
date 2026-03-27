@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
 import Animated, { FadeIn, ZoomIn, FadeInDown } from 'react-native-reanimated';
 import PressableButton from '@/components/ui/PressableButton';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS } from '@/lib/constants';
 import { muscleLevelTitle } from '@/lib/muscleXP';
 import type { DungeonSession, MuscleGroup } from '@/types';
 
@@ -85,17 +85,17 @@ export default function SessionSummary({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
+    borderRadius: RADIUS.card,
     padding: 28,
     width: '100%',
     maxWidth: 340,
     maxHeight: '85%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: COLORS.border,
   },
   scrollContent: { alignItems: 'center', gap: 16 },
   icon: { fontSize: 52 },

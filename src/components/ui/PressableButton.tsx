@@ -1,5 +1,5 @@
 import { Pressable, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS } from '@/lib/constants';
 
 interface PressableButtonProps {
   onPress?: () => void;
@@ -19,7 +19,7 @@ const BG: Record<string, string> = {
 };
 
 const TEXT_COLOR: Record<string, string> = {
-  primary: '#000',
+  primary: '#fff',
   ghost: COLORS.text,
   danger: '#fff',
   success: '#fff',
@@ -39,7 +39,7 @@ export default function PressableButton({
   style,
 }: PressableButtonProps) {
   const fontSize = size === 'sm' ? 12 : size === 'lg' ? 16 : 14;
-  const paddingV = size === 'sm' ? 8 : size === 'lg' ? 14 : 11;
+  const paddingV = size === 'sm' ? 8 : size === 'lg' ? 15 : 11;
   const paddingH = size === 'sm' ? 14 : size === 'lg' ? 24 : 18;
 
   return (
@@ -54,7 +54,7 @@ export default function PressableButton({
           borderWidth: BORDER[variant] ? 1 : 0,
           paddingVertical: paddingV,
           paddingHorizontal: paddingH,
-          opacity: pressed || disabled ? 0.6 : 1,
+          opacity: pressed || disabled ? 0.55 : 1,
         },
         style,
       ]}
@@ -70,7 +70,7 @@ export default function PressableButton({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 10,
+    borderRadius: RADIUS.button,
     alignItems: 'center',
     justifyContent: 'center',
   },

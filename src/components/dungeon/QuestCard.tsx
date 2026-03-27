@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout, FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import PressableButton from '@/components/ui/PressableButton';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS } from '@/lib/constants';
 import { getSwapOptions, swapExercise } from '@/lib/questGenerator';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -24,23 +25,8 @@ const DIFF_BADGE: Record<Quest['difficulty'], { variant: 'jade' | 'gold' | 'oran
   boss:   { variant: 'crimson', label: '💀 Boss' },
 };
 
-const CARD_BORDER: Record<QuestStatus, string> = {
-  pending:       COLORS.border,
-  complete:      '#065f46',
-  half_complete: '#92400e',
-  skipped:       COLORS.border,
-};
-
-const DIFF_ACCENT: Record<Quest['difficulty'], string> = {
-  easy:   COLORS.jade,
-  medium: COLORS.gold,
-  hard:   COLORS.orange,
-  boss:   COLORS.crimson,
-};
-
 export default function QuestCard({ quest, onAction, disabled }: QuestCardProps) {
   const diff = DIFF_BADGE[quest.difficulty];
-  const isBoss = quest.difficulty === 'boss';
   const isSkipped = quest.status === 'skipped';
   const [showSwap, setShowSwap] = useState(false);
   const [pendingSwap, setPendingSwap] = useState<Exercise | null>(null);
@@ -86,250 +72,210 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
     setPendingSwap(null);
   };
 
-  const accentColor = DIFF_ACCENT[quest.difficulty];
+  // Build the sets/reps/weight info line
+  const repsLabel = quest.holdSeconds ? `${quest.holdSeconds}s hold` : `${quest.reps} reps`;
+  const weightHint = quest.suggestedWeight
+    ? typeof quest.suggestedWeight === 'number'
+      ? `${quest.suggestedWeight} kg`
+      : quest.suggestedWeight
+    : quest.equipment ?? '';
+  const infoLine = weightHint
+    ? `${quest.sets}×${repsLabel}  ·  ${weightHint}`
+    : `${quest.sets}×${repsLabel}`;
 
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
       layout={Layout.springify()}
-      style={[
-        styles.card,
-        { borderColor: CARD_BORDER[quest.status], opacity: isSkipped ? 0.4 : 1 },
-        isBoss && quest.status === 'pending' && styles.bossCard,
-      ]}
+      style={{ opacity: isSkipped ? 0.4 : 1 }}
     >
-      {/* Colored left accent bar */}
-      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+      <Card style={styles.card} padding={16}>
 
-      {/* Header */}
-      <View style={styles.row}>
-        <Text style={styles.name} numberOfLines={2}>{quest.exerciseName}</Text>
-        <Badge label={diff.label} variant={diff.variant} />
-      </View>
+        {/* Row 1: Exercise name + difficulty badge */}
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={2}>{quest.exerciseName}</Text>
+          <Badge label={diff.label} variant={diff.variant} />
+        </View>
 
-      {/* Description */}
-      <Text style={styles.desc}>{quest.description}</Text>
+        {/* Row 2: Sets/reps/weight info */}
+        <Text style={styles.info} numberOfLines={1}>{infoLine}</Text>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {[
-          { val: String(quest.sets),                                         lbl: 'Sets' },
-          { val: quest.holdSeconds ? `${quest.holdSeconds}s` : quest.reps, lbl: quest.holdSeconds ? 'Hold' : 'Reps' },
-          { val: `${quest.restSeconds}s`,                                   lbl: 'Rest' },
-          { val: `+${quest.xpReward}`,                                      lbl: 'XP', gold: true },
-        ].map(({ val, lbl, gold }) => (
-          <View key={lbl} style={[styles.statItem, gold && styles.xpItem]}>
-            <Text style={[styles.statVal, gold && { color: COLORS.gold }]}>{val}</Text>
-            <Text style={styles.statLbl}>{lbl}</Text>
-          </View>
-        ))}
-      </View>
+        {/* Swap panel */}
+        {showSwap && swapOptions && !pendingSwap && (
+          <Animated.View entering={FadeInDown.duration(200)} style={styles.swapPanel}>
+            <Text style={styles.swapTitle}>SWAP EXERCISE</Text>
 
-      {/* Muscle chips */}
-      <View style={styles.muscles}>
-        {quest.targetMuscles.map((m) => (
-          <View key={m} style={[styles.muscleChip, { borderColor: accentColor + '55' }]}>
-            <View style={[styles.muscleDot, { backgroundColor: accentColor }]} />
-            <Text style={[styles.muscleText, { color: accentColor }]}>{m}</Text>
-          </View>
-        ))}
-      </View>
+            {swapOptions.easier.length > 0 && (
+              <View style={styles.swapSection}>
+                <Text style={styles.swapLabel}>Easier</Text>
+                {swapOptions.easier.map((ex) => (
+                  <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
+                    <Text style={styles.swapOptionName}>{ex.name}</Text>
+                    <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
-      {/* Swap panel */}
-      {showSwap && swapOptions && !pendingSwap && (
-        <Animated.View entering={FadeInDown.duration(200)} style={styles.swapPanel}>
-          <Text style={styles.swapTitle}>SWAP EXERCISE</Text>
+            {swapOptions.harder.length > 0 && (
+              <View style={styles.swapSection}>
+                <Text style={styles.swapLabel}>Harder</Text>
+                {swapOptions.harder.map((ex) => (
+                  <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
+                    <Text style={styles.swapOptionName}>{ex.name}</Text>
+                    <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
-          {swapOptions.easier.length > 0 && (
-            <View style={styles.swapSection}>
-              <Text style={styles.swapLabel}>Easier</Text>
-              {swapOptions.easier.map((ex) => (
-                <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
-                  <Text style={styles.swapOptionName}>{ex.name}</Text>
-                  <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
+            {swapOptions.easier.length === 0 && swapOptions.harder.length === 0 && (
+              <Text style={styles.noSwaps}>No alternatives available for your level and equipment.</Text>
+            )}
+          </Animated.View>
+        )}
 
-          {swapOptions.harder.length > 0 && (
-            <View style={styles.swapSection}>
-              <Text style={styles.swapLabel}>Harder</Text>
-              {swapOptions.harder.map((ex) => (
-                <Pressable key={ex.id} style={styles.swapOption} onPress={() => confirmSwap(ex)}>
-                  <Text style={styles.swapOptionName}>{ex.name}</Text>
-                  <Text style={styles.swapOptionDiff}>Diff {ex.difficultyLevel}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {swapOptions.easier.length === 0 && swapOptions.harder.length === 0 && (
-            <Text style={styles.noSwaps}>No alternatives available for your level and equipment.</Text>
-          )}
-        </Animated.View>
-      )}
-
-      {/* Swap confirmation step */}
-      {pendingSwap && (
-        <Animated.View entering={FadeInDown.duration(200)} style={styles.swapConfirm}>
-          <Text style={styles.swapConfirmTitle}>CONFIRM SWAP</Text>
-          <View style={styles.swapConfirmCard}>
-            <Text style={styles.swapConfirmName}>{pendingSwap.name}</Text>
-            <View style={styles.swapConfirmMeta}>
-              {[pendingSwap.primaryMuscle].concat(pendingSwap.secondaryMuscles ?? []).slice(0, 3).map((m: string) => (
-                <View key={m} style={styles.swapConfirmChip}>
-                  <Text style={styles.swapConfirmChipText}>{m}</Text>
+        {/* Swap confirmation step */}
+        {pendingSwap && (
+          <Animated.View entering={FadeInDown.duration(200)} style={styles.swapConfirm}>
+            <Text style={styles.swapConfirmTitle}>CONFIRM SWAP</Text>
+            <View style={styles.swapConfirmCard}>
+              <Text style={styles.swapConfirmName}>{pendingSwap.name}</Text>
+              <View style={styles.swapConfirmMeta}>
+                {[pendingSwap.primaryMuscle].concat(pendingSwap.secondaryMuscles ?? []).slice(0, 3).map((m: string) => (
+                  <View key={m} style={styles.swapConfirmChip}>
+                    <Text style={styles.swapConfirmChipText}>{m}</Text>
+                  </View>
+                ))}
+                <View style={[styles.swapConfirmChip, styles.swapDiffChip]}>
+                  <Text style={styles.swapConfirmDiff}>Diff {pendingSwap.difficultyLevel}</Text>
                 </View>
-              ))}
-              <View style={[styles.swapConfirmChip, styles.swapDiffChip]}>
-                <Text style={styles.swapConfirmDiff}>Diff {pendingSwap.difficultyLevel}</Text>
               </View>
             </View>
-          </View>
-          <View style={styles.swapConfirmActions}>
+            <View style={styles.swapConfirmActions}>
+              <PressableButton
+                label="✓ Swap"
+                variant="success"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() => handleSwap(pendingSwap)}
+              />
+              <PressableButton
+                label="Cancel"
+                variant="ghost"
+                size="sm"
+                style={{ flex: 1 }}
+                onPress={() => setPendingSwap(null)}
+              />
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Row 3: Action buttons */}
+        {quest.status === 'pending' && !disabled && (
+          <Animated.View entering={FadeIn} style={styles.actions}>
             <PressableButton
-              label="✓ Swap"
-              variant="success"
+              label="✓ Complete"
+              variant="primary"
               size="sm"
-              style={{ flex: 1 }}
-              onPress={() => handleSwap(pendingSwap)}
+              style={{ flex: 2 }}
+              onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
             />
             <PressableButton
-              label="Cancel"
+              label="½"
               variant="ghost"
               size="sm"
               style={{ flex: 1 }}
-              onPress={() => setPendingSwap(null)}
+              onPress={() => setShowSwap(!showSwap)}
             />
-          </View>
-        </Animated.View>
-      )}
-
-      {/* Action area */}
-      {quest.status === 'pending' && !disabled && (
-        <Animated.View entering={FadeIn} style={styles.actions}>
-          <PressableButton
-            label="⚔️  Accept Quest"
-            variant="primary"
-            size="sm"
-            style={{ flex: 1 }}
-            onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
-          />
-          <PressableButton
-            label="🔄"
-            variant="ghost"
-            size="sm"
-            style={{ minWidth: 44 }}
-            onPress={() => setShowSwap(!showSwap)}
-          />
-          <PressableButton
-            label="✕"
-            variant="danger"
-            size="sm"
-            style={{ minWidth: 44 }}
-            onPress={() => onAction(quest.id, 'skipped')}
-          />
-        </Animated.View>
-      )}
-
-      {quest.status === 'complete' && (
-        <Animated.View entering={FadeIn} style={styles.statusBanner}>
-          <Text style={[styles.statusText, { color: COLORS.jade }]}>
-            ✓ Complete — +{quest.xpEarned} XP
-          </Text>
-        </Animated.View>
-      )}
-
-      {quest.status === 'half_complete' && (
-        <Animated.View entering={FadeIn} style={styles.statusBanner}>
-          <Text style={[styles.statusText, { color: COLORS.gold }]}>½ Half done — +{quest.xpEarned} XP</Text>
-          {!disabled && (
             <PressableButton
-              label="Finish"
-              variant="success"
+              label="Skip"
+              variant="ghost"
               size="sm"
-              onPress={() => onAction(quest.id, 'complete')}
+              style={{ flex: 1, borderColor: COLORS.crimson }}
+              onPress={() => onAction(quest.id, 'skipped')}
             />
-          )}
-        </Animated.View>
-      )}
+          </Animated.View>
+        )}
 
-      {quest.status === 'skipped' && (
-        <Text style={[styles.statusText, { color: COLORS.textMuted, textAlign: 'center', marginTop: 4 }]}>
-          Quest skipped
-        </Text>
-      )}
+        {quest.status === 'complete' && (
+          <Animated.View entering={FadeIn} style={styles.statusBanner}>
+            <Text style={[styles.statusText, { color: COLORS.jade }]}>
+              ✓ Complete — +{quest.xpEarned} XP
+            </Text>
+          </Animated.View>
+        )}
+
+        {quest.status === 'half_complete' && (
+          <Animated.View entering={FadeIn} style={styles.statusBanner}>
+            <Text style={[styles.statusText, { color: COLORS.gold }]}>½ Half done — +{quest.xpEarned} XP</Text>
+            {!disabled && (
+              <PressableButton
+                label="Finish"
+                variant="success"
+                size="sm"
+                onPress={() => onAction(quest.id, 'complete')}
+              />
+            )}
+          </Animated.View>
+        )}
+
+        {quest.status === 'skipped' && (
+          <Text style={[styles.statusText, { color: COLORS.textMuted, textAlign: 'center', marginTop: 4 }]}>
+            Quest skipped
+          </Text>
+        )}
+
+      </Card>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingRight: 16,
-    paddingLeft: 20,       // leave room for accent bar
-    borderWidth: 1,
-    gap: 10,
-    overflow: 'hidden',
+    marginBottom: 0,
+    gap: 0,
   },
-  accentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  bossCard: { backgroundColor: 'rgba(100,0,0,0.20)' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  name: { fontSize: 15, fontWeight: '800', color: COLORS.text, flex: 1, letterSpacing: 0.2 },
-  desc: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', lineHeight: 17 },
-  statsRow: { flexDirection: 'row', gap: 4 },
-  statItem: {
-    flex: 1,
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.bg,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    marginRight: 0,
   },
-  xpItem: {
-    backgroundColor: 'rgba(99,102,241,0.07)',
-    borderColor: 'rgba(99,102,241,0.25)',
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    flex: 1,
+    marginRight: 8,
   },
-  statVal: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  statLbl: { fontSize: 9, color: COLORS.textMuted, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  muscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
-  muscleChip: {
+  info: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 6,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'space-between',
+    marginTop: 12,
   },
-  muscleDot: { width: 5, height: 5, borderRadius: 2.5 },
-  muscleText: { fontSize: 10, fontWeight: '600', textTransform: 'capitalize' },
-  actions: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   statusText: { fontSize: 13, fontWeight: '600' },
 
   // Swap panel
   swapPanel: {
     backgroundColor: COLORS.bg,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     padding: 12,
     gap: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
+    marginTop: 12,
   },
   swapTitle: {
     fontSize: 10,
@@ -363,11 +309,12 @@ const styles = StyleSheet.create({
   // Swap confirmation
   swapConfirm: {
     backgroundColor: COLORS.bg,
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     padding: 12,
     gap: 10,
     borderWidth: 1,
     borderColor: COLORS.gold + '50',
+    marginTop: 12,
   },
   swapConfirmTitle: {
     fontSize: 10,
@@ -395,7 +342,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   swapConfirmChipText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
-  swapDiffChip: { borderColor: COLORS.gold + '40', backgroundColor: 'rgba(99,102,241,0.08)' },
+  swapDiffChip: { borderColor: COLORS.gold + '40', backgroundColor: 'rgba(59,130,246,0.08)' },
   swapConfirmDiff: { fontSize: 10, color: COLORS.gold, fontWeight: '700' },
   swapConfirmActions: { flexDirection: 'row', gap: 8 },
 });

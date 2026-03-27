@@ -1,27 +1,21 @@
 /**
- * Stats Screen — character identity, XP progression, and combat stats.
+ * Stats Screen — compact profile header, XP progression, performance metrics, and lifetime totals.
  */
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import XPBar from '@/components/character/XPBar';
-import AnimatedBar from '@/components/ui/AnimatedBar';
+import Card from '@/components/ui/Card';
+import SectionLabel from '@/components/ui/SectionLabel';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
-import { maxStatValue } from '@/lib/character';
+import type { DungeonSession } from '@/types';
 
-const STAT_CONFIG: {
-  key: 'strength' | 'endurance' | 'agility' | 'vitality';
-  label: string;
-  icon: string;
-  color: string;
-}[] = [
-  { key: 'strength',  label: 'Strength',  icon: '⚔️', color: '#ef4444' },
-  { key: 'endurance', label: 'Endurance', icon: '🔥', color: '#f97316' },
-  { key: 'agility',   label: 'Agility',   icon: '💨', color: '#06b6d4' },
-  { key: 'vitality',  label: 'Vitality',  icon: '🛡️', color: '#10b981' },
-];
+function formatTotalTime(sessions: DungeonSession[]): string {
+  const totalMins = sessions.length * 45;
+  if (totalMins < 60) return `${totalMins}m`;
+  return `${Math.round(totalMins / 60)}h`;
+}
 
 export default function StatsScreen() {
   const { profile, character } = useProfileStore();
@@ -30,73 +24,99 @@ export default function StatsScreen() {
   if (!profile || !character) return null;
 
   const classDef = CLASS_DEFINITIONS[character.class];
-  const completed = sessions.filter((s) => s.status === 'completed').length;
-  const totalXP = sessions.reduce((sum, s) => sum + s.totalXPEarned, 0);
-  const maxStat = maxStatValue(character.level);
+
+  // Performance metrics derived from character stats
+  const statValues = Object.values(character.stats) as number[];
+  const maxStat = Math.max(...statValues, 100);
+
+  const perfMetrics = [
+    {
+      label: 'Avg Weight',
+      value: character.stats.strength,
+      pct: Math.min(100, (character.stats.strength / maxStat) * 100),
+    },
+    {
+      label: 'Consistency',
+      value: character.stats.vitality,
+      pct: Math.min(100, (character.stats.vitality / maxStat) * 100),
+    },
+    {
+      label: 'Frequency',
+      value: character.stats.agility,
+      pct: Math.min(100, (character.stats.agility / maxStat) * 100),
+    },
+    {
+      label: 'Endurance',
+      value: character.stats.endurance,
+      pct: Math.min(100, (character.stats.endurance / maxStat) * 100),
+    },
+  ];
+
+  const xpToNext = character.xpToNextLevel - character.currentXP;
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Class hero block */}
-        <Animated.View entering={FadeInDown.duration(300)} style={[styles.heroCard, { borderColor: `${classDef.color}44` }]}>
-          <Text style={styles.heroIcon}>{classDef.icon}</Text>
-          <View style={styles.heroText}>
-            <Text style={[styles.heroClass, { color: classDef.color }]}>{character.class}</Text>
-            <Text style={styles.heroName}>{profile.name}</Text>
-            <Text style={styles.heroTagline}>{classDef.tagline}</Text>
+        {/* Profile header */}
+        <View style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarIcon}>{classDef.icon}</Text>
           </View>
-        </Animated.View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{profile.name}</Text>
+            <Text style={styles.profileSub}>Level {character.level} · {character.class}</Text>
+          </View>
+        </View>
 
-        {/* Class lore */}
-        <Animated.View entering={FadeInDown.duration(300).delay(60)} style={styles.loreCard}>
-          <Text style={styles.loreText}>{classDef.description}</Text>
-        </Animated.View>
-
-        {/* Level & XP */}
-        <Animated.View entering={FadeInDown.duration(300).delay(100)} style={styles.card}>
-          <Text style={styles.sectionLabel}>PROGRESSION</Text>
+        {/* XP Card */}
+        <Card padding={16}>
+          <SectionLabel style={styles.sectionLabelNoMargin}>PROGRESS</SectionLabel>
           <XPBar character={character} />
-        </Animated.View>
+          <View style={styles.xpFooter}>
+            <Text style={styles.xpFooterText}>{character.currentXP} XP</Text>
+            <Text style={styles.xpFooterText}>Level {character.level + 1} in {xpToNext} XP</Text>
+          </View>
+        </Card>
 
-        {/* Combat stats */}
-        <Animated.View entering={FadeInDown.duration(300).delay(140)} style={styles.card}>
-          <Text style={styles.sectionLabel}>COMBAT STATS</Text>
-          <View style={styles.statsGrid}>
-            {STAT_CONFIG.map((stat) => {
-              const value = character.stats[stat.key];
-              const pct = Math.min(100, (value / maxStat) * 100);
-              return (
-                <View key={stat.key} style={styles.statRow}>
-                  <View style={styles.statLeft}>
-                    <Text style={styles.statIcon}>{stat.icon}</Text>
-                    <Text style={styles.statLabel}>{stat.label}</Text>
-                  </View>
-                  <View style={styles.statBarWrap}>
-                    <AnimatedBar value={pct} color={stat.color} height={6} />
-                  </View>
-                  <Text style={[styles.statValue, { color: stat.color }]}>{value.toFixed(1)}</Text>
+        {/* Performance Card */}
+        <Card padding={16}>
+          <SectionLabel>PERFORMANCE</SectionLabel>
+          <View style={styles.perfGrid}>
+            {perfMetrics.map((metric) => (
+              <View key={metric.label} style={styles.perfRow}>
+                <Text style={styles.perfLabel}>{metric.label}</Text>
+                <View style={styles.perfBarWrap}>
+                  <View style={[styles.perfBarFill, { width: `${metric.pct}%` }]} />
                 </View>
-              );
-            })}
+                <Text style={styles.perfValue}>{metric.value.toFixed(1)}</Text>
+              </View>
+            ))}
           </View>
-        </Animated.View>
+        </Card>
 
-        {/* Lifetime totals */}
-        <Animated.View entering={FadeInDown.duration(300).delay(180)} style={styles.totalsRow}>
-          <View style={styles.totalBox}>
-            <Text style={styles.totalNum}>{character.floorsCleared}</Text>
-            <Text style={styles.totalLbl}>Floors</Text>
+        {/* Lifetime Card */}
+        <Card padding={16}>
+          <SectionLabel>ALL TIME</SectionLabel>
+          <View style={styles.lifetimeGrid}>
+            <View style={styles.lifetimeStat}>
+              <Text style={styles.lifetimeValue}>{character.floorsCleared}</Text>
+              <Text style={styles.lifetimeLabel}>Workouts</Text>
+            </View>
+            <View style={styles.lifetimeStat}>
+              <Text style={styles.lifetimeValue}>{formatTotalTime(sessions)}</Text>
+              <Text style={styles.lifetimeLabel}>Time Trained</Text>
+            </View>
+            <View style={styles.lifetimeStat}>
+              <Text style={styles.lifetimeValue}>{character.totalXPEarned}</Text>
+              <Text style={styles.lifetimeLabel}>Total XP</Text>
+            </View>
+            <View style={styles.lifetimeStat}>
+              <Text style={styles.lifetimeValue}>{character.level}</Text>
+              <Text style={styles.lifetimeLabel}>Current Level</Text>
+            </View>
           </View>
-          <View style={[styles.totalBox, styles.totalBoxMid]}>
-            <Text style={styles.totalNum}>{completed}</Text>
-            <Text style={styles.totalLbl}>Sessions</Text>
-          </View>
-          <View style={styles.totalBox}>
-            <Text style={styles.totalNum}>{totalXP}</Text>
-            <Text style={styles.totalLbl}>Total XP</Text>
-          </View>
-        </Animated.View>
+        </Card>
 
       </ScrollView>
     </SafeAreaView>
@@ -105,78 +125,59 @@ export default function StatsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { padding: 20, gap: 14, paddingBottom: 36 },
+  scroll: { padding: 16, gap: 16, paddingBottom: 36 },
 
-  // Hero card
-  heroCard: {
+  // Profile header
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+    width: 48,
+    height: 48,
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 24,
     alignItems: 'center',
-    gap: 16,
-    borderWidth: 1,
+    justifyContent: 'center',
   },
-  heroIcon: { fontSize: 52 },
-  heroText: { flex: 1, gap: 3 },
-  heroClass: { fontSize: 22, fontWeight: '800' },
-  heroName: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '600' },
-  heroTagline: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', marginTop: 2 },
+  avatarIcon: { fontSize: 28 },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  profileSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
 
-  // Lore
-  loreCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  // XP card
+  sectionLabelNoMargin: { marginBottom: 8 },
+  xpFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
-  loreText: { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
+  xpFooterText: { fontSize: 12, color: COLORS.textMuted },
 
-  // Generic card
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  // Performance card
+  perfGrid: { gap: 14 },
+  perfRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  perfLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.text },
+  perfBarWrap: {
+    flex: 2,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  perfBarFill: {
+    height: 4,
+    backgroundColor: COLORS.gold,
+    borderRadius: 2,
+  },
+  perfValue: { width: 50, textAlign: 'right', fontSize: 13, color: COLORS.textMuted },
+
+  // Lifetime card
+  lifetimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    letterSpacing: 2,
-  },
-
-  // Stat rows
-  statsGrid: { gap: 10 },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  statLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 100 },
-  statIcon: { fontSize: 14 },
-  statLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  statBarWrap: { flex: 1 },
-  statValue: { fontSize: 13, fontWeight: '700', width: 36, textAlign: 'right' },
-
-  // Totals row
-  totalsRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 16,
-  },
-  totalBox: { flex: 1, alignItems: 'center' },
-  totalBoxMid: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: COLORS.border,
-  },
-  totalNum: { fontSize: 22, fontWeight: '800', color: COLORS.gold },
-  totalLbl: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  lifetimeStat: { width: '48%' },
+  lifetimeValue: { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  lifetimeLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
 });
