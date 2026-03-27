@@ -1,6 +1,9 @@
 import { create } from 'zustand';
+import { NativeModules, Platform } from 'react-native';
 import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog } from '../types';
 import { getXPReward } from '../lib/xp';
+
+const WidgetBridge = Platform.OS === 'android' ? NativeModules.WidgetBridge : null;
 
 interface SessionStore {
   activeSession: DungeonSession | null;
@@ -28,7 +31,7 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
   isLoading: false,
   error: null,
 
-  startSession: (floor, rawQuests) =>
+  startSession: (floor, rawQuests) => {
     set({
       activeSession: {
         id: `session-${Date.now()}`,
@@ -39,7 +42,12 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
         startedAt: new Date().toISOString(),
       },
       error: null,
-    }),
+    });
+    WidgetBridge?.updateWidget(
+      rawQuests[0]?.exerciseName ?? 'Workout started',
+      `Set 1 of ${rawQuests[0]?.sets ?? '?'} · ${rawQuests[0]?.reps ?? '?'} reps`,
+    );
+  },
 
   setLoading: (v) => set({ isLoading: v }),
   setError: (e) => set({ error: e }),
@@ -68,6 +76,10 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
       };
     });
     set({ activeSession: { ...session, quests } });
+    const next = get().activeSession?.quests.find(q => q.status === 'pending');
+    if (next) {
+      WidgetBridge?.updateWidget(next.exerciseName, `Set 1 of ${next.sets} · ${next.reps} reps`);
+    }
   },
 
   finalizeSession: () => {
@@ -81,8 +93,12 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
       completedAt: new Date().toISOString(),
     };
     set({ activeSession: null });
+    WidgetBridge?.clearWidget();
     return finalized;
   },
 
-  clearSession: () => set({ activeSession: null, isLoading: false, error: null }),
+  clearSession: () => {
+    set({ activeSession: null, isLoading: false, error: null });
+    WidgetBridge?.clearWidget();
+  },
 }));

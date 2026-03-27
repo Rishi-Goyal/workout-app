@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1a1625"
+    android:padding="12dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/widget_app_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🏰 DungeonFit"
+        android:textColor="#7a6d8a"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.1" />
+
+    <TextView
+        android:id="@+id/widget_exercise_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No active session"
+        android:textColor="#e8dcc8"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp" />
+
+    <TextView
+        android:id="@+id/widget_set_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#7a6d8a"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/widget_btn_complete"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="✓ Done"
+            android:textSize="11sp"
+            android:textColor="#10b981"
+            android:backgroundTint="#1a3a2a" />
+
+        <Button
+            android:id="@+id/widget_btn_half"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="½ Half"
+            android:textSize="11sp"
+            android:textColor="#f59e0b"
+            android:backgroundTint="#2a2510" />
+
+        <Button
+            android:id="@+id/widget_btn_skip"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:text="✕ Skip"
+            android:textSize="11sp"
+            android:textColor="#f87171"
+            android:backgroundTint="#2a1010" />
+
+    </LinearLayout>
+</LinearLayout>

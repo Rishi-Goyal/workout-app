@@ -20,6 +20,8 @@ const config = {
     '^@/(.*)$': '<rootDir>/src/$1',
     // expo-constants uses ESM internally — provide a lightweight CJS mock
     'expo-constants': '<rootDir>/__mocks__/expo-constants.js',
+    // react-native ships ESM and requires native toolchains — mock for node tests
+    '^react-native$': '<rootDir>/__mocks__/react-native.js',
   },
 
   // Don't transform anything in node_modules — all deps we use ship CJS.

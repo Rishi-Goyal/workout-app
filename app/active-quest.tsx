@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeInUp, FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
+import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
 import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
@@ -56,7 +57,7 @@ export default function ActiveQuestScreen() {
   const { profile } = useProfileStore();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
-  const [tab, setTab] = useState<'video' | 'steps' | 'muscles'>('video');
+  const [tab, setTab] = useState<'video' | 'steps' | 'muscles' | 'guide'>('video');
 
   if (!quest) {
     return (
@@ -138,13 +139,20 @@ export default function ActiveQuestScreen() {
             style={styles.tab}
             onPress={() => setTab('muscles')}
           />
+          <PressableButton
+            label="🎯 Guide"
+            variant={tab === 'guide' ? 'primary' : 'ghost'}
+            size="sm"
+            style={styles.tab}
+            onPress={() => setTab('guide')}
+          />
         </Animated.View>
 
         <Animated.View
           entering={FadeIn.duration(220)}
           exiting={FadeOut.duration(120)}
           key={tab}
-          style={[styles.tabContent, tab !== 'muscles' && styles.tabContentFlush]}
+          style={[styles.tabContent, tab !== 'muscles' && tab !== 'guide' && styles.tabContentFlush]}
         >
           {tab === 'video' && (
             <ExerciseVideo
@@ -167,6 +175,12 @@ export default function ActiveQuestScreen() {
             <MuscleMap
               targets={quest.targetMuscles as MuscleGroup[]}
               secondary={secondary}
+            />
+          )}
+          {tab === 'guide' && (
+            <ExerciseAnimator
+              exerciseName={quest.exerciseName}
+              muscles={quest.targetMuscles as MuscleGroup[]}
             />
           )}
         </Animated.View>

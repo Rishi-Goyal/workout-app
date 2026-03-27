@@ -27,5 +27,27 @@
         <data android:scheme="dungeonfit"/>
       </intent-filter>
     </activity>
+
+    <!-- DungeonFit Home Screen Widget -->
+    <receiver
+        android:name=".widget.DungeonWidgetProvider"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="com.dungeonfit.WIDGET_REFRESH" />
+      </intent-filter>
+      <meta-data
+          android:name="android.appwidget.provider"
+          android:resource="@xml/widget_info" />
+    </receiver>
+
+    <!-- Handles Done / Half / Skip taps from the widget -->
+    <receiver
+        android:name=".widget.WidgetActionReceiver"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="com.dungeonfit.WIDGET_ACTION" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>
