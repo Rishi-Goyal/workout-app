@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp, FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
 import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
@@ -16,13 +16,14 @@ import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
+import SectionLabel from '@/components/ui/SectionLabel';
 
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getSuggestedWeight } from '@/lib/weights';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS, SPACING } from '@/lib/constants';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
 
 const DIFF_BADGE = {
@@ -107,17 +108,19 @@ export default function ActiveQuestScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.header}>
+        <View style={styles.header}>
           <PressableButton label="← Back" variant="ghost" size="sm" onPress={() => router.back()} />
           <Badge label={diff.label} variant={diff.variant} />
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(60)} style={styles.titleRow}>
+        <View style={styles.titleRow}>
           <Text style={styles.questName}>{quest.exerciseName}</Text>
-          <Text style={styles.questDesc}>{quest.description}</Text>
-        </Animated.View>
+          <Text style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>
+            {quest.targetMuscles.join(' · ')}
+          </Text>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(120)} style={styles.tabs}>
+        <View style={styles.tabs}>
           <PressableButton
             label="▶ Video"
             variant={tab === 'video' ? 'primary' : 'ghost'}
@@ -146,7 +149,7 @@ export default function ActiveQuestScreen() {
             style={styles.tab}
             onPress={() => setTab('guide')}
           />
-        </Animated.View>
+        </View>
 
         <Animated.View
           entering={FadeIn.duration(220)}
@@ -187,8 +190,8 @@ export default function ActiveQuestScreen() {
 
         <View style={styles.divider} />
 
-        <Animated.View entering={FadeInUp.duration(400).delay(200)} style={styles.timerSection}>
-          <Text style={styles.sectionLabel}>WORKOUT</Text>
+        <View style={styles.timerSection}>
+          <SectionLabel>WORKOUT</SectionLabel>
           <WorkoutTimer
             sets={quest.sets}
             reps={quest.reps}
@@ -210,12 +213,12 @@ export default function ActiveQuestScreen() {
               )
             }
           />
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInUp.duration(300).delay(300)} style={styles.xpRow}>
+        <View style={styles.xpRow}>
           <Text style={styles.xpLabel}>Full completion</Text>
           <Text style={styles.xpValue}>+{quest.xpReward} XP</Text>
-        </Animated.View>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -229,13 +232,12 @@ const styles = StyleSheet.create({
   errorText:    { color: COLORS.textMuted, fontSize: 15 },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   titleRow:     { gap: 6 },
-  questName:    { fontSize: 22, fontWeight: '800', color: COLORS.text },
-  questDesc:    { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' },
-  tabs:         { flexDirection: 'row', gap: 8 },
+  questName:    { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  tabs:         { flexDirection: 'row', gap: 6 },
   tab:          { flex: 1 },
   tabContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: RADIUS.card,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
@@ -252,18 +254,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
-  divider:      { height: 1, backgroundColor: COLORS.border },
-  sectionLabel: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  divider:      { height: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timerSection: {
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: RADIUS.card,
     padding: 20,
     gap: 12,
     borderWidth: 1,
@@ -280,13 +274,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(99,102,241,0.08)',
+    backgroundColor: 'rgba(59,130,246,0.06)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.2)',
+    borderColor: 'rgba(59,130,246,0.15)',
   },
   xpLabel:      { fontSize: 13, color: COLORS.textMuted },
-  xpValue:      { fontSize: 18, fontWeight: '800', color: COLORS.gold },
+  xpValue:      { fontSize: 18, fontWeight: '700', color: COLORS.gold },
 });

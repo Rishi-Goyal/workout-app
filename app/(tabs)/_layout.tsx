@@ -14,21 +14,20 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
+          backgroundColor: '#111111',
+          borderTopColor: '#262626',
           borderTopWidth: 1,
-          height: 70,
-          paddingBottom: 12,
+          height: 64,
         },
-        tabBarActiveTintColor: COLORS.gold,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveTintColor: '#3b82f6',
+        tabBarInactiveTintColor: '#737373',
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dungeon',
+          title: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon emoji="⚔️" focused={focused} />,
         }}
       />
@@ -49,7 +48,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Log',
+          title: 'History',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📜" focused={focused} />,
         }}
       />

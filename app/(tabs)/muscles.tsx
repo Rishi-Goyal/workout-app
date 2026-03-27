@@ -1,14 +1,15 @@
 /**
- * Muscles Screen — zone-based muscle XP overview and per-muscle breakdown.
+ * Muscles Screen — recovery status and zone-based muscle breakdown.
  */
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
-import { muscleLevelTitle, muscleXPProgress } from '@/lib/muscleXP';
+import { COLORS, CLASS_DEFINITIONS, RADIUS, SPACING } from '@/lib/constants';
 import type { MuscleGroup } from '@/types';
 import type { MuscleXP } from '@/lib/muscleXP';
+import Card from '@/components/ui/Card';
+import SectionLabel from '@/components/ui/SectionLabel';
+import Badge from '@/components/ui/Badge';
 
 // ─── Zone definitions ────────────────────────────────────────────────────────
 
@@ -16,53 +17,19 @@ interface ZoneConfig {
   id: string;
   label: string;
   muscles: MuscleGroup[];
-  color: string;
-  icon: string;
 }
 
 const ZONES: ZoneConfig[] = [
-  {
-    id: 'push',
-    label: 'Push',
-    muscles: ['chest', 'shoulders', 'triceps'],
-    color: '#6366f1',
-    icon: '🤜',
-  },
-  {
-    id: 'pull',
-    label: 'Pull',
-    muscles: ['back', 'biceps'],
-    color: '#8b5cf6',
-    icon: '🤛',
-  },
-  {
-    id: 'legs',
-    label: 'Legs',
-    muscles: ['quads', 'hamstrings', 'glutes', 'calves'],
-    color: '#f97316',
-    icon: '🦵',
-  },
-  {
-    id: 'core',
-    label: 'Core',
-    muscles: ['core'],
-    color: '#14b8a6',
-    icon: '🏯',
-  },
+  { id: 'push', label: 'Push', muscles: ['chest', 'shoulders', 'triceps'] },
+  { id: 'pull', label: 'Pull', muscles: ['back', 'biceps'] },
+  { id: 'legs', label: 'Legs', muscles: ['quads', 'hamstrings', 'glutes', 'calves'] },
+  { id: 'core', label: 'Core', muscles: ['core'] },
 ];
 
-const MUSCLE_LABELS: Record<MuscleGroup, string> = {
-  chest: 'Chest',
-  back: 'Back',
-  shoulders: 'Shoulders',
-  biceps: 'Biceps',
-  triceps: 'Triceps',
-  core: 'Core',
-  quads: 'Quads',
-  hamstrings: 'Hamstrings',
-  glutes: 'Glutes',
-  calves: 'Calves',
-};
+const ALL_MUSCLES: MuscleGroup[] = [
+  'chest', 'back', 'shoulders', 'biceps', 'triceps',
+  'core', 'quads', 'hamstrings', 'glutes', 'calves',
+];
 
 function avg(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
@@ -72,6 +39,23 @@ function zoneAvg(zone: ZoneConfig, muscleXP: MuscleXP): number {
   return avg(zone.muscles.map((m) => muscleXP[m].level));
 }
 
+// ─── Recovery status logic ────────────────────────────────────────────────────
+
+/**
+ * Since `lastTrained` is not stored on MuscleXP, we use xp > 0 as a proxy for
+ * "has been trained at some point." Without a timestamp we cannot determine
+ * Fatigued vs. Ready, so xp > 0 maps to Recovered (best available signal).
+ */
+function getRecoveryStatus(hasTrained: boolean): {
+  badge: 'jade' | 'crimson' | 'gold';
+  label: string;
+  timeAgo: string;
+} {
+  if (!hasTrained) return { badge: 'jade', label: 'Recovered', timeAgo: '—' };
+  // No timestamp available — cannot distinguish Fatigued/Ready/Recovered
+  return { badge: 'jade', label: 'Recovered', timeAgo: '—' };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MusclesScreen() {
@@ -79,98 +63,73 @@ export default function MusclesScreen() {
 
   if (!muscleXP || !character) return null;
 
-  const zoneAverages = ZONES.map((z) => ({ ...z, avg: zoneAvg(z, muscleXP) }));
-  const maxZoneAvg = Math.max(...zoneAverages.map((z) => z.avg));
-  const classDef = CLASS_DEFINITIONS[character.class];
-
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Animated.View entering={FadeInDown.duration(300)}>
-          <Text style={styles.title}>Muscle Atlas</Text>
-          <Text style={styles.subtitle}>Your training balance across muscle zones.</Text>
-        </Animated.View>
+        <Text style={styles.title}>Muscles</Text>
 
-        {/* Zone overview */}
-        <Animated.View entering={FadeInDown.duration(300).delay(60)} style={styles.zonesCard}>
-          <Text style={styles.sectionLabel}>ZONE AVERAGES</Text>
-          {zoneAverages.map((zone, i) => {
-            const isMax = zone.avg === maxZoneAvg;
-            const barWidth = maxZoneAvg > 0 ? (zone.avg / maxZoneAvg) * 100 : 0;
+        {/* Recovery status card */}
+        <Card padding={16}>
+          <SectionLabel>RECOVERY STATUS</SectionLabel>
+          {ALL_MUSCLES.map((muscle, i) => {
+            const hasTrained = (muscleXP[muscle]?.xp ?? 0) > 0;
+            const { badge, label, timeAgo } = getRecoveryStatus(hasTrained);
+            const isLast = i === ALL_MUSCLES.length - 1;
             return (
-              <Animated.View
-                key={zone.id}
-                entering={FadeInDown.duration(250).delay(80 + i * 50)}
-                style={styles.zoneRow}
+              <View
+                key={muscle}
+                style={[
+                  styles.recoveryRow,
+                  !isLast && styles.recoveryRowBorder,
+                ]}
               >
-                <View style={styles.zoneLeft}>
-                  <Text style={styles.zoneIcon}>{zone.icon}</Text>
-                  <Text style={[styles.zoneLabel, isMax && { color: zone.color }]}>
-                    {zone.label}
-                  </Text>
-                  {isMax && (
-                    <View style={[styles.dominantBadge, { backgroundColor: `${zone.color}22`, borderColor: `${zone.color}55` }]}>
-                      <Text style={[styles.dominantText, { color: zone.color }]}>dominant</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.zoneRight}>
-                  <View style={styles.zoneBarBg}>
-                    <View style={[styles.zoneBarFill, { width: `${barWidth}%`, backgroundColor: zone.color }]} />
-                  </View>
-                  <Text style={[styles.zoneAvgNum, { color: zone.color }]}>
-                    {zone.avg.toFixed(1)}
-                  </Text>
-                </View>
-              </Animated.View>
+                <Text style={styles.muscleName}>
+                  {muscle.charAt(0).toUpperCase() + muscle.slice(1)}
+                </Text>
+                <Badge variant={badge} label={label} />
+                <Text style={styles.timeAgo}>{timeAgo}</Text>
+              </View>
             );
           })}
-        </Animated.View>
+        </Card>
 
-        {/* Class driven by zones */}
-        <Animated.View entering={FadeInDown.duration(300).delay(160)} style={styles.classCard}>
-          <Text style={styles.classIcon}>{classDef.icon}</Text>
-          <View style={styles.classTextBlock}>
-            <Text style={[styles.className, { color: classDef.color }]}>{character.class}</Text>
-            <Text style={styles.classTagline}>{classDef.tagline}</Text>
-          </View>
-        </Animated.View>
-
-        {/* Per-zone muscle breakdown */}
-        {ZONES.map((zone, zi) => (
-          <Animated.View
-            key={zone.id}
-            entering={FadeInDown.duration(300).delay(220 + zi * 60)}
-            style={styles.muscleCard}
-          >
-            <View style={styles.muscleCardHeader}>
-              <Text style={styles.zoneIcon}>{zone.icon}</Text>
-              <Text style={[styles.muscleCardTitle, { color: zone.color }]}>{zone.label}</Text>
-            </View>
-
-            {zone.muscles.map((muscle) => {
-              const data = muscleXP[muscle];
-              const progress = muscleXPProgress(data);
+        {/* Zone breakdown */}
+        <View style={styles.zonesSection}>
+          <SectionLabel style={styles.zonesLabel}>ZONES</SectionLabel>
+          <View style={styles.zonesGap}>
+            {ZONES.map((zone) => {
+              const za = zoneAvg(zone, muscleXP);
+              const barFill = Math.min(100, (za / 20) * 100);
               return (
-                <View key={muscle} style={styles.muscleItem}>
-                  <View style={styles.muscleNameRow}>
-                    <Text style={styles.muscleName}>{MUSCLE_LABELS[muscle]}</Text>
-                    <View style={styles.muscleMetaRight}>
-                      <Text style={styles.muscleTier}>{muscleLevelTitle(data.level)}</Text>
-                      <Text style={[styles.muscleLevel, { color: zone.color }]}>Lv.{data.level}</Text>
-                    </View>
+                <Card key={zone.id} padding={16}>
+                  {/* Zone header */}
+                  <View style={styles.zoneHeader}>
+                    <Text style={styles.zoneLabel}>{zone.label}</Text>
+                    <Text style={styles.zoneAvg}>{za.toFixed(1)}</Text>
                   </View>
-                  <View style={styles.muscleBarBg}>
-                    <View
-                      style={[styles.muscleBarFill, { width: `${progress}%`, backgroundColor: zone.color }]}
-                    />
+                  {/* Thin progress bar */}
+                  <View style={styles.progressBg}>
+                    <View style={[styles.progressFill, { width: `${barFill}%` as any }]} />
                   </View>
-                </View>
+                  {/* Per-muscle rows */}
+                  <View style={styles.muscleRows}>
+                    {zone.muscles.map((muscle) => (
+                      <View key={muscle} style={styles.muscleLevelRow}>
+                        <Text style={styles.muscleLevelName}>
+                          {muscle.charAt(0).toUpperCase() + muscle.slice(1)}
+                        </Text>
+                        <Text style={styles.muscleLevelValue}>
+                          Lv.{muscleXP[muscle].level}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </Card>
               );
             })}
-          </Animated.View>
-        ))}
+          </View>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -179,92 +138,63 @@ export default function MusclesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { padding: 20, gap: 14, paddingBottom: 36 },
+  scroll: { padding: SPACING.screen, gap: SPACING.gap, paddingBottom: 36 },
 
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.text },
-  subtitle: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+
+  // Recovery card rows
+  recoveryRow: {
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recoveryRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  muscleName: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
+  timeAgo: {
+    fontSize: 11,
     color: COLORS.textMuted,
-    letterSpacing: 2,
-    marginBottom: 4,
+    textAlign: 'right',
+    marginLeft: 8,
+    minWidth: 72,
   },
 
-  // Zones overview card
-  zonesCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 12,
-  },
-  zoneRow: {
+  // Zone section
+  zonesSection: { gap: 0 },
+  zonesLabel: { marginBottom: 12 },
+  zonesGap: { gap: 12 },
+
+  // Zone card internals
+  zoneHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    marginBottom: 0,
   },
-  zoneLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 110 },
-  zoneIcon: { fontSize: 16 },
-  zoneLabel: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  dominantBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-  },
-  dominantText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
-  zoneRight: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  zoneBarBg: {
-    flex: 1,
-    height: 6,
-    backgroundColor: COLORS.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  zoneBarFill: { height: '100%', borderRadius: 3 },
-  zoneAvgNum: { fontSize: 13, fontWeight: '700', width: 32, textAlign: 'right' },
+  zoneLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  zoneAvg: { fontSize: 14, color: COLORS.gold },
 
-  // Class card
-  classCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  classIcon: { fontSize: 28 },
-  classTextBlock: { flex: 1 },
-  className: { fontSize: 16, fontWeight: '800' },
-  classTagline: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontStyle: 'italic' },
-
-  // Per-muscle cards
-  muscleCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 10,
-  },
-  muscleCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  muscleCardTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
-  muscleItem: { gap: 4 },
-  muscleNameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  muscleName: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  muscleMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  muscleTier: { fontSize: 10, color: COLORS.textMuted },
-  muscleLevel: { fontSize: 12, fontWeight: '700', minWidth: 36, textAlign: 'right' },
-  muscleBarBg: {
-    height: 4,
+  progressBg: {
+    height: 3,
     backgroundColor: COLORS.border,
     borderRadius: 2,
     overflow: 'hidden',
+    marginVertical: 8,
   },
-  muscleBarFill: { height: '100%', borderRadius: 2 },
+  progressFill: {
+    height: '100%',
+    backgroundColor: COLORS.gold,
+    borderRadius: 2,
+  },
+
+  muscleRows: { gap: 6 },
+  muscleLevelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  muscleLevelName: { fontSize: 12, color: COLORS.textSecondary },
+  muscleLevelValue: { fontSize: 12, color: COLORS.gold },
 });

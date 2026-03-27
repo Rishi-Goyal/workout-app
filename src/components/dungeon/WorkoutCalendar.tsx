@@ -20,10 +20,10 @@ function getDateKey(date: Date): string {
 
 function getCellColor(xp: number): string {
   if (xp === 0) return COLORS.border;
-  if (xp < 100) return 'rgba(99,102,241,0.25)';
-  if (xp < 200) return 'rgba(99,102,241,0.50)';
-  if (xp < 350) return 'rgba(99,102,241,0.75)';
-  return '#6366f1';
+  if (xp < 100) return 'rgba(59,130,246,0.25)';
+  if (xp < 200) return 'rgba(59,130,246,0.50)';
+  if (xp < 350) return 'rgba(59,130,246,0.75)';
+  return COLORS.gold;
 }
 
 export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   cellToday: {
     borderWidth: 1.5,
-    borderColor: COLORS.violetLight,
+    borderColor: COLORS.gold,
   },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
   legendLabel: { fontSize: 9, color: COLORS.textMuted },

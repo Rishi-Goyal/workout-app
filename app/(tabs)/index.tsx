@@ -1,23 +1,43 @@
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Linking, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import QuestCard from '@/components/dungeon/QuestCard';
 import QuestSkeleton from '@/components/dungeon/QuestSkeleton';
 import SessionSummary from '@/components/dungeon/SessionSummary';
 import PressableButton from '@/components/ui/PressableButton';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import SectionLabel from '@/components/ui/SectionLabel';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
-import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
+import { xpToNextLevel } from '@/lib/xp';
+import { COLORS, SPACING } from '@/lib/constants';
 import { getCurrentVersion, compareVersions, getReleasesUrl } from '@/lib/versionCheck';
 import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function relativeDate(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diffMs = now - then;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays}d ago`;
+}
 
 export default function DungeonTabScreen() {
   const { profile, character, muscleXP, awardXP, awardMuscleXP, incrementFloorsCleared, latestVersion } = useProfileStore();
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
+  const sessions = useHistoryStore((s) => s.sessions);
   const addSession = useHistoryStore((s) => s.addSession);
   const { activeSession, isLoading, startSession, setLoading, setError, markQuest, finalizeSession } = useSessionStore();
 
@@ -57,8 +77,6 @@ export default function DungeonTabScreen() {
       </Pressable>
     </View>
   ) : null;
-  const isBoss = currentFloor % 5 === 0 && currentFloor > 0;
-  const classDef = CLASS_DEFINITIONS[character.class];
 
   const handleEnter = () => {
     setEntering(true);
@@ -127,37 +145,43 @@ export default function DungeonTabScreen() {
   // ── Active session view ───────────────────────────────────────────────────
   if (activeSession || isLoading) {
     const allActioned = activeSession?.quests.every((q) => q.status !== 'pending') ?? false;
-    const sessionIsBoss = activeSession ? activeSession.floor % 5 === 0 && activeSession.floor > 0 : false;
+    const routineInfoForSession = getDungeonRoutineInfo(profile.goal, activeSession?.floor ?? currentFloor);
+    const estimatedXP = activeSession
+      ? activeSession.quests.reduce((sum, q) => sum + (q.xpEarned ?? 0), 0)
+      : 0;
 
     return (
       <SafeAreaView style={styles.safe}>
         {UpdateBanner}
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-          <View style={styles.sessionHeader}>
-            <View>
-              <Text style={styles.floorHeading}>
-                {activeSession ? `Floor ${activeSession.floor}` : 'Loading…'}
-              </Text>
-              {sessionIsBoss && <Badge label="⚠️ Boss Floor" variant="crimson" />}
-            </View>
-            {activeSession && (
-              <PressableButton
-                label="Retreat"
-                variant="ghost"
-                size="sm"
-                onPress={() => {
-                  Alert.alert('Retreat?', 'You will lose progress on this floor.', [
-                    { text: 'Stay', style: 'cancel' },
-                    {
-                      text: 'Retreat', style: 'destructive',
-                      onPress: () => useSessionStore.getState().clearSession(),
-                    },
-                  ]);
-                }}
-              />
-            )}
+        <View style={styles.sessionTopHeader}>
+          <View>
+            <Text style={styles.sessionRoutineName}>
+              {routineInfoForSession.splitName}
+            </Text>
+            <Text style={styles.sessionFloorLabel}>
+              {activeSession ? `Floor ${activeSession.floor}` : 'Loading…'}
+            </Text>
           </View>
+          {activeSession && (
+            <PressableButton
+              label="End Session"
+              variant="ghost"
+              size="sm"
+              onPress={() => {
+                Alert.alert('End Session?', 'You will lose progress on this session.', [
+                  { text: 'Stay', style: 'cancel' },
+                  {
+                    text: 'End Session', style: 'destructive',
+                    onPress: () => useSessionStore.getState().clearSession(),
+                  },
+                ]);
+              }}
+            />
+          )}
+        </View>
+
+        <ScrollView contentContainerStyle={styles.sessionScroll} showsVerticalScrollIndicator={false}>
+          <SectionLabel>EXERCISES</SectionLabel>
 
           <View style={styles.questList}>
             {isLoading || !activeSession ? (
@@ -171,7 +195,7 @@ export default function DungeonTabScreen() {
 
           {activeSession && allActioned && (
             <PressableButton
-              label="Complete Floor & Claim XP 🏆"
+              label={`Finish & Save [+${estimatedXP} XP] →`}
               size="lg"
               style={styles.finalizeBtn}
               onPress={handleFinalize}
@@ -179,7 +203,7 @@ export default function DungeonTabScreen() {
           )}
 
           {activeSession && !allActioned && (
-            <Text style={styles.hint}>Complete, half-complete, or skip each quest to continue</Text>
+            <Text style={styles.hint}>Complete, half-complete, or skip each exercise to continue</Text>
           )}
         </ScrollView>
 
@@ -199,77 +223,84 @@ export default function DungeonTabScreen() {
 
   // ── Entrance view ─────────────────────────────────────────────────────────
   const routineInfo = getDungeonRoutineInfo(profile.goal, currentFloor);
+  const xpFillPercent = Math.min(1, character.currentXP / xpToNextLevel(character.level));
+  const recentSessions = sessions.slice(0, 3);
 
   return (
     <SafeAreaView style={styles.safe}>
       {UpdateBanner}
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Class identity */}
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.classRow}>
-          <Text style={[styles.classIcon]}>{classDef.icon}</Text>
-          <View>
-            <Text style={[styles.className, { color: classDef.color }]}>{character.class}</Text>
-            <Text style={styles.classTagline}>{classDef.tagline}</Text>
+        {/* Header row */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{getGreeting()}, {profile.name}</Text>
+            <Text style={styles.charName}>{character.class}</Text>
           </View>
-        </Animated.View>
+          <Badge label={`Level ${character.level}`} variant="muted" />
+        </View>
 
-        {/* Floor entrance card */}
-        <Animated.View entering={FadeInDown.duration(300).delay(60)} style={[styles.entranceCard, isBoss && styles.bossCard]}>
-          <Text style={styles.doorEmoji}>{isBoss ? '🔴' : '🚪'}</Text>
-          <Text style={styles.floorLabel}>Floor {currentFloor}</Text>
-          {isBoss && (
-            <View style={styles.bossBadge}>
-              <Text style={styles.bossBadgeText}>⚠️  BOSS FLOOR</Text>
-            </View>
-          )}
+        {/* XP thin bar */}
+        <View style={styles.xpBarTrack}>
+          <View style={[styles.xpBarFill, { width: `${xpFillPercent * 100}%` }]} />
+        </View>
 
-          {/* Routine label */}
-          <View style={styles.routineRow}>
-            <Text style={styles.routineName}>{routineInfo.splitName}</Text>
-            <Text style={styles.routineDay}>{routineInfo.dayName}</Text>
+        {/* Hero card */}
+        <Card padding={SPACING.cardLg}>
+          <SectionLabel style={{ marginBottom: 8 }}>TODAY'S WORKOUT</SectionLabel>
+          <Text style={styles.workoutName}>{routineInfo.splitName}</Text>
+          <View style={styles.detailsRow}>
+            <Text style={styles.detailText}>~45 min</Text>
+            <Text style={styles.detailSep}>•</Text>
+            {routineInfo.targetMuscles.map((m: MuscleGroup) => (
+              <View key={m} style={styles.muscleChip}>
+                <Text style={styles.muscleChipText}>{m}</Text>
+              </View>
+            ))}
           </View>
-
-          {routineInfo.targetMuscles.length > 0 && (
-            <View style={styles.muscleChips}>
-              {routineInfo.targetMuscles.map((m: MuscleGroup) => (
-                <View key={m} style={styles.chip}>
-                  <Text style={styles.chipText}>{m}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          <Text style={styles.floorHint}>
-            {isBoss ? 'A powerful guardian blocks the path…' : '3 quests await beyond the door'}
-          </Text>
-
           <PressableButton
-            label={entering ? 'Preparing…' : 'Enter the Dungeon ⚔️'}
+            label={entering ? 'Preparing…' : 'Start Workout'}
             size="lg"
             loading={entering}
-            style={styles.enterBtn}
+            style={styles.startBtn}
             onPress={handleEnter}
           />
-        </Animated.View>
+        </Card>
 
-        {/* XP snapshot */}
-        <Animated.View entering={FadeInDown.duration(300).delay(120)} style={styles.xpRow}>
-          <View style={styles.xpStat}>
-            <Text style={styles.xpNum}>{character.level}</Text>
-            <Text style={styles.xpLbl}>Level</Text>
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <Card style={styles.statCard} padding={14}>
+            <Text style={styles.statValue}>{character.floorsCleared > 0 ? character.floorsCleared : 0}</Text>
+            <Text style={styles.statLabel}>Streak</Text>
+          </Card>
+          <Card style={styles.statCard} padding={14}>
+            <Text style={styles.statValue}>{character.floorsCleared}</Text>
+            <Text style={styles.statLabel}>Workouts</Text>
+          </Card>
+          <Card style={styles.statCard} padding={14}>
+            <Text style={styles.statValue}>{character.totalXPEarned}</Text>
+            <Text style={styles.statLabel}>Total XP</Text>
+          </Card>
+        </View>
+
+        {/* Recent section */}
+        {recentSessions.length > 0 && (
+          <View>
+            <SectionLabel>RECENT</SectionLabel>
+            {recentSessions.map((session, index) => (
+              <View key={session.id}>
+                {index > 0 && <View style={styles.separator} />}
+                <View style={styles.recentRow}>
+                  <View>
+                    <Text style={styles.recentWorkoutName}>Workout {session.floor}</Text>
+                    <Text style={styles.recentXP}>+{session.totalXPEarned} XP</Text>
+                  </View>
+                  <Text style={styles.recentDate}>{relativeDate(session.startedAt)}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-          <View style={styles.xpDivider} />
-          <View style={styles.xpStat}>
-            <Text style={styles.xpNum}>{character.floorsCleared}</Text>
-            <Text style={styles.xpLbl}>Floors</Text>
-          </View>
-          <View style={styles.xpDivider} />
-          <View style={styles.xpStat}>
-            <Text style={styles.xpNum}>{character.totalXPEarned}</Text>
-            <Text style={styles.xpLbl}>Total XP</Text>
-          </View>
-        </Animated.View>
+        )}
 
       </ScrollView>
 
@@ -289,63 +320,71 @@ export default function DungeonTabScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { padding: 20, gap: 16, paddingBottom: 36 },
+  scroll: { padding: SPACING.screen, gap: SPACING.gap, paddingBottom: 36 },
 
-  // Class identity
-  classRow: {
+  // Header
+  headerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
   },
-  classIcon: { fontSize: 36 },
-  className: { fontSize: 20, fontWeight: '800' },
-  classTagline: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontStyle: 'italic' },
+  headerLeft: { gap: 2 },
+  greeting: { fontSize: 16, color: COLORS.textMuted },
+  charName: { fontSize: 20, fontWeight: '700', color: COLORS.text },
 
-  // Entrance card
-  entranceCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  bossCard: { borderColor: 'rgba(220,38,38,0.5)', backgroundColor: 'rgba(127,0,0,0.12)' },
-  doorEmoji: { fontSize: 56 },
-  floorLabel: { fontSize: 30, fontWeight: '800', color: COLORS.text },
-  bossBadge: {
-    backgroundColor: 'rgba(220,38,38,0.2)',
+  // XP bar
+  xpBarTrack: {
+    height: 3,
+    width: '100%',
+    backgroundColor: COLORS.border,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.4)',
+    overflow: 'hidden',
   },
-  bossBadgeText: { color: '#f87171', fontSize: 12, fontWeight: '700' },
-  routineRow: { alignItems: 'center', gap: 2 },
-  routineName: { fontSize: 11, color: COLORS.textMuted, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600' },
-  routineDay: { fontSize: 15, fontWeight: '700', color: COLORS.gold },
-  muscleChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'center' },
-  chip: { backgroundColor: COLORS.border, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  chipText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
-  floorHint: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
-  enterBtn: { width: '100%', marginTop: 4 },
+  xpBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.gold,
+    borderRadius: 999,
+  },
 
-  // XP snapshot row
-  xpRow: {
+  // Hero card internals
+  workoutName: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  detailsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  detailText: { fontSize: 13, color: COLORS.textMuted },
+  detailSep: { fontSize: 13, color: COLORS.textMuted },
+  muscleChip: {
     backgroundColor: COLORS.surface,
-    borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingVertical: 16,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  xpStat: { flex: 1, alignItems: 'center' },
-  xpNum: { fontSize: 22, fontWeight: '800', color: COLORS.gold },
-  xpLbl: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
-  xpDivider: { width: 1, backgroundColor: COLORS.border },
+  muscleChipText: { fontSize: 10, color: COLORS.textSecondary, textTransform: 'capitalize' },
+  startBtn: { width: '100%', marginTop: 16 },
+
+  // Stats row
+  statsRow: { flexDirection: 'row', gap: 12 },
+  statCard: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  statLabel: { fontSize: 11, color: COLORS.textMuted },
+
+  // Recent section
+  separator: { height: 1, backgroundColor: COLORS.border },
+  recentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  recentWorkoutName: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  recentXP: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  recentDate: { fontSize: 12, color: COLORS.textMuted },
 
   // Update banner
   updateBanner: {
@@ -372,9 +411,19 @@ const styles = StyleSheet.create({
   updateBannerClose: { fontSize: 16, color: COLORS.textMuted, paddingHorizontal: 4 },
 
   // Active session
-  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  floorHeading: { fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 4 },
-  questList: { gap: 14 },
+  sessionTopHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  sessionRoutineName: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  sessionFloorLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  sessionScroll: { padding: 16, gap: 16, paddingBottom: 36 },
+  questList: { gap: 12 },
   finalizeBtn: { marginTop: 8 },
   hint: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', paddingHorizontal: 20 },
 });
