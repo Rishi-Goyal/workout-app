@@ -102,15 +102,18 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
         if (s.character && typeof s.character === 'object') {
           const c = s.character as Record<string, unknown>;
           if (c.floorsCleared === undefined) c.floorsCleared = 0;
-          // v1 → v2: re-derive class from muscles (old class names are invalid)
-          // Will be properly set in merge below once muscleXP is available
+        }
+        // v2 → v3: ensure profile has weightUnit (default 'kg')
+        if (s.profile && typeof s.profile === 'object') {
+          const p = s.profile as Record<string, unknown>;
+          if (!p.weightUnit) p.weightUnit = 'kg';
         }
         return s as unknown as Partial<ProfileStore>;
       },

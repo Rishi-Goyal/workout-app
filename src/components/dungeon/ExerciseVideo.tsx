@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { COLORS } from '@/lib/constants';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
+import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
 import type { MuscleGroup } from '@/types';
 
 const TYPE_COLOR: Record<ExerciseType, string> = {
@@ -62,46 +63,10 @@ interface ExerciseVideoProps {
   exerciseId: string;
   exerciseName: string;
   muscles: MuscleGroup[];
-  fallbackSteps?: string[];
 }
 
-function StepGuide({
-  color,
-  fallbackSteps,
-  title,
-  subtitle,
-  icon,
-}: {
-  color: string;
-  fallbackSteps: string[];
-  title: string;
-  subtitle: string;
-  icon: string;
-}) {
-  return (
-    <View style={[styles.fallbackBox, { borderColor: color + '30' }]}>
-      <View style={styles.fallbackHeader}>
-        <Text style={styles.fallbackIcon}>{icon}</Text>
-        <View>
-          <Text style={[styles.fallbackTitle, { color }]}>{title}</Text>
-          <Text style={styles.fallbackSub}>{subtitle}</Text>
-        </View>
-      </View>
-      <View style={styles.fallbackSteps}>
-        {fallbackSteps.map((step, i) => (
-          <View key={i} style={styles.fallbackStep}>
-            <View style={[styles.fallbackNum, { backgroundColor: color + '20', borderColor: color + '50' }]}>
-              <Text style={[styles.fallbackNumText, { color }]}>{i + 1}</Text>
-            </View>
-            <Text style={styles.fallbackStepText}>{step}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
 
-export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallbackSteps }: ExerciseVideoProps) {
+export default function ExerciseVideo({ exerciseId, exerciseName, muscles }: ExerciseVideoProps) {
   const type = inferExerciseType(exerciseName, muscles);
   const color = TYPE_COLOR[type];
   const videoId = CURATED_VIDEOS[exerciseId];
@@ -116,24 +81,18 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
     });
   };
 
-  // No curated video: show text guide
+  // No curated video: show an animated movement preview via ExerciseAnimator
   if (!videoId) {
-    if (fallbackSteps && fallbackSteps.length > 0) {
-      return (
-        <StepGuide
-          color={color}
-          fallbackSteps={fallbackSteps}
-          title="Step-by-Step Guide"
-          subtitle="Follow these form cues for best results"
-          icon="📋"
-        />
-      );
-    }
     return (
-      <View style={[styles.errorBox, { borderColor: color + '30' }]}>
-        <Text style={styles.errorIcon}>🎬</Text>
-        <Text style={styles.errorTitle}>No tutorial available</Text>
-        <Text style={styles.errorSub}>Search "{exerciseName} form" on YouTube</Text>
+      <View style={styles.noVideoBox}>
+        <View style={[styles.noVideoLabel, { borderColor: color + '30', backgroundColor: color + '10' }]}>
+          <Text style={styles.noVideoIcon}>🎬</Text>
+          <View>
+            <Text style={[styles.noVideoTitle, { color }]}>No tutorial video</Text>
+            <Text style={styles.noVideoSub}>Showing animated movement preview</Text>
+          </View>
+        </View>
+        <ExerciseAnimator exerciseName={exerciseName} muscles={muscles} />
       </View>
     );
   }
@@ -142,52 +101,39 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
   const thumbnailUri = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.videoCard,
-          { borderColor: color + '40', opacity: pressed ? 0.85 : 1 },
-        ]}
-        onPress={openVideo}
-      >
-        {/* Real YouTube thumbnail */}
-        <View style={styles.thumbWrapper}>
-          <Image
-            source={{ uri: thumbnailUri }}
-            style={styles.thumbnail}
-            resizeMode="cover"
-          />
-          {/* Dark overlay + play button centred on the thumbnail */}
-          <View style={styles.thumbOverlay}>
-            <View style={[styles.playButton, { borderColor: '#fff', backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-              <Text style={styles.playIcon}>▶</Text>
-            </View>
-          </View>
-          {/* Bottom gradient label */}
-          <View style={styles.thumbLabel}>
-            <Text style={styles.thumbLabelText}>Tap to watch · opens in-app</Text>
-          </View>
-        </View>
-
-        <View style={styles.cardFooter}>
-          <Text style={styles.footerText}>📺 Form tutorial · curated for this exercise</Text>
-          <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
-            <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
-          </View>
-        </View>
-      </Pressable>
-
-      {/* Step guide below thumbnail if available */}
-      {fallbackSteps && fallbackSteps.length > 0 && (
-        <StepGuide
-          color={color}
-          fallbackSteps={fallbackSteps}
-          title="Step-by-Step Guide"
-          subtitle="Follow these form cues for best results"
-          icon="📋"
+    <Pressable
+      style={({ pressed }) => [
+        styles.videoCard,
+        { borderColor: color + '40', opacity: pressed ? 0.85 : 1 },
+      ]}
+      onPress={openVideo}
+    >
+      {/* Real YouTube thumbnail */}
+      <View style={styles.thumbWrapper}>
+        <Image
+          source={{ uri: thumbnailUri }}
+          style={styles.thumbnail}
+          resizeMode="cover"
         />
-      )}
-    </View>
+        {/* Dark overlay + play button centred on the thumbnail */}
+        <View style={styles.thumbOverlay}>
+          <View style={[styles.playButton, { borderColor: '#fff', backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+            <Text style={styles.playIcon}>▶</Text>
+          </View>
+        </View>
+        {/* Bottom label */}
+        <View style={styles.thumbLabel}>
+          <Text style={styles.thumbLabelText}>Tap to watch · opens in-app</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardFooter}>
+        <Text style={styles.footerText}>📺 Form tutorial · curated for this exercise</Text>
+        <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
+          <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -270,43 +216,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  errorBox: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 14,
-    borderWidth: 1,
+  // No-video fallback — animated preview banner
+  noVideoBox: { width: '100%', gap: 12 },
+  noVideoLabel: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    gap: 6,
-  },
-  errorIcon: { fontSize: 32 },
-  errorTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  errorSub: { fontSize: 12, color: COLORS.textMuted },
-  fallbackBox: {
-    width: '100%',
-    borderRadius: 14,
+    gap: 10,
+    borderRadius: 10,
     borderWidth: 1,
-    backgroundColor: COLORS.surface,
-    padding: 14,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  fallbackHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  fallbackIcon: { fontSize: 24 },
-  fallbackTitle: { fontSize: 13, fontWeight: '700' },
-  fallbackSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
-  fallbackSteps: { gap: 8 },
-  fallbackStep: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  fallbackNum: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginTop: 1,
-  },
-  fallbackNumText: { fontSize: 11, fontWeight: '800' },
-  fallbackStepText: { flex: 1, fontSize: 12, color: COLORS.text, lineHeight: 18 },
+  noVideoIcon:  { fontSize: 20 },
+  noVideoTitle: { fontSize: 12, fontWeight: '700' },
+  noVideoSub:   { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
 });

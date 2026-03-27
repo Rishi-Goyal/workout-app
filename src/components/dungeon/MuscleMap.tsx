@@ -4,7 +4,7 @@
  * Primary muscles pulse gold, secondary shown in amber.
  */
 import { Component, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import type { MuscleGroup } from '@/types';
 import type { ExtendedBodyPart, Slug } from 'react-native-body-highlighter';
@@ -70,6 +70,13 @@ function BodyDiagram({ targets, secondary }: { targets: MuscleGroup[]; secondary
   const Body = require('react-native-body-highlighter').default;
   const bodyData = buildBodyData(targets, secondary);
 
+  // Compute scale so both body columns fit within the screen width.
+  // Each column is ~(screenWidth - padding - gap - divider) / 2.
+  // Base SVG width for body-highlighter is ~130px at scale=1.
+  const { width: screenWidth } = useWindowDimensions();
+  const availablePerCol = (screenWidth - 48 - 8 - 1) / 2; // padding(24*2) gap(8) divider(1)
+  const scale = Math.min(availablePerCol / 130, 1.2); // cap at 1.2 to avoid overly large
+
   return (
     <View style={styles.bodiesRow}>
       <View style={styles.bodyCol}>
@@ -77,7 +84,7 @@ function BodyDiagram({ targets, secondary }: { targets: MuscleGroup[]; secondary
           data={bodyData}
           side="front"
           gender="male"
-          scale={1.3}
+          scale={scale}
           defaultFill={INACTIVE_COLOR}
           defaultStroke={COLORS.border}
           defaultStrokeWidth={0.5}
@@ -91,7 +98,7 @@ function BodyDiagram({ targets, secondary }: { targets: MuscleGroup[]; secondary
           data={bodyData}
           side="back"
           gender="male"
-          scale={1.3}
+          scale={scale}
           defaultFill={INACTIVE_COLOR}
           defaultStroke={COLORS.border}
           defaultStrokeWidth={0.5}
@@ -183,8 +190,8 @@ export default function MuscleMap({ targets, secondary = [] }: MuscleMapProps) {
 }
 
 const styles = StyleSheet.create({
-  container:        { alignItems: 'center', gap: 12, width: '100%' },
-  bodiesRow:        { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
+  container:        { alignItems: 'center', gap: 12, width: '100%', overflow: 'hidden' },
+  bodiesRow:        { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', overflow: 'hidden', maxWidth: '100%' },
   bodyCol:          { alignItems: 'center', gap: 4 },
   sideLabel:        { fontSize: 10, color: COLORS.textMuted, letterSpacing: 1.5, fontWeight: '700' },
   divider:          { width: 1, height: 160, backgroundColor: COLORS.border },
