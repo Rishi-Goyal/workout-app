@@ -29,7 +29,7 @@ export default function SessionSummary({
             <Text style={styles.icon}>{didLevelUp ? '🎉' : '⚔️'}</Text>
 
             <Text style={styles.title}>
-              {didLevelUp ? `Level ${newLevel}!` : `Floor ${session.floor} Cleared`}
+              {didLevelUp ? `Level ${newLevel}!` : `Session ${session.floor} Cleared`}
             </Text>
             {didLevelUp && (
               <Text style={styles.subtitle}>You leveled up!</Text>

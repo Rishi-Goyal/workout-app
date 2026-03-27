@@ -1,13 +1,8 @@
 /**
- * ExerciseVideo — embeds a YouTube form tutorial video for any exercise.
- *
- * Uses curated video IDs for key exercises.
- * For all other exercises shows a step-by-step text guide instead of a
- * broken search embed (YouTube removed the listType=search embed feature).
+ * ExerciseVideo — opens a curated YouTube form tutorial in the YouTube app.
+ * Replaced inline WebView embed with Linking.openURL for new-arch compatibility.
  */
-import { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
 import type { MuscleGroup } from '@/types';
@@ -22,82 +17,47 @@ const TYPE_COLOR: Record<ExerciseType, string> = {
   hold:  '#06b6d4',
 };
 
-// Well-known form tutorial video IDs for key exercises
-// (fallback to search for everything else)
+// Curated form tutorial video IDs
 const CURATED_VIDEOS: Record<string, string> = {
   // Chest
-  'push-up':               'IODxDxX7oi4',  // Jeff Nippard push-up guide
-  'barbell-bench-press':   'vcBig73ojpE',  // Jeff Nippard bench press
-  'dumbbell-bench-press':  'VmB1G1K7v94',  // ScottHermanFitness DB bench
-  'incline-dumbbell-press':'8iPEnn-ltC8',  // Jeff Nippard incline press
-  'weighted-dip':          'yN6Q1UI_xr0',  // Alan Thrall weighted dip
-
+  'push-up':               'IODxDxX7oi4',
+  'barbell-bench-press':   'vcBig73ojpE',
+  'dumbbell-bench-press':  'VmB1G1K7v94',
+  'incline-dumbbell-press':'8iPEnn-ltC8',
+  'weighted-dip':          'yN6Q1UI_xr0',
   // Back
-  'deadlift':              'op9kVnSso6Q',  // Alan Thrall deadlift
-  'pull-up':               'eGo4IYlbE5g',  // Calisthenics Movement pull-up
-  'barbell-bent-over-row': 'kBWAon7ItDw',  // Jeff Nippard bent over row
-  'lat-pulldown':          'CAwf7n6Luuc',  // ScottHermanFitness lat pulldown
-  'dumbbell-row':          'roCP2_pNLuI',  // Jeff Nippard DB row
-  'dead-hang':             'HoE-C85ZlCE',  // dead hang tutorial
-  'romanian-deadlift':     'JCXUYuzwNrM',  // Jeff Nippard RDL
-
+  'deadlift':              'op9kVnSso6Q',
+  'pull-up':               'eGo4IYlbE5g',
+  'barbell-bent-over-row': 'kBWAon7ItDw',
+  'lat-pulldown':          'CAwf7n6Luuc',
+  'dumbbell-row':          'roCP2_pNLuI',
+  'dead-hang':             'HoE-C85ZlCE',
+  'romanian-deadlift':     'JCXUYuzwNrM',
   // Shoulders
-  'barbell-overhead-press':'_RlRDWO2jfg',  // Jeff Nippard OHP
-  'lateral-raise':         'XPPfnSEATJA',  // Jeff Nippard lateral raise
-  'face-pull':             'HSoHeSjFJEA',  // Jeff Nippard face pull
-
+  'barbell-overhead-press':'_RlRDWO2jfg',
+  'lateral-raise':         'XPPfnSEATJA',
+  'face-pull':             'HSoHeSjFJEA',
   // Legs
-  'barbell-back-squat':    'Dy28eq2PjcM',  // Jeff Nippard squat
-  'front-squat':           'uYumuL_G_V0',  // Alan Thrall front squat
-  'hip-thrust':            'xDmFkJxPzeM',  // Jeff Nippard hip thrust
-  'bulgarian-split-squat': 'kkdqbdwbOpQ',  // Jeff Nippard BSS
-  'nordic-curl':           '5_SnJN5AQBU',  // Nordic curl tutorial
-
+  'barbell-back-squat':    'Dy28eq2PjcM',
+  'front-squat':           'uYumuL_G_V0',
+  'hip-thrust':            'xDmFkJxPzeM',
+  'bulgarian-split-squat': 'kkdqbdwbOpQ',
+  'nordic-curl':           '5_SnJN5AQBU',
   // Arms
-  'barbell-curl':          'kwG2ipFRgfo',  // Jeff Nippard bicep curl
-  'skull-crusher':         'NIKnFGLKqnM',  // skull crusher tutorial
-
+  'barbell-curl':          'kwG2ipFRgfo',
+  'skull-crusher':         'NIKnFGLKqnM',
   // Core
-  'plank':                 'ASdvN_XEl_c',  // Athlean-X plank
-  'hollow-body-hold':      'LlDNef_Ztsc',  // hollow body hold
-  'ab-wheel-rollout':      'aHQXdvFQ3lg',  // ab wheel tutorial
-  'hanging-leg-raise':     'Pr1ieGZ5atk',  // hanging leg raise
+  'plank':                 'ASdvN_XEl_c',
+  'hollow-body-hold':      'LlDNef_Ztsc',
+  'ab-wheel-rollout':      'aHQXdvFQ3lg',
+  'hanging-leg-raise':     'Pr1ieGZ5atk',
 };
 
 interface ExerciseVideoProps {
   exerciseId: string;
   exerciseName: string;
   muscles: MuscleGroup[];
-  /** Step-by-step instructions shown when offline / video unavailable */
   fallbackSteps?: string[];
-}
-
-// Inline HTML for the curated YouTube embed to avoid CORS issues in WebView
-// Uses youtube-nocookie.com to avoid cookie consent + Error 153 on Android WebView
-function buildEmbedHtml(exerciseName: string, videoId: string): string {
-  const embedSrc = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&modestbranding=1&rel=0&color=white&playsinline=1&origin=https://dungeonfit.app`;
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: #080610; overflow: hidden; }
-    .container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    iframe { width: 100%; height: 100%; border: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <iframe
-      src="${embedSrc}"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen
-    ></iframe>
-  </div>
-</body>
-</html>`;
 }
 
 function StepGuide({
@@ -137,13 +97,15 @@ function StepGuide({
 }
 
 export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallbackSteps }: ExerciseVideoProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const type = inferExerciseType(exerciseName, muscles);
   const color = TYPE_COLOR[type];
   const videoId = CURATED_VIDEOS[exerciseId];
 
-  // No curated video: show step guide immediately (avoids deprecated search embed)
+  const openVideo = () => {
+    Linking.openURL(`https://www.youtube.com/watch?v=${videoId}`);
+  };
+
+  // No curated video: show text guide
   if (!videoId) {
     if (fallbackSteps && fallbackSteps.length > 0) {
       return (
@@ -165,60 +127,40 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
     );
   }
 
-  const html = buildEmbedHtml(exerciseName, videoId);
+  return (
+    <View style={styles.container}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.videoCard,
+          { borderColor: color + '40', opacity: pressed ? 0.75 : 1 },
+        ]}
+        onPress={openVideo}
+      >
+        {/* Thumbnail placeholder with play icon */}
+        <View style={[styles.thumbArea, { backgroundColor: color + '12' }]}>
+          <View style={[styles.playButton, { borderColor: color, backgroundColor: color + '20' }]}>
+            <Text style={[styles.playIcon, { color }]}>▶</Text>
+          </View>
+          <Text style={[styles.watchLabel, { color }]}>Watch on YouTube</Text>
+        </View>
+        <View style={styles.cardFooter}>
+          <Text style={styles.footerText}>📺 Form tutorial · opens YouTube</Text>
+          <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
+            <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
+          </View>
+        </View>
+      </Pressable>
 
-  if (error) {
-    // Offline fallback: show step-by-step instructions if available
-    if (fallbackSteps && fallbackSteps.length > 0) {
-      return (
+      {/* Show step guide below if available */}
+      {fallbackSteps && fallbackSteps.length > 0 && (
         <StepGuide
           color={color}
           fallbackSteps={fallbackSteps}
-          title="Offline — Text Guide"
-          subtitle="Video unavailable without connection"
-          icon="📵"
+          title="Step-by-Step Guide"
+          subtitle="Follow these form cues for best results"
+          icon="📋"
         />
-      );
-    }
-    return (
-      <View style={[styles.errorBox, { borderColor: color + '30' }]}>
-        <Text style={styles.errorIcon}>🎬</Text>
-        <Text style={styles.errorTitle}>Video unavailable</Text>
-        <Text style={styles.errorSub}>Check your internet connection</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <View style={[styles.videoWrapper, { borderColor: color + '40' }]}>
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color={color} />
-            <Text style={[styles.loadingText, { color }]}>Loading video...</Text>
-          </View>
-        )}
-        <WebView
-          style={styles.webview}
-          source={{ html }}
-          onLoadEnd={() => setLoading(false)}
-          onError={() => { setLoading(false); setError(true); }}
-          mediaPlaybackRequiresUserAction={false}
-          allowsInlineMediaPlayback
-          javaScriptEnabled
-          domStorageEnabled
-          allowsFullscreenVideo
-          scrollEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-      <View style={styles.sourceRow}>
-        <Text style={styles.sourceText}>📺 YouTube · Form tutorial</Text>
-        <View style={[styles.curatedBadge, { borderColor: color + '40', backgroundColor: color + '15' }]}>
-          <Text style={[styles.curatedText, { color }]}>✓ Curated</Text>
-        </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -226,41 +168,49 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles, fallb
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    gap: 8,
-  },
-  videoWrapper: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#080610',
-    borderWidth: 1,
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: '#080610',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    inset: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#080610',
-    zIndex: 10,
     gap: 10,
   },
-  loadingText: {
-    fontSize: 12,
-    letterSpacing: 1,
-    fontWeight: '600',
+  videoCard: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
   },
-  sourceRow: {
+  thumbArea: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playIcon: {
+    fontSize: 22,
+    marginLeft: 4,
+  },
+  watchLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
-  sourceText: {
+  footerText: {
     fontSize: 11,
     color: COLORS.textMuted,
   },
@@ -288,8 +238,6 @@ const styles = StyleSheet.create({
   errorIcon: { fontSize: 32 },
   errorTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   errorSub: { fontSize: 12, color: COLORS.textMuted },
-
-  // Offline text fallback
   fallbackBox: {
     width: '100%',
     borderRadius: 14,

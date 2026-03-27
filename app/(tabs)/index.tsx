@@ -159,7 +159,7 @@ export default function DungeonTabScreen() {
               {routineInfoForSession.splitName}
             </Text>
             <Text style={styles.sessionFloorLabel}>
-              {activeSession ? `Floor ${activeSession.floor}` : 'Loading…'}
+              {activeSession ? `Session ${activeSession.floor}` : 'Loading…'}
             </Text>
           </View>
           {activeSession && (

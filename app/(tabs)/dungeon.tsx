@@ -98,9 +98,9 @@ export default function DungeonScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>
-              {activeSession ? `Floor ${activeSession.floor}` : 'Dungeon'}
+              {activeSession ? `Session ${activeSession.floor}` : 'Dungeon'}
             </Text>
-            {isBoss && <Badge label="⚠️ Boss Floor" variant="crimson" />}
+            {isBoss && <Badge label="⚠️ Boss Session" variant="crimson" />}
           </View>
           {activeSession && (
             <PressableButton
@@ -108,7 +108,7 @@ export default function DungeonScreen() {
               variant="ghost"
               size="sm"
               onPress={() => {
-                Alert.alert('Retreat?', 'You will lose progress on this floor.', [
+                Alert.alert('Retreat?', 'You will lose progress on this session.', [
                   { text: 'Stay', style: 'cancel' },
                   { text: 'Retreat', style: 'destructive', onPress: () => { useSessionStore.getState().clearSession(); router.replace('/(tabs)'); } },
                 ]);
@@ -135,7 +135,7 @@ export default function DungeonScreen() {
         {/* Finalize button */}
         {activeSession && allActioned && (
           <PressableButton
-            label="Complete Floor & Claim XP 🏆"
+            label="Complete Session & Claim XP 🏆"
             size="lg"
             style={styles.finalizeBtn}
             onPress={handleFinalize}
