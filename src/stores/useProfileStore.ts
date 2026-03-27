@@ -10,6 +10,7 @@ import {
   calculateMuscleXP,
   applyMuscleXP,
 } from '../lib/muscleXP';
+import { fetchLatestVersion } from '../lib/versionCheck';
 import type { QuestDifficulty } from '../types';
 
 interface MuscleXPResult {
@@ -20,6 +21,9 @@ interface ProfileStore {
   profile: UserProfile | null;
   character: Character | null;
   muscleXP: MuscleXP;
+  // Version checking (transient — not persisted, re-checked each launch)
+  latestVersion: string | null;
+  checkForUpdate: () => Promise<void>;
   setProfile: (profile: UserProfile) => void;
   updateMuscleStrength: (muscle: MuscleGroup, value: number) => void;
   awardXP: (amount: number) => { leveledUp: boolean; levelsGained: number };
@@ -39,6 +43,17 @@ export const useProfileStore = create<ProfileStore>()(
       profile: null,
       character: null,
       muscleXP: DEFAULT_MUSCLE_XP,
+      latestVersion: null,
+
+      checkForUpdate: async () => {
+        // Silently fetch latest version from GitHub; ignore all errors
+        try {
+          const latest = await fetchLatestVersion();
+          if (latest) set({ latestVersion: latest });
+        } catch {
+          // Network error — not a problem, banner simply won't show
+        }
+      },
 
       setProfile: (profile) => {
         const existing = get().character;
@@ -120,6 +135,7 @@ export const useProfileStore = create<ProfileStore>()(
         profile: state.profile,
         character: state.character,
         muscleXP: state.muscleXP,
+        // latestVersion intentionally excluded — re-checked on every launch
       }),
     }
   )

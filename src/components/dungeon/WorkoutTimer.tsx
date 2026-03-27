@@ -16,6 +16,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '@/lib/constants';
 import PressableButton from '@/components/ui/PressableButton';
 import { formatWeight } from '@/lib/weights';
+import { calculateSetBonus, calculateIsometricBonus } from '@/lib/muscleXP';
 import type { SetLog } from '@/types';
 import type { ExerciseLastLog } from '@/stores/useHistoryStore';
 
@@ -110,14 +111,25 @@ export default function WorkoutTimer({
   lastSessionLog,
   onComplete, onHalf, onSkip,
 }: WorkoutTimerProps) {
-  const [phase, setPhase]           = useState<Phase>('idle');
-  const [currentSet, setCurrentSet] = useState(1);
-  const [restLeft, setRestLeft]     = useState(restSeconds);
-  const [holdLeft, setHoldLeft]     = useState(holdSeconds ?? 0);
-  const [currentWeight, setWeight]  = useState<number | 'bodyweight'>(suggestedWeight);
-  const [loggedSets, setLoggedSets] = useState<SetLog[]>([]);
-  const intervalRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdElapsedRef              = useRef(0);
+  const recommendedReps              = parseInt(reps, 10) || 0;
+  const [phase, setPhase]            = useState<Phase>('idle');
+  const [currentSet, setCurrentSet]  = useState(1);
+  const [restLeft, setRestLeft]      = useState(restSeconds);
+  const [holdLeft, setHoldLeft]      = useState(holdSeconds ?? 0);
+  // Extra hold seconds after the isometric target is reached (for bonus XP)
+  const [holdComplete, setHoldComplete] = useState(false);
+  const [extraHoldSec, setExtraHoldSec] = useState(0);
+  const [currentWeight, setWeight]   = useState<number | 'bodyweight'>(suggestedWeight);
+  // Actual reps the user logged for this set (adjustable before marking done)
+  const [repsInput, setRepsInput]    = useState(recommendedReps);
+  const [loggedSets, setLoggedSets]  = useState<SetLog[]>([]);
+  // Bonus accumulated across all sets this exercise (shown in rest + done phases)
+  const [totalBonus, setTotalBonus]  = useState(0);
+  // Bonus for the most recently completed set (shown during rest)
+  const [lastSetBonus, setLastSetBonus] = useState(0);
+  const intervalRef                  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const extraHoldRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdElapsedRef               = useRef(0);
 
   const pulse = useSharedValue(1);
 
@@ -125,15 +137,30 @@ export default function WorkoutTimer({
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  function logCurrentSet(timeHeld?: number) {
+  const clearExtraHold = () => {
+    if (extraHoldRef.current) clearInterval(extraHoldRef.current);
+  };
+
+  /** Log the current set with actual reps/time and calculate bonus XP. */
+  function logCurrentSet(actualReps: number = repsInput, timeHeld?: number): SetLog[] {
+    let bonus = 0;
+    if (timeHeld !== undefined && holdSeconds) {
+      bonus = calculateIsometricBonus(timeHeld, holdSeconds);
+    } else {
+      bonus = calculateSetBonus(actualReps, recommendedReps);
+    }
+
     const entry: SetLog = {
       setNumber: currentSet,
-      repsCompleted: holdSeconds ? 0 : (parseInt(reps, 10) || 0),
+      repsCompleted: holdSeconds ? 0 : actualReps,
       ...(timeHeld !== undefined && { timeCompleted: timeHeld }),
       weight: currentWeight,
+      ...(bonus > 0 && { bonusXPEarned: bonus }),
     };
     const updated = [...loggedSets, entry];
     setLoggedSets(updated);
+    setLastSetBonus(bonus);
+    setTotalBonus((prev) => prev + bonus);
     return updated;
   }
 
@@ -141,6 +168,8 @@ export default function WorkoutTimer({
   const startHold = useCallback(() => {
     if (!holdSeconds) return;
     setHoldLeft(holdSeconds);
+    setHoldComplete(false);
+    setExtraHoldSec(0);
     holdElapsedRef.current = 0;
     let remaining = holdSeconds;
     clearTimer();
@@ -149,34 +178,21 @@ export default function WorkoutTimer({
       holdElapsedRef.current += 1;
       setHoldLeft(remaining);
       if (remaining <= 0) {
+        // Target reached — stop countdown but let user keep holding for bonus
         clearTimer();
-        // Auto-advance: log set and start rest (or finish)
-        const elapsed = holdSeconds;
-        const entry: SetLog = { setNumber: currentSet, repsCompleted: 0, timeCompleted: elapsed, weight: currentWeight };
-        const updated = [...loggedSets, entry];
-        setLoggedSets(updated);
-        if (currentSet >= sets) {
-          setPhase('done');
-        } else {
-          setPhase('resting');
-          setRestLeft(restSeconds);
-          let r = restSeconds;
-          intervalRef.current = setInterval(() => {
-            r -= 1;
-            setRestLeft(r);
-            if (r <= 0) {
-              clearTimer();
-              setCurrentSet(s => s + 1);
-              setPhase('active');
-            }
-          }, 1000);
-        }
+        setHoldComplete(true);
+        // Count up extra seconds for bonus XP
+        let extra = 0;
+        extraHoldRef.current = setInterval(() => {
+          extra += 1;
+          setExtraHoldSec(extra);
+        }, 1000);
       }
     }, 1000);
   }, [currentSet, sets, restSeconds, loggedSets, currentWeight, holdSeconds]);
 
   const startRest = useCallback(() => {
-    const updated = logCurrentSet();
+    const updated = logCurrentSet(repsInput);
     setPhase('resting');
     setRestLeft(restSeconds);
     let remaining = restSeconds;
@@ -190,11 +206,13 @@ export default function WorkoutTimer({
           setPhase('done');
         } else {
           setCurrentSet(s => s + 1);
+          setRepsInput(recommendedReps);
+          setLastSetBonus(0);
           setPhase('active');
         }
       }
     }, 1000);
-  }, [currentSet, sets, restSeconds, loggedSets, currentWeight, reps]);
+  }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps]);
 
   useEffect(() => {
     if (phase === 'active') {
@@ -208,7 +226,7 @@ export default function WorkoutTimer({
     }
   }, [phase, currentSet]);
 
-  useEffect(() => () => clearTimer(), []);
+  useEffect(() => () => { clearTimer(); clearExtraHold(); }, []);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
@@ -256,7 +274,7 @@ export default function WorkoutTimer({
           ))}
         </View>
 
-        <PressableButton label="⚔️  Start Quest" size="lg" onPress={() => setPhase('active')} style={styles.mainBtn} />
+        <PressableButton label="⚔️  Start Quest" size="lg" onPress={() => { setRepsInput(recommendedReps); setPhase('active'); }} style={styles.mainBtn} />
 
         <View style={styles.bail}>
           <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
@@ -270,19 +288,65 @@ export default function WorkoutTimer({
   if (phase === 'active') {
     // ── Static / isometric hold mode ──────────────────────────────────────
     if (holdSeconds) {
-      const progress = holdLeft / holdSeconds;
-      const ringColor = holdLeft <= 5 ? COLORS.crimson : COLORS.jade;
+      const progress = holdComplete ? 1 : holdLeft / holdSeconds;
+      const ringColor = holdComplete ? COLORS.gold : holdLeft <= 5 ? COLORS.crimson : COLORS.jade;
+
+      const releaseHold = () => {
+        clearTimer();
+        clearExtraHold();
+        const totalTime = holdSeconds + extraHoldSec;
+        const updated = logCurrentSet(repsInput, totalTime);
+        setHoldComplete(false);
+        setExtraHoldSec(0);
+        if (currentSet >= sets) {
+          setPhase('done');
+        } else {
+          setPhase('resting');
+          setRestLeft(restSeconds);
+          let r = restSeconds;
+          intervalRef.current = setInterval(() => {
+            r -= 1;
+            setRestLeft(r);
+            if (r <= 0) {
+              clearTimer();
+              setCurrentSet(s => s + 1);
+              setRepsInput(recommendedReps);
+              setPhase('active');
+            }
+          }, 1000);
+        }
+      };
+
       return (
         <View style={styles.container}>
           <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
-          <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
+          {holdComplete ? (
+            <Text style={[styles.holdLabel, { color: COLORS.gold }]}>TARGET HIT!</Text>
+          ) : (
+            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
+          )}
           <View style={styles.ringWrapper}>
             <RingTimer progress={progress} color={ringColor} />
             <View style={styles.ringCenter}>
-              <Text style={[styles.restNumber, { color: ringColor }]}>{holdLeft}</Text>
-              <Text style={styles.restSec}>sec</Text>
+              {holdComplete ? (
+                <>
+                  <Text style={[styles.restNumber, { color: COLORS.gold }]}>+{extraHoldSec}s</Text>
+                  <Text style={styles.restSec}>extra</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.restNumber, { color: ringColor }]}>{holdLeft}</Text>
+                  <Text style={styles.restSec}>sec</Text>
+                </>
+              )}
             </View>
           </View>
+
+          {holdComplete && extraHoldSec > 0 && (
+            <Text style={styles.bonusFlash}>
+              +{calculateIsometricBonus(holdSeconds + extraHoldSec, holdSeconds)} bonus XP 🔥
+            </Text>
+          )}
 
           <View style={styles.setDots}>
             {Array.from({ length: sets }).map((_, i) => (
@@ -291,15 +355,16 @@ export default function WorkoutTimer({
           </View>
 
           <PressableButton
-            label={currentSet < sets ? `✓ Done hold — rest ${restSeconds}s` : '✓ Final hold done!'}
-            variant="success"
+            label={holdComplete
+              ? (currentSet < sets ? '🏆 Release! — rest' : '🏆 Release! — done')
+              : (currentSet < sets ? `✓ Done hold — rest ${restSeconds}s` : '✓ Final hold done!')}
+            variant={holdComplete ? 'success' : 'success'}
             size="lg"
-            onPress={() => {
+            onPress={holdComplete ? releaseHold : () => {
+              // Early exit (no bonus — held for less than target)
               clearTimer();
-              const elapsed = holdSeconds - holdLeft;
-              const entry: SetLog = { setNumber: currentSet, repsCompleted: 0, timeCompleted: Math.max(elapsed, 1), weight: currentWeight };
-              const updated = [...loggedSets, entry];
-              setLoggedSets(updated);
+              const elapsed = Math.max(holdSeconds - holdLeft, 1);
+              const updated = logCurrentSet(repsInput, elapsed);
               if (currentSet >= sets) {
                 setPhase('done');
               } else {
@@ -312,6 +377,7 @@ export default function WorkoutTimer({
                   if (r <= 0) {
                     clearTimer();
                     setCurrentSet(s => s + 1);
+                    setRepsInput(recommendedReps);
                     setPhase('active');
                   }
                 }, 1000);
@@ -329,11 +395,35 @@ export default function WorkoutTimer({
     }
 
     // ── Normal rep mode ───────────────────────────────────────────────────
+    const previewBonus = calculateSetBonus(repsInput, recommendedReps);
     return (
       <View style={styles.container}>
         <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
         <Animated.Text style={[styles.goText, pulseStyle]}>GO!</Animated.Text>
-        <Text style={styles.repsText}>{reps} reps</Text>
+
+        {/* Rep counter — user adjusts actual reps done */}
+        <View style={styles.repSection}>
+          <Text style={styles.weightHeader}>REPS DONE</Text>
+          <View style={styles.repRow}>
+            <TouchableOpacity style={wStyles.btn} onPress={() => setRepsInput(r => Math.max(0, r - 1))} activeOpacity={0.7}>
+              <Text style={wStyles.btnText}>−</Text>
+            </TouchableOpacity>
+            <View style={styles.repDisplay}>
+              <Text style={styles.repNumber}>{repsInput}</Text>
+              {repsInput !== recommendedReps && (
+                <Text style={[styles.repTarget, { color: repsInput > recommendedReps ? COLORS.jade : COLORS.crimson }]}>
+                  target: {recommendedReps}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity style={wStyles.btn} onPress={() => setRepsInput(r => r + 1)} activeOpacity={0.7}>
+              <Text style={wStyles.btnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+          {previewBonus > 0 && (
+            <Text style={styles.bonusPreview}>+{previewBonus} bonus XP 🔥</Text>
+          )}
+        </View>
 
         {/* Per-set weight adjustment */}
         <View style={styles.weightSection}>
@@ -353,7 +443,7 @@ export default function WorkoutTimer({
           size="lg"
           onPress={() => {
             if (currentSet >= sets) {
-              const updated = logCurrentSet();
+              logCurrentSet(repsInput);
               setPhase('done');
             } else {
               startRest();
@@ -385,11 +475,19 @@ export default function WorkoutTimer({
           </View>
         </View>
 
-        {/* Show logged weight for last set */}
+        {/* Show logged weight + bonus for last set */}
         {loggedSets.length > 0 && (
-          <Text style={styles.lastSetInfo}>
-            Set {loggedSets[loggedSets.length - 1].setNumber}: {formatWeight(loggedSets[loggedSets.length - 1].weight, weightUnit)} logged ✓
-          </Text>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={styles.lastSetInfo}>
+              Set {loggedSets[loggedSets.length - 1].setNumber}: {formatWeight(loggedSets[loggedSets.length - 1].weight, weightUnit)}{' '}
+              · {loggedSets[loggedSets.length - 1].timeCompleted
+                ? `${loggedSets[loggedSets.length - 1].timeCompleted}s`
+                : `${loggedSets[loggedSets.length - 1].repsCompleted} reps`} ✓
+            </Text>
+            {lastSetBonus > 0 && (
+              <Text style={styles.bonusFlash}>+{lastSetBonus} bonus XP 🔥</Text>
+            )}
+          </View>
         )}
 
         <Text style={styles.subtitle}>Next: Set {currentSet + 1} of {sets}</Text>
@@ -400,6 +498,8 @@ export default function WorkoutTimer({
           onPress={() => {
             clearTimer();
             setCurrentSet(s => s + 1);
+            setRepsInput(recommendedReps);
+            setLastSetBonus(0);
             setPhase('active');
           }}
         />
@@ -413,15 +513,25 @@ export default function WorkoutTimer({
       <Text style={styles.doneIcon}>🏆</Text>
       <Text style={styles.doneText}>All sets complete!</Text>
 
-      {/* Summary of logged weights */}
+      {/* Summary of logged sets */}
       {loggedSets.length > 0 && (
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>YOUR WORKOUT</Text>
           {loggedSets.map(s => (
-            <Text key={s.setNumber} style={styles.summaryRow}>
-              Set {s.setNumber}  ·  {formatWeight(s.weight, weightUnit)}  ·  {s.timeCompleted ? `${s.timeCompleted}s hold` : `${s.repsCompleted} reps`}
-            </Text>
+            <View key={s.setNumber} style={styles.summaryRowContainer}>
+              <Text style={styles.summaryRow}>
+                Set {s.setNumber}  ·  {formatWeight(s.weight, weightUnit)}  ·  {s.timeCompleted ? `${s.timeCompleted}s hold` : `${s.repsCompleted} reps`}
+              </Text>
+              {(s.bonusXPEarned ?? 0) > 0 && (
+                <Text style={styles.summaryBonus}>+{s.bonusXPEarned} 🔥</Text>
+              )}
+            </View>
           ))}
+          {totalBonus > 0 && (
+            <View style={styles.totalBonusRow}>
+              <Text style={styles.totalBonusText}>Total bonus XP: +{totalBonus} 🔥</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -462,4 +572,16 @@ const styles = StyleSheet.create({
   summaryBox:    { width: '100%', backgroundColor: 'rgba(16,185,129,0.06)', borderRadius: 12, padding: 12, gap: 4, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
   summaryTitle:  { fontSize: 10, color: COLORS.jade, letterSpacing: 2, fontWeight: '700', marginBottom: 4 },
   summaryRow:    { fontSize: 13, color: COLORS.text, fontFamily: 'monospace' },
+  summaryRowContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryBonus:  { fontSize: 12, color: COLORS.jade, fontWeight: '700' },
+  totalBonusRow: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(16,185,129,0.2)', alignItems: 'center' },
+  totalBonusText:{ fontSize: 13, color: COLORS.jade, fontWeight: '800' },
+  // Rep counter
+  repSection:    { width: '100%', gap: 8, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.border },
+  repRow:        { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  repDisplay:    { flex: 1, alignItems: 'center' },
+  repNumber:     { fontSize: 32, fontWeight: '900', color: COLORS.text },
+  repTarget:     { fontSize: 11, marginTop: 1 },
+  bonusPreview:  { fontSize: 12, color: COLORS.jade, fontWeight: '700', textAlign: 'center' },
+  bonusFlash:    { fontSize: 14, color: COLORS.jade, fontWeight: '800', textAlign: 'center' },
 });

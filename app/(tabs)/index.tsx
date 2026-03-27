@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Linking, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import QuestCard from '@/components/dungeon/QuestCard';
@@ -12,15 +12,17 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
+import { getCurrentVersion, compareVersions, getReleasesUrl } from '@/lib/versionCheck';
 import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
 
 export default function DungeonTabScreen() {
-  const { profile, character, muscleXP, awardXP, awardMuscleXP, incrementFloorsCleared } = useProfileStore();
+  const { profile, character, muscleXP, awardXP, awardMuscleXP, incrementFloorsCleared, latestVersion } = useProfileStore();
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
   const addSession = useHistoryStore((s) => s.addSession);
   const { activeSession, isLoading, startSession, setLoading, setError, markQuest, finalizeSession } = useSessionStore();
 
   const [entering, setEntering] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const [summary, setSummary] = useState<{
     session: DungeonSession;
     xpGained: number;
@@ -32,6 +34,29 @@ export default function DungeonTabScreen() {
   if (!profile || !character) return null;
 
   const currentFloor = character.floorsCleared + 1;
+  const showUpdateBanner =
+    !bannerDismissed &&
+    latestVersion !== null &&
+    compareVersions(getCurrentVersion(), latestVersion);
+
+  // ── Update banner (shared across entrance and session views) ──────────────
+  const UpdateBanner = showUpdateBanner ? (
+    <View style={styles.updateBanner}>
+      <Text style={styles.updateBannerEmoji}>🎉</Text>
+      <Text style={styles.updateBannerText}>
+        v{latestVersion} available
+      </Text>
+      <Pressable
+        style={styles.updateBannerCta}
+        onPress={() => Linking.openURL(getReleasesUrl())}
+      >
+        <Text style={styles.updateBannerCtaText}>Download</Text>
+      </Pressable>
+      <Pressable hitSlop={12} onPress={() => setBannerDismissed(true)}>
+        <Text style={styles.updateBannerClose}>✕</Text>
+      </Pressable>
+    </View>
+  ) : null;
   const isBoss = currentFloor % 5 === 0 && currentFloor > 0;
   const classDef = CLASS_DEFINITIONS[character.class];
 
@@ -106,6 +131,7 @@ export default function DungeonTabScreen() {
 
     return (
       <SafeAreaView style={styles.safe}>
+        {UpdateBanner}
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
           <View style={styles.sessionHeader}>
@@ -176,6 +202,7 @@ export default function DungeonTabScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {UpdateBanner}
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Class identity */}
@@ -319,6 +346,30 @@ const styles = StyleSheet.create({
   xpNum: { fontSize: 22, fontWeight: '800', color: COLORS.gold },
   xpLbl: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   xpDivider: { width: 1, backgroundColor: COLORS.border },
+
+  // Update banner
+  updateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99,102,241,0.15)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99,102,241,0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  updateBannerEmoji: { fontSize: 16 },
+  updateBannerText: { flex: 1, fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  updateBannerCta: {
+    backgroundColor: 'rgba(99,102,241,0.25)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.4)',
+  },
+  updateBannerCtaText: { fontSize: 12, color: '#a5b4fc', fontWeight: '700' },
+  updateBannerClose: { fontSize: 16, color: COLORS.textMuted, paddingHorizontal: 4 },
 
   // Active session
   sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

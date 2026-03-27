@@ -49,13 +49,23 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
     if (!session) return;
     const quests = session.quests.map((q) => {
       if (q.id !== questId) return q;
-      const xpEarned =
+      const baseXP =
         status === 'complete'
           ? getXPReward(q.difficulty)
           : status === 'half_complete'
           ? getXPReward(q.difficulty, true)
           : 0;
-      return { ...q, status, xpEarned, ...(loggedSets ? { loggedSets } : {}) };
+      // Sum per-set bonus XP from logged sets (linear +1 per extra rep/+1 per 5s)
+      const bonusXP = loggedSets
+        ? loggedSets.reduce((acc, s) => acc + (s.bonusXPEarned ?? 0), 0)
+        : 0;
+      return {
+        ...q,
+        status,
+        xpEarned: baseXP + bonusXP,
+        ...(bonusXP > 0 && { bonusXPAwarded: bonusXP }),
+        ...(loggedSets ? { loggedSets } : {}),
+      };
     });
     set({ activeSession: { ...session, quests } });
   },

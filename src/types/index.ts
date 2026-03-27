@@ -74,8 +74,9 @@ export interface Character {
 export interface SetLog {
   setNumber: number;
   repsCompleted: number;
-  timeCompleted?: number; // seconds, for static/isometric exercises
+  timeCompleted?: number;    // seconds, for static/isometric exercises
   weight: number | 'bodyweight'; // kg or bodyweight
+  bonusXPEarned?: number;   // bonus XP awarded for exceeding recommended reps/time
 }
 
 export interface Quest {
@@ -94,6 +95,7 @@ export interface Quest {
   xpEarned: number;
   suggestedWeight?: number | 'bodyweight'; // kg
   loggedSets?: SetLog[];
+  bonusXPAwarded?: number;  // total bonus XP earned across all sets for this quest
 }
 
 export interface DungeonSession {

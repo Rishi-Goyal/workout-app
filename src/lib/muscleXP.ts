@@ -137,6 +137,31 @@ export function applyMuscleXP(
   return { muscleXP: updated, levelUps };
 }
 
+// ─── Per-set bonus XP ────────────────────────────────────────────────────────
+
+/**
+ * Bonus XP for exceeding the recommended rep target in a single set.
+ * Linear: +1 XP per extra rep above the recommendation.
+ * Returns 0 if the user met or missed the target.
+ */
+export function calculateSetBonus(
+  repsCompleted: number,
+  recommendedReps: number,
+): number {
+  return Math.max(0, repsCompleted - recommendedReps);
+}
+
+/**
+ * Bonus XP for holding longer than the target on an isometric exercise.
+ * +1 XP per 5 extra seconds above the target.
+ */
+export function calculateIsometricBonus(
+  timeCompleted: number,
+  recommendedTime: number,
+): number {
+  return Math.floor(Math.max(0, timeCompleted - recommendedTime) / 5);
+}
+
 /** Get progress to next level as a 0–100 percentage */
 export function muscleXPProgress(muscle: { xp: number; level: number }): number {
   const needed = muscleXPToNext(muscle.level);
