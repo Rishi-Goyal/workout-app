@@ -175,21 +175,21 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
         {quest.status === 'pending' && !disabled && (
           <Animated.View entering={FadeIn} style={styles.actions}>
             <PressableButton
-              label="✓ Complete"
+              label="⚔️ Accept Quest"
               variant="primary"
               size="sm"
               style={{ flex: 2 }}
               onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
             />
             <PressableButton
-              label="½"
+              label="↕ Swap"
               variant="ghost"
               size="sm"
               style={{ flex: 1 }}
               onPress={() => setShowSwap(!showSwap)}
             />
             <PressableButton
-              label="Skip"
+              label="✕ Skip"
               variant="ghost"
               size="sm"
               style={{ flex: 1, borderColor: COLORS.crimson }}

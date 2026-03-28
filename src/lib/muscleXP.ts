@@ -144,25 +144,95 @@ export function applyMuscleXP(
 
 /**
  * Bonus XP for exceeding the recommended rep target in a single set.
- * Linear: +1 XP per extra rep above the recommendation.
+ * +2 XP per extra rep above the recommendation.
  * Returns 0 if the user met or missed the target.
  */
 export function calculateSetBonus(
   repsCompleted: number,
   recommendedReps: number,
 ): number {
-  return Math.max(0, repsCompleted - recommendedReps);
+  return Math.max(0, repsCompleted - recommendedReps) * 2;
 }
 
 /**
  * Bonus XP for holding longer than the target on an isometric exercise.
- * +1 XP per 5 extra seconds above the target.
+ * +2 XP per 5 extra seconds above the target.
  */
 export function calculateIsometricBonus(
   timeCompleted: number,
   recommendedTime: number,
 ): number {
-  return Math.floor(Math.max(0, timeCompleted - recommendedTime) / 5);
+  return Math.floor(Math.max(0, timeCompleted - recommendedTime) / 5) * 2;
+}
+
+// ─── Performance-based XP calculation ────────────────────────────────────────
+
+/**
+ * Calculate total XP earned based on actual sets × reps logged.
+ *
+ * Formula:
+ *   1. For each set: effectiveReps = min(actual, target)  — counts toward base
+ *   2. performanceRatio = sum(effectiveReps) / (targetSets × targetRepsPerSet)
+ *   3. baseEarned = floor(baseXP × performanceRatio)
+ *   4. bonusXP = sum(max(0, actual − target) × 2 per set)  — reward overachievement
+ *
+ * This means:
+ *   - 5×5 hitting all 5 reps every set → 100 % of baseXP
+ *   - 5×5 hitting 3 reps on 2 sets, 0 on rest → 6/25 = 24 % of baseXP
+ *   - 5×5 hitting 7 reps on every set → 100 % base + 2×5×2 = +20 bonusXP
+ *
+ * For isometric holds the same formula applies using `timeCompleted` instead
+ * of `repsCompleted` (caller passes `reps = String(holdSeconds)`).
+ */
+export function calculatePerformanceXP(
+  loggedSets: import('../types').SetLog[],
+  targetSets: number,
+  targetRepsStr: string,
+  baseXP: number,
+  holdSeconds?: number,
+): number {
+  const targetReps = holdSeconds ?? parseInt(targetRepsStr, 10) ?? 0;
+  if (!targetReps || targetSets === 0) return baseXP;
+
+  let effectiveTotal = 0;
+  let bonusXP = 0;
+
+  for (const s of loggedSets) {
+    const actual = holdSeconds && s.timeCompleted !== undefined
+      ? s.timeCompleted
+      : s.repsCompleted;
+    effectiveTotal += Math.min(actual, targetReps);
+    bonusXP += Math.max(0, actual - targetReps) * 2;
+  }
+
+  const maxTotal = targetSets * targetReps;
+  const ratio = Math.min(1, effectiveTotal / maxTotal);
+
+  return Math.floor(baseXP * ratio) + bonusXP;
+}
+
+/**
+ * Estimated XP contribution for a single set in the done-phase breakdown.
+ *
+ * Proportionally splits baseXP across targetSets, then applies the same
+ * performance ratio and overachievement bonus as calculatePerformanceXP.
+ *
+ * @param actualReps  - reps/seconds the user completed for this set (0 is valid)
+ * @param targetReps  - recommended reps or hold seconds
+ * @param baseXP      - full quest xpReward (e.g. 50 / 100 / 150 / 300)
+ * @param targetSets  - total sets for the exercise
+ */
+export function calculateSetXP(
+  actualReps: number,
+  targetReps: number,
+  baseXP: number,
+  targetSets: number,
+): number {
+  if (targetReps === 0 || targetSets === 0) return 0;
+  const effective = Math.min(actualReps, targetReps);
+  const base = Math.floor(baseXP * (effective / (targetReps * targetSets)));
+  const bonus = Math.max(0, actualReps - targetReps) * 2;
+  return base + bonus;
 }
 
 /** Get progress to next level as a 0–100 percentage */

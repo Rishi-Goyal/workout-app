@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeModules, Platform } from 'react-native';
 import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog } from '../types';
 import { getXPReward } from '../lib/xp';
+import { calculatePerformanceXP } from '../lib/muscleXP';
 
 const WidgetBridge = Platform.OS === 'android' ? NativeModules.WidgetBridge : null;
 
@@ -68,20 +69,29 @@ export const useSessionStore = create<SessionStore>()(
         if (!session) return;
         const quests = session.quests.map((q) => {
           if (q.id !== questId) return q;
-          const baseXP =
-            status === 'complete'
-              ? getXPReward(q.difficulty)
-              : status === 'half_complete'
-              ? getXPReward(q.difficulty, true)
-              : 0;
-          const bonusXP = loggedSets
-            ? loggedSets.reduce((acc, s) => acc + (s.bonusXPEarned ?? 0), 0)
-            : 0;
+
+          let xpEarned = 0;
+          if (status === 'skipped') {
+            xpEarned = 0;
+          } else if (loggedSets && loggedSets.length > 0) {
+            // Performance-based: XP scales with actual reps/time completed
+            xpEarned = calculatePerformanceXP(
+              loggedSets,
+              q.sets,
+              q.reps,
+              getXPReward(q.difficulty),
+              q.holdSeconds,
+            );
+          } else if (status === 'complete') {
+            xpEarned = getXPReward(q.difficulty);
+          } else if (status === 'half_complete') {
+            xpEarned = getXPReward(q.difficulty, true);
+          }
+
           return {
             ...q,
             status,
-            xpEarned: baseXP + bonusXP,
-            ...(bonusXP > 0 && { bonusXPAwarded: bonusXP }),
+            xpEarned,
             ...(loggedSets ? { loggedSets } : {}),
           };
         });
