@@ -4,6 +4,7 @@ import { COLORS, RADIUS } from '@/lib/constants';
 interface PressableButtonProps {
   onPress?: () => void;
   label: string;
+  accessibilityHint?: string;
   variant?: 'primary' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
@@ -32,6 +33,7 @@ const BORDER: Record<string, string | undefined> = {
 export default function PressableButton({
   onPress,
   label,
+  accessibilityHint,
   variant = 'primary',
   size = 'md',
   loading,
@@ -46,6 +48,10 @@ export default function PressableButton({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       style={({ pressed }) => [
         styles.base,
         {
