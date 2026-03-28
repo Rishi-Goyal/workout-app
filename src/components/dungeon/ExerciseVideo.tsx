@@ -10,7 +10,6 @@ import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { COLORS } from '@/lib/constants';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
-import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
 import type { MuscleGroup } from '@/types';
 
 const TYPE_COLOR: Record<ExerciseType, string> = {
@@ -81,21 +80,8 @@ export default function ExerciseVideo({ exerciseId, exerciseName, muscles }: Exe
     });
   };
 
-  // No curated video: show an animated movement preview via ExerciseAnimator
-  if (!videoId) {
-    return (
-      <View style={styles.noVideoBox}>
-        <View style={[styles.noVideoLabel, { borderColor: color + '30', backgroundColor: color + '10' }]}>
-          <Text style={styles.noVideoIcon}>🎬</Text>
-          <View>
-            <Text style={[styles.noVideoTitle, { color }]}>No tutorial video</Text>
-            <Text style={styles.noVideoSub}>Showing animated movement preview</Text>
-          </View>
-        </View>
-        <ExerciseAnimator exerciseName={exerciseName} muscles={muscles} />
-      </View>
-    );
-  }
+  // No curated video — return nothing; InstructionsPanel handles the text guide
+  if (!videoId) return null;
 
   // YouTube thumbnail — always available at hqdefault (480×360)
   const thumbnailUri = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;

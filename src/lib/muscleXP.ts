@@ -15,7 +15,7 @@ import type { MuscleGroup, QuestDifficulty } from '@/types';
 
 // ─── Muscle XP types ─────────────────────────────────────────────────────────
 
-export type MuscleXP = Record<MuscleGroup, { xp: number; level: number }>;
+export type MuscleXP = Record<MuscleGroup, { xp: number; level: number; lastTrained?: string }>;
 
 export const DEFAULT_MUSCLE_XP: MuscleXP = {
   chest:      { xp: 0, level: 1 },
@@ -118,9 +118,12 @@ export function applyMuscleXP(
   const updated = { ...current };
   const levelUps: Array<{ muscle: MuscleGroup; newLevel: number }> = [];
 
+  const now = new Date().toISOString();
+
   for (const award of awards) {
     const m = { ...updated[award.muscle] };
     m.xp += award.amount;
+    m.lastTrained = now;
 
     // Level up loop
     let needed = muscleXPToNext(m.level);

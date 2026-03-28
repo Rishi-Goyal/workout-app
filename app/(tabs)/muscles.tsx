@@ -41,19 +41,29 @@ function zoneAvg(zone: ZoneConfig, muscleXP: MuscleXP): number {
 
 // ─── Recovery status logic ────────────────────────────────────────────────────
 
-/**
- * Since `lastTrained` is not stored on MuscleXP, we use xp > 0 as a proxy for
- * "has been trained at some point." Without a timestamp we cannot determine
- * Fatigued vs. Ready, so xp > 0 maps to Recovered (best available signal).
- */
-function getRecoveryStatus(hasTrained: boolean): {
-  badge: 'jade' | 'crimson' | 'gold';
+function formatTimeAgo(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  return `${days}d ago`;
+}
+
+function getRecoveryStatus(lastTrained?: string): {
+  badge: 'jade' | 'crimson' | 'gold' | 'muted';
   label: string;
   timeAgo: string;
 } {
-  if (!hasTrained) return { badge: 'jade', label: 'Recovered', timeAgo: '—' };
-  // No timestamp available — cannot distinguish Fatigued/Ready/Recovered
-  return { badge: 'jade', label: 'Recovered', timeAgo: '—' };
+  if (!lastTrained) return { badge: 'muted', label: 'Not trained', timeAgo: '—' };
+
+  const hoursAgo = (Date.now() - new Date(lastTrained).getTime()) / (1000 * 60 * 60);
+  const timeAgo = formatTimeAgo(lastTrained);
+
+  if (hoursAgo < 24) return { badge: 'crimson', label: 'Fatigued', timeAgo };
+  if (hoursAgo < 48) return { badge: 'gold', label: 'Recovering', timeAgo };
+  return { badge: 'jade', label: 'Recovered', timeAgo };
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -73,8 +83,7 @@ export default function MusclesScreen() {
         <Card padding={16}>
           <SectionLabel>RECOVERY STATUS</SectionLabel>
           {ALL_MUSCLES.map((muscle, i) => {
-            const hasTrained = (muscleXP[muscle]?.xp ?? 0) > 0;
-            const { badge, label, timeAgo } = getRecoveryStatus(hasTrained);
+            const { badge, label, timeAgo } = getRecoveryStatus(muscleXP[muscle]?.lastTrained);
             const isLast = i === ALL_MUSCLES.length - 1;
             return (
               <View
