@@ -31,7 +31,6 @@ interface WorkoutTimerProps {
   weightUnit?: 'kg' | 'lbs';
   lastSessionLog?: ExerciseLastLog | null;
   onComplete: (loggedSets: SetLog[]) => void;
-  onHalf: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
 }
 
@@ -109,7 +108,7 @@ export default function WorkoutTimer({
   suggestedWeight = 'bodyweight',
   weightUnit = 'kg',
   lastSessionLog,
-  onComplete, onHalf, onSkip,
+  onComplete, onSkip,
 }: WorkoutTimerProps) {
   const recommendedReps              = parseInt(reps, 10) || 0;
   const [phase, setPhase]            = useState<Phase>('idle');
@@ -290,10 +289,7 @@ export default function WorkoutTimer({
 
         <PressableButton label="⚔️  Start Quest" size="lg" onPress={() => { setRepsInput(recommendedReps); setPhase('active'); }} style={styles.mainBtn} />
 
-        <View style={styles.bail}>
-          <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
-          <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
-        </View>
+        <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
       </View>
     );
   }
@@ -335,10 +331,7 @@ export default function WorkoutTimer({
               style={styles.mainBtn}
             />
 
-            <View style={styles.bail}>
-              <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
-              <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
-            </View>
+            <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
           </View>
         );
       }
@@ -441,10 +434,7 @@ export default function WorkoutTimer({
             style={styles.mainBtn}
           />
 
-          <View style={styles.bail}>
-            <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
-            <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
-          </View>
+          <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
         </View>
       );
     }
@@ -507,10 +497,7 @@ export default function WorkoutTimer({
           style={styles.mainBtn}
         />
 
-        <View style={styles.bail}>
-          <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
-          <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
-        </View>
+        <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
       </View>
     );
   }
@@ -680,7 +667,6 @@ const styles = StyleSheet.create({
   dotDone:      { backgroundColor: COLORS.jade },
   dotActive:    { backgroundColor: COLORS.gold, transform: [{ scale: 1.3 }] },
   mainBtn:      { minWidth: 220 },
-  bail:         { flexDirection: 'row', gap: 10, marginTop: 4 },
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
   holdLabel:    { fontSize: 28, fontWeight: '900', letterSpacing: 4 },
   holdReadyCard: { alignItems: 'center', gap: 6, backgroundColor: 'rgba(16,185,129,0.07)', borderRadius: 14, padding: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', width: '100%' },

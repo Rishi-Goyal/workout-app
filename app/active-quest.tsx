@@ -190,7 +190,6 @@ export default function ActiveQuestScreen() {
             weightUnit={weightUnit}
             lastSessionLog={lastSessionLog}
             onComplete={logs => handleMark('complete', logs)}
-            onHalf={logs => handleMark('half_complete', logs)}
             onSkip={() =>
               Alert.alert(
                 'Skip Quest?',
@@ -205,8 +204,8 @@ export default function ActiveQuestScreen() {
         </View>
 
         <View style={styles.xpRow}>
-          <Text style={styles.xpLabel}>Full completion</Text>
-          <Text style={styles.xpValue}>+{quest.xpReward} XP</Text>
+          <Text style={styles.xpLabel}>XP scales with reps completed</Text>
+          <Text style={styles.xpValue}>up to +{quest.xpReward} XP</Text>
         </View>
 
       </ScrollView>

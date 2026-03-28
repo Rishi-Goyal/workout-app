@@ -154,8 +154,8 @@ export default function DungeonTabScreen() {
       <SafeAreaView style={styles.safe}>
         {UpdateBanner}
         <View style={styles.sessionTopHeader}>
-          <View>
-            <Text style={styles.sessionRoutineName}>
+          <View style={styles.sessionHeaderLeft}>
+            <Text style={styles.sessionRoutineName} numberOfLines={2} ellipsizeMode="tail">
               {routineInfoForSession.splitName}
             </Text>
             <Text style={styles.sessionFloorLabel}>
@@ -420,7 +420,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  sessionRoutineName: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  sessionHeaderLeft: { flex: 1, paddingRight: 12 },
+  sessionRoutineName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   sessionFloorLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   sessionScroll: { padding: 16, gap: 16, paddingBottom: 36 },
   questList: { gap: 12 },

@@ -182,14 +182,14 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
               onPress={() => router.push({ pathname: '/active-quest', params: { questId: quest.id } })}
             />
             <PressableButton
-              label="½"
+              label="↕ Swap"
               variant="ghost"
               size="sm"
               style={{ flex: 1 }}
               onPress={() => setShowSwap(!showSwap)}
             />
             <PressableButton
-              label="Skip"
+              label="✕ Skip"
               variant="ghost"
               size="sm"
               style={{ flex: 1, borderColor: COLORS.crimson }}
