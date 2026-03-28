@@ -9,6 +9,7 @@ interface PressableButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  accessibilityHint?: string;
 }
 
 const BG: Record<string, string> = {
@@ -37,6 +38,7 @@ export default function PressableButton({
   loading,
   disabled,
   style,
+  accessibilityHint,
 }: PressableButtonProps) {
   const fontSize = size === 'sm' ? 12 : size === 'lg' ? 16 : 14;
   const paddingV = size === 'sm' ? 8 : size === 'lg' ? 15 : 11;
@@ -46,6 +48,10 @@ export default function PressableButton({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       style={({ pressed }) => [
         styles.base,
         {
