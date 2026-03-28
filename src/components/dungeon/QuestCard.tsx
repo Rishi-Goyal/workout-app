@@ -175,7 +175,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
         {quest.status === 'pending' && !disabled && (
           <Animated.View entering={FadeIn} style={styles.actions}>
             <PressableButton
-              label="✓ Complete"
+              label="⚔️ Accept Quest"
               variant="primary"
               size="sm"
               style={{ flex: 2 }}

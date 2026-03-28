@@ -189,6 +189,7 @@ export default function ActiveQuestScreen() {
             suggestedWeight={suggestedWeight}
             weightUnit={weightUnit}
             lastSessionLog={lastSessionLog}
+            baseXP={quest.xpReward}
             onComplete={logs => handleMark('complete', logs)}
             onSkip={() =>
               Alert.alert(
@@ -204,7 +205,7 @@ export default function ActiveQuestScreen() {
         </View>
 
         <View style={styles.xpRow}>
-          <Text style={styles.xpLabel}>XP scales with reps completed</Text>
+          <Text style={styles.xpLabel}>XP per set · scales with reps</Text>
           <Text style={styles.xpValue}>up to +{quest.xpReward} XP</Text>
         </View>
 

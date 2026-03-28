@@ -211,6 +211,30 @@ export function calculatePerformanceXP(
   return Math.floor(baseXP * ratio) + bonusXP;
 }
 
+/**
+ * Estimated XP contribution for a single set in the done-phase breakdown.
+ *
+ * Proportionally splits baseXP across targetSets, then applies the same
+ * performance ratio and overachievement bonus as calculatePerformanceXP.
+ *
+ * @param actualReps  - reps/seconds the user completed for this set (0 is valid)
+ * @param targetReps  - recommended reps or hold seconds
+ * @param baseXP      - full quest xpReward (e.g. 50 / 100 / 150 / 300)
+ * @param targetSets  - total sets for the exercise
+ */
+export function calculateSetXP(
+  actualReps: number,
+  targetReps: number,
+  baseXP: number,
+  targetSets: number,
+): number {
+  if (targetReps === 0 || targetSets === 0) return 0;
+  const effective = Math.min(actualReps, targetReps);
+  const base = Math.floor(baseXP * (effective / (targetReps * targetSets)));
+  const bonus = Math.max(0, actualReps - targetReps) * 2;
+  return base + bonus;
+}
+
 /** Get progress to next level as a 0–100 percentage */
 export function muscleXPProgress(muscle: { xp: number; level: number }): number {
   const needed = muscleXPToNext(muscle.level);
