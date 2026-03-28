@@ -1,9 +1,11 @@
 /**
- * Active Quest Screen — shows exercise animation, anatomical muscle map, and set/rest timer.
- * Computes suggested starting weight from user profile.
- * Saves logged sets per quest on completion.
+ * Active Quest Screen — exercise animation, anatomical muscle map, and set/rest timer.
+ *
+ * Tabs: Video+Steps (combined), Muscles, Guide
+ * The Video tab shows the YouTube thumbnail + inline steps/form cues. When no
+ * curated video exists an animated motion preview replaces the thumbnail.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -59,7 +61,7 @@ export default function ActiveQuestScreen() {
   const { profile } = useProfileStore();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
-  const [tab, setTab] = useState<'video' | 'steps' | 'muscles' | 'guide'>('video');
+  const [tab, setTab] = useState<'video' | 'muscles' | 'guide'>('video');
 
   if (!quest) {
     return (
@@ -72,15 +74,15 @@ export default function ActiveQuestScreen() {
     );
   }
 
-  // Use the exercise DB's equipment field for accurate bodyweight detection.
-  // The keyword-based getSuggestedWeight check uses the user's equipment list
-  // which is wrong for exercises like Back Extension (bodyweight_only) when
-  // the user has a barbell.
   const exerciseEntry = quest.exerciseId ? EXERCISE_MAP[quest.exerciseId] : undefined;
+
+  // Isometric holds use bodyweight as resistance — always suggest 'bodyweight'.
+  // For other exercises, check if purely bodyweight_only equipment, else calculate.
   const isBodyweightOnly =
-    exerciseEntry !== undefined &&
-    exerciseEntry.equipment.length > 0 &&
-    exerciseEntry.equipment.every(e => e === 'bodyweight_only');
+    !!quest.holdSeconds ||
+    (exerciseEntry !== undefined &&
+      exerciseEntry.equipment.length > 0 &&
+      exerciseEntry.equipment.every(e => e === 'bodyweight_only'));
 
   const suggestedWeight: number | 'bodyweight' = isBodyweightOnly
     ? 'bodyweight'
@@ -102,12 +104,8 @@ export default function ActiveQuestScreen() {
 
   // ── Persistent workout notification ────────────────────────────────────────
   useEffect(() => {
-    // Show notification as soon as the exercise screen opens
     showWorkoutNotification(quest.exerciseName, 1, quest.sets);
-    return () => {
-      // Dismiss when navigating away (complete, skip, or back)
-      dismissWorkoutNotification();
-    };
+    return () => { dismissWorkoutNotification(); };
   }, [quest.exerciseName, quest.sets]);
 
   function handleMark(status: QuestStatus, logs: SetLog[] = []) {
@@ -131,20 +129,14 @@ export default function ActiveQuestScreen() {
           </Text>
         </View>
 
+        {/* 3 tabs: Video+Steps combined, Muscles, Guide */}
         <View style={styles.tabs}>
           <PressableButton
-            label="▶ Video"
+            label="📹 Video"
             variant={tab === 'video' ? 'primary' : 'ghost'}
             size="sm"
             style={styles.tab}
             onPress={() => setTab('video')}
-          />
-          <PressableButton
-            label="📋 Steps"
-            variant={tab === 'steps' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('steps')}
           />
           <PressableButton
             label="💪 Muscles"
@@ -166,18 +158,20 @@ export default function ActiveQuestScreen() {
           entering={FadeIn.duration(220)}
           exiting={FadeOut.duration(120)}
           key={tab}
-          style={[styles.tabContent, tab !== 'muscles' && tab !== 'guide' && styles.tabContentFlush]}
+          style={[
+            styles.tabContent,
+            tab === 'muscles' && styles.tabContentCentered,
+          ]}
         >
+          {/* Video tab: thumbnail (or animated fallback) + inline steps */}
           {tab === 'video' && (
-            <ExerciseVideo
-              exerciseId={quest.exerciseId ?? ''}
-              exerciseName={quest.exerciseName}
-              muscles={quest.targetMuscles as MuscleGroup[]}
-              fallbackSteps={exerciseEntry?.steps ?? exerciseEntry?.formCues ?? []}
-            />
-          )}
-          {tab === 'steps' && (
-            <View style={styles.stepsCard}>
+            <View style={styles.videoTabContent}>
+              <ExerciseVideo
+                exerciseId={quest.exerciseId ?? ''}
+                exerciseName={quest.exerciseName}
+                muscles={quest.targetMuscles as MuscleGroup[]}
+              />
+              <View style={styles.stepsDivider} />
               <InstructionsPanel
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}
@@ -185,12 +179,14 @@ export default function ActiveQuestScreen() {
               />
             </View>
           )}
+
           {tab === 'muscles' && (
             <MuscleMap
               targets={quest.targetMuscles as MuscleGroup[]}
               secondary={secondary}
             />
           )}
+
           {tab === 'guide' && (
             <ExerciseAnimator
               exerciseName={quest.exerciseName}
@@ -250,20 +246,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.card,
     padding: 16,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-    minHeight: 220,
-    justifyContent: 'center',
   },
-  // Video + Steps tabs have left-aligned, naturally-sized content
-  tabContentFlush: {
-    alignItems: 'stretch',
-    justifyContent: 'flex-start',
-    minHeight: 0,
-    padding: 0,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
+  tabContentCentered: {
+    alignItems: 'center',
+  },
+  videoTabContent: {
+    gap: 16,
+  },
+  stepsDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 2,
   },
   divider:      { height: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timerSection: {
@@ -274,14 +269,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  stepsCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  xpRow:        {
+  xpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -292,6 +280,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(59,130,246,0.15)',
   },
-  xpLabel:      { fontSize: 13, color: COLORS.textMuted },
-  xpValue:      { fontSize: 18, fontWeight: '700', color: COLORS.gold },
+  xpLabel: { fontSize: 13, color: COLORS.textMuted },
+  xpValue: { fontSize: 18, fontWeight: '700', color: COLORS.gold },
 });

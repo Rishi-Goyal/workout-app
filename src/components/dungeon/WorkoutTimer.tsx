@@ -119,6 +119,8 @@ export default function WorkoutTimer({
   // Extra hold seconds after the isometric target is reached (for bonus XP)
   const [holdComplete, setHoldComplete] = useState(false);
   const [extraHoldSec, setExtraHoldSec] = useState(0);
+  // Whether the user has pressed "Start Hold" — prevents auto-start of isometric timer
+  const [holdStarted, setHoldStarted] = useState(false);
   const [currentWeight, setWeight]   = useState<number | 'bodyweight'>(suggestedWeight);
   // Actual reps the user logged for this set (adjustable before marking done)
   const [repsInput, setRepsInput]    = useState(recommendedReps);
@@ -216,10 +218,16 @@ export default function WorkoutTimer({
     }, 1000);
   }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps]);
 
+  // Reset holdStarted when moving to the next set so each set needs a fresh press
+  useEffect(() => {
+    if (phase === 'active') setHoldStarted(false);
+  }, [currentSet]);
+
   useEffect(() => {
     if (phase === 'active') {
       if (holdSeconds) {
-        startHold();
+        // Only start the countdown once the user explicitly presses "Start Hold"
+        if (holdStarted) startHold();
       } else {
         pulse.value = withTiming(1.15, { duration: 500, easing: Easing.inOut(Easing.quad) }, () => {
           pulse.value = withTiming(1, { duration: 500 });
@@ -230,7 +238,7 @@ export default function WorkoutTimer({
     if (phase === 'done') {
       setEditedSets(prev => prev.length === 0 ? [...loggedSets] : prev);
     }
-  }, [phase, currentSet]);
+  }, [phase, currentSet, holdStarted]);
 
   useEffect(() => () => { clearTimer(); clearExtraHold(); }, []);
 
@@ -294,6 +302,47 @@ export default function WorkoutTimer({
   if (phase === 'active') {
     // ── Static / isometric hold mode ──────────────────────────────────────
     if (holdSeconds) {
+      // ── Pre-start: user hasn't pressed "Start Hold" yet ─────────────────
+      if (!holdStarted) {
+        return (
+          <View style={styles.container}>
+            <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
+            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>ISOMETRIC HOLD</Text>
+            <View style={styles.holdReadyCard}>
+              <Text style={styles.holdTargetIcon}>⏱️</Text>
+              <Text style={styles.holdTargetText}>{holdSeconds}s hold</Text>
+              <Text style={styles.holdReadySub}>
+                Get into position, then press Start when ready.
+              </Text>
+            </View>
+
+            <View style={styles.weightSection}>
+              <Text style={styles.weightHeader}>WEIGHT THIS SET</Text>
+              <WeightSelector value={currentWeight} onChange={setWeight} unit={weightUnit} />
+            </View>
+
+            <View style={styles.setDots}>
+              {Array.from({ length: sets }).map((_, i) => (
+                <View key={i} style={[styles.dot, i < currentSet - 1 && styles.dotDone, i === currentSet - 1 && styles.dotActive]} />
+              ))}
+            </View>
+
+            <PressableButton
+              label="▶  Start Hold"
+              variant="success"
+              size="lg"
+              onPress={() => setHoldStarted(true)}
+              style={styles.mainBtn}
+            />
+
+            <View style={styles.bail}>
+              <PressableButton label="½ Half complete" variant="ghost" size="sm" onPress={() => onHalf(loggedSets)} />
+              <PressableButton label="✕ Skip" variant="danger" size="sm" onPress={onSkip} />
+            </View>
+          </View>
+        );
+      }
+
       const progress = holdComplete ? 1 : holdLeft / holdSeconds;
       const ringColor = holdComplete ? COLORS.gold : holdLeft <= 5 ? COLORS.crimson : COLORS.jade;
 
@@ -634,6 +683,10 @@ const styles = StyleSheet.create({
   bail:         { flexDirection: 'row', gap: 10, marginTop: 4 },
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
   holdLabel:    { fontSize: 28, fontWeight: '900', letterSpacing: 4 },
+  holdReadyCard: { alignItems: 'center', gap: 6, backgroundColor: 'rgba(16,185,129,0.07)', borderRadius: 14, padding: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', width: '100%' },
+  holdTargetIcon: { fontSize: 40 },
+  holdTargetText: { fontSize: 28, fontWeight: '900', color: COLORS.jade },
+  holdReadySub:  { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
   goText:       { fontSize: 56, fontWeight: '900', color: COLORS.gold },
   repsText:     { fontSize: 22, fontWeight: '700', color: COLORS.text },
   ringWrapper:  { position: 'relative', width: 110, height: 110, alignItems: 'center', justifyContent: 'center' },

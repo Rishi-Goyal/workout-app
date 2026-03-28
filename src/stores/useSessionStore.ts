@@ -1,4 +1,13 @@
+/**
+ * useSessionStore — active dungeon session state.
+ *
+ * Persisted to AsyncStorage so progress survives navigation, backgrounding,
+ * and accidental back-presses mid-workout. Only activeSession is stored;
+ * transient flags (isLoading, error) are always reset on launch.
+ */
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeModules, Platform } from 'react-native';
 import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog } from '../types';
 import { getXPReward } from '../lib/xp';
@@ -26,79 +35,89 @@ function buildQuests(rawQuests: RawQuest[]): Quest[] {
   }));
 }
 
-export const useSessionStore = create<SessionStore>()((set, get) => ({
-  activeSession: null,
-  isLoading: false,
-  error: null,
-
-  startSession: (floor, rawQuests) => {
-    set({
-      activeSession: {
-        id: `session-${Date.now()}`,
-        floor,
-        quests: buildQuests(rawQuests),
-        status: 'active',
-        totalXPEarned: 0,
-        startedAt: new Date().toISOString(),
-      },
+export const useSessionStore = create<SessionStore>()(
+  persist(
+    (set, get) => ({
+      activeSession: null,
+      isLoading: false,
       error: null,
-    });
-    WidgetBridge?.updateWidget(
-      rawQuests[0]?.exerciseName ?? 'Workout started',
-      `Set 1 of ${rawQuests[0]?.sets ?? '?'} · ${rawQuests[0]?.reps ?? '?'} reps`,
-    );
-  },
 
-  setLoading: (v) => set({ isLoading: v }),
-  setError: (e) => set({ error: e }),
+      startSession: (floor, rawQuests) => {
+        set({
+          activeSession: {
+            id: `session-${Date.now()}`,
+            floor,
+            quests: buildQuests(rawQuests),
+            status: 'active',
+            totalXPEarned: 0,
+            startedAt: new Date().toISOString(),
+          },
+          error: null,
+        });
+        WidgetBridge?.updateWidget(
+          rawQuests[0]?.exerciseName ?? 'Workout started',
+          `Set 1 of ${rawQuests[0]?.sets ?? '?'} · ${rawQuests[0]?.reps ?? '?'} reps`,
+        );
+      },
 
-  markQuest: (questId, status, loggedSets) => {
-    const session = get().activeSession;
-    if (!session) return;
-    const quests = session.quests.map((q) => {
-      if (q.id !== questId) return q;
-      const baseXP =
-        status === 'complete'
-          ? getXPReward(q.difficulty)
-          : status === 'half_complete'
-          ? getXPReward(q.difficulty, true)
-          : 0;
-      // Sum per-set bonus XP from logged sets (linear +1 per extra rep/+1 per 5s)
-      const bonusXP = loggedSets
-        ? loggedSets.reduce((acc, s) => acc + (s.bonusXPEarned ?? 0), 0)
-        : 0;
-      return {
-        ...q,
-        status,
-        xpEarned: baseXP + bonusXP,
-        ...(bonusXP > 0 && { bonusXPAwarded: bonusXP }),
-        ...(loggedSets ? { loggedSets } : {}),
-      };
-    });
-    set({ activeSession: { ...session, quests } });
-    const next = get().activeSession?.quests.find(q => q.status === 'pending');
-    if (next) {
-      WidgetBridge?.updateWidget(next.exerciseName, `Set 1 of ${next.sets} · ${next.reps} reps`);
-    }
-  },
+      setLoading: (v) => set({ isLoading: v }),
+      setError: (e) => set({ error: e }),
 
-  finalizeSession: () => {
-    const session = get().activeSession;
-    if (!session) return null;
-    const totalXPEarned = session.quests.reduce((s, q) => s + q.xpEarned, 0);
-    const finalized: DungeonSession = {
-      ...session,
-      status: 'completed',
-      totalXPEarned,
-      completedAt: new Date().toISOString(),
-    };
-    set({ activeSession: null });
-    WidgetBridge?.clearWidget();
-    return finalized;
-  },
+      markQuest: (questId, status, loggedSets) => {
+        const session = get().activeSession;
+        if (!session) return;
+        const quests = session.quests.map((q) => {
+          if (q.id !== questId) return q;
+          const baseXP =
+            status === 'complete'
+              ? getXPReward(q.difficulty)
+              : status === 'half_complete'
+              ? getXPReward(q.difficulty, true)
+              : 0;
+          const bonusXP = loggedSets
+            ? loggedSets.reduce((acc, s) => acc + (s.bonusXPEarned ?? 0), 0)
+            : 0;
+          return {
+            ...q,
+            status,
+            xpEarned: baseXP + bonusXP,
+            ...(bonusXP > 0 && { bonusXPAwarded: bonusXP }),
+            ...(loggedSets ? { loggedSets } : {}),
+          };
+        });
+        set({ activeSession: { ...session, quests } });
+        const next = get().activeSession?.quests.find(q => q.status === 'pending');
+        if (next) {
+          WidgetBridge?.updateWidget(next.exerciseName, `Set 1 of ${next.sets} · ${next.reps} reps`);
+        }
+      },
 
-  clearSession: () => {
-    set({ activeSession: null, isLoading: false, error: null });
-    WidgetBridge?.clearWidget();
-  },
-}));
+      finalizeSession: () => {
+        const session = get().activeSession;
+        if (!session) return null;
+        const totalXPEarned = session.quests.reduce((s, q) => s + q.xpEarned, 0);
+        const finalized: DungeonSession = {
+          ...session,
+          status: 'completed',
+          totalXPEarned,
+          completedAt: new Date().toISOString(),
+        };
+        set({ activeSession: null });
+        WidgetBridge?.clearWidget();
+        return finalized;
+      },
+
+      clearSession: () => {
+        set({ activeSession: null, isLoading: false, error: null });
+        WidgetBridge?.clearWidget();
+      },
+    }),
+    {
+      name: 'dungeon-session',
+      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      // Only persist the active session — transient flags always reset
+      partialize: (state) => ({ activeSession: state.activeSession }),
+    },
+  ),
+);
