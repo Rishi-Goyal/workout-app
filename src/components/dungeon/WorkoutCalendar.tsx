@@ -1,93 +1,202 @@
 /**
- * WorkoutCalendar — GitHub-style contribution heatmap for workout history.
+ * WorkoutCalendar — GitHub-style full-year contribution heatmap.
  *
- * Shows the last 13 weeks as a 7-row (Sun–Sat) × 13-column grid.
- * Month names appear above the grid at each month boundary.
- * The date range (e.g. "Jan 5 – Mar 28") is shown below the title.
- * Streak stats, weekly count, and an XP-keyed colour legend are included.
+ * Layout: 7 rows (Sun–Sat) × 52–53 week columns.
+ * The grid is horizontally scrollable and auto-scrolls to "today" on mount.
+ * Cell size is computed dynamically from the container width so the most
+ * recent 13–15 weeks are always visible without scrolling.
+ * Tapping a cell shows a tooltip with the exact date and XP earned.
  */
-import { View, Text, StyleSheet } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  LayoutChangeEvent,
+  useWindowDimensions,
+} from 'react-native';
 import { COLORS, RADIUS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY_LABEL_WIDTH = 24; // left column for Mon/Wed/Fri labels
+const CONTAINER_PAD = 14;   // padding inside the card
+const GAP = 2;
+const MIN_CELL = 10;
+const MAX_CELL = 14;
+const EMPTY_COLOR = '#161b22';
 
 interface WorkoutCalendarProps {
   sessions: DungeonSession[];
 }
 
-const DAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];  // show only M/W/F for compactness
-const WEEKS = 13;
-const TOTAL_DAYS = WEEKS * 7;
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// ── Types ────────────────────────────────────────────────────────────────────
 
-function getDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+interface DayCell {
+  date: string;       // YYYY-MM-DD
+  dayOfWeek: number;  // 0 = Sun … 6 = Sat
+  month: number;      // 0-11
+  day: number;        // 1-31
+  xp: number;
+  isToday: boolean;
+  isPadding: boolean; // true for cells before the 365-day window
+}
+
+interface MonthSpan {
+  label: string;
+  startCol: number;
+  colSpan: number;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function dateKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
 function getCellColor(xp: number): string {
-  if (xp === 0) return COLORS.border;
+  if (xp === 0) return EMPTY_COLOR;
   if (xp < 100) return 'rgba(59,130,246,0.25)';
   if (xp < 200) return 'rgba(59,130,246,0.50)';
   if (xp < 350) return 'rgba(59,130,246,0.75)';
   return COLORS.gold;
 }
 
-function formatShortDate(key: string): string {
-  const d = new Date(key);
-  return `${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`;
+function formatTooltipDate(key: string): string {
+  const d = new Date(key + 'T12:00:00'); // avoid TZ shift
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
-  // ── Build date → XP map ──────────────────────────────────────────────────
-  const xpByDay: Record<string, number> = {};
-  for (const session of sessions) {
-    if (session.status !== 'completed') continue;
-    const key = getDateKey(new Date(session.startedAt));
-    xpByDay[key] = (xpByDay[key] ?? 0) + session.totalXPEarned;
-  }
+// ── Grid builder ─────────────────────────────────────────────────────────────
 
-  // ── Build the grid ───────────────────────────────────────────────────────
+function generateYearGrid(xpByDay: Record<string, number>): {
+  weeks: DayCell[][];
+  monthSpans: MonthSpan[];
+  totalDays: number;
+} {
   const today = new Date();
-  const startDay = new Date(today);
-  startDay.setDate(today.getDate() - TOTAL_DAYS + 1);
+  const todayKey = dateKey(today);
 
-  const cells: { key: string; xp: number; isToday: boolean; day: number; month: number }[] = [];
-  for (let i = 0; i < TOTAL_DAYS; i++) {
-    const d = new Date(startDay);
-    d.setDate(startDay.getDate() + i);
-    const key = getDateKey(d);
+  // Go back 364 days (365 including today)
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 364);
+
+  // Align to the previous Sunday so week columns start cleanly
+  const startDow = startDate.getDay(); // 0=Sun
+  const alignedStart = new Date(startDate);
+  alignedStart.setDate(startDate.getDate() - startDow);
+
+  // Also align end to Saturday
+  const endDow = today.getDay();
+  const alignedEnd = new Date(today);
+  alignedEnd.setDate(today.getDate() + (6 - endDow));
+
+  // Build flat cell array
+  const cells: DayCell[] = [];
+  const cursor = new Date(alignedStart);
+  const realStartKey = dateKey(startDate);
+
+  while (cursor <= alignedEnd) {
+    const key = dateKey(cursor);
     cells.push({
-      key,
+      date: key,
+      dayOfWeek: cursor.getDay(),
+      month: cursor.getMonth(),
+      day: cursor.getDate(),
       xp: xpByDay[key] ?? 0,
-      isToday: key === getDateKey(today),
-      day: d.getUTCDate(),
-      month: d.getUTCMonth(),
+      isToday: key === todayKey,
+      isPadding: key < realStartKey,
     });
+    cursor.setDate(cursor.getDate() + 1);
   }
 
-  // Split into week columns (7 days each)
-  const weeks: typeof cells[] = [];
-  for (let w = 0; w < WEEKS; w++) {
-    weeks.push(cells.slice(w * 7, w * 7 + 7));
+  // Split into week columns (every 7 cells)
+  const weeks: DayCell[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    weeks.push(cells.slice(i, i + 7));
   }
 
-  // ── Month labels — show at first column of each new month ────────────────
-  const monthLabels = weeks.map((week, wi) => {
-    const curMonth = week[0].month;
-    const prevMonth = wi > 0 ? weeks[wi - 1][0].month : -1;
-    return curMonth !== prevMonth ? MONTHS_SHORT[curMonth] : '';
-  });
+  // Compute month spans for labels
+  const monthSpans: MonthSpan[] = [];
+  let curMonth = -1;
+  for (let wi = 0; wi < weeks.length; wi++) {
+    // Use the first non-padding cell's month, or first cell's month
+    const firstCell = weeks[wi].find(c => !c.isPadding) ?? weeks[wi][0];
+    const m = firstCell.month;
+    if (m !== curMonth) {
+      if (monthSpans.length > 0) {
+        monthSpans[monthSpans.length - 1].colSpan = wi - monthSpans[monthSpans.length - 1].startCol;
+      }
+      monthSpans.push({ label: MONTHS[m], startCol: wi, colSpan: 1 });
+      curMonth = m;
+    }
+  }
+  // Close last span
+  if (monthSpans.length > 0) {
+    monthSpans[monthSpans.length - 1].colSpan = weeks.length - monthSpans[monthSpans.length - 1].startCol;
+  }
 
-  // ── Stats ────────────────────────────────────────────────────────────────
+  return { weeks, monthSpans, totalDays: cells.filter(c => !c.isPadding).length };
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const [tooltip, setTooltip] = useState<{ date: string; xp: number; col: number; row: number } | null>(null);
+
+  // Compute responsive cell size: fit ~15 visible weeks in the available width
+  const availableWidth = screenWidth - 32 - CONTAINER_PAD * 2 - DAY_LABEL_WIDTH - 4; // screen pad + card pad + label + gap
+  const visibleWeeks = 15;
+  const computedCell = Math.floor((availableWidth - (visibleWeeks - 1) * GAP) / visibleWeeks);
+  const CELL = Math.max(MIN_CELL, Math.min(MAX_CELL, computedCell));
+
+  // Build XP map
+  const xpByDay: Record<string, number> = {};
+  for (const s of sessions) {
+    if (s.status !== 'completed') continue;
+    const key = dateKey(new Date(s.startedAt));
+    xpByDay[key] = (xpByDay[key] ?? 0) + s.totalXPEarned;
+  }
+
+  const { weeks, monthSpans, totalDays } = generateYearGrid(xpByDay);
+
+  // Stats
+  const allCells = weeks.flat().filter(c => !c.isPadding);
   let streak = 0;
-  for (let i = TOTAL_DAYS - 1; i >= 0; i--) {
-    if (cells[i].xp > 0) streak++;
+  for (let i = allCells.length - 1; i >= 0; i--) {
+    if (allCells[i].xp > 0) streak++;
     else break;
   }
-
+  const thisWeekCells = weeks[weeks.length - 1] ?? [];
+  const thisWeekCount = thisWeekCells.filter(c => !c.isPadding && c.xp > 0).length;
+  const totalActiveDays = allCells.filter(c => c.xp > 0).length;
   const totalWorkouts = sessions.filter(s => s.status === 'completed').length;
-  const thisWeekCount = cells.slice(-7).filter(c => c.xp > 0).length;
-  const totalActiveDays = cells.filter(c => c.xp > 0).length;
-  const dateRange = `${formatShortDate(cells[0].key)} \u2013 ${formatShortDate(cells[cells.length - 1].key)}`;
+
+  // Date range
+  const firstReal = allCells[0];
+  const lastReal = allCells[allCells.length - 1];
+  const dateRange = firstReal && lastReal
+    ? `${MONTHS[firstReal.month]} ${firstReal.day} \u2013 ${MONTHS[lastReal.month]} ${lastReal.day}`
+    : '';
+
+  // Auto-scroll to end on first layout
+  const didScroll = useRef(false);
+  const handleScrollLayout = useCallback(() => {
+    if (!didScroll.current) {
+      didScroll.current = true;
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
+    }
+  }, []);
+
+  // Tooltip position
+  const tooltipLeft = tooltip ? DAY_LABEL_WIDTH + 4 + tooltip.col * (CELL + GAP) : 0;
+  const tooltipTop = tooltip ? tooltip.row * (CELL + GAP) - 32 : 0;
 
   return (
     <View style={styles.container}>
@@ -97,69 +206,122 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
         <Text style={styles.dateRange}>{dateRange}</Text>
       </View>
 
-      {/* Stats row */}
+      {/* Stats */}
       <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{streak}</Text>
-          <Text style={styles.statLbl}>Day Streak</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{thisWeekCount}</Text>
-          <Text style={styles.statLbl}>This Week</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{totalActiveDays}</Text>
-          <Text style={styles.statLbl}>Active Days</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{totalWorkouts}</Text>
-          <Text style={styles.statLbl}>Workouts</Text>
-        </View>
+        {[
+          { n: streak, l: 'Day Streak' },
+          { n: thisWeekCount, l: 'This Week' },
+          { n: totalActiveDays, l: 'Active Days' },
+          { n: totalWorkouts, l: 'Workouts' },
+        ].map(s => (
+          <View key={s.l} style={styles.statBox}>
+            <Text style={styles.statNum}>{s.n}</Text>
+            <Text style={styles.statLbl}>{s.l}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* Calendar grid */}
-      <View style={styles.gridWrapper}>
-        {/* Month labels row */}
-        <View style={styles.monthRow}>
-          <View style={styles.dayLabelSpacer} />
-          {monthLabels.map((label, i) => (
-            <Text key={i} style={[styles.monthLabel, label ? styles.monthLabelActive : null]}>
+      {/* Heatmap */}
+      <View style={styles.heatmapContainer}>
+        {/* Fixed day labels on the left */}
+        <View style={[styles.dayLabelCol, { width: DAY_LABEL_WIDTH }]}>
+          <View style={{ height: 16 }} />{/* spacer for month label row */}
+          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+            <Text
+              key={i}
+              style={[styles.dayLabel, { height: CELL, lineHeight: CELL }]}
+            >
               {label}
             </Text>
           ))}
         </View>
 
-        {/* Day labels + heatmap cells */}
-        <View style={styles.grid}>
-          <View style={styles.dayLabels}>
-            {DAY_LABELS.map((d, i) => (
-              <Text key={i} style={styles.dayLabel}>{d}</Text>
-            ))}
-          </View>
+        {/* Scrollable grid */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onLayout={handleScrollLayout}
+          style={styles.scrollView}
+        >
+          <View>
+            {/* Month labels row */}
+            <View style={[styles.monthRow, { height: 16 }]}>
+              {monthSpans.map((span, i) => (
+                <Text
+                  key={i}
+                  style={[
+                    styles.monthLabel,
+                    {
+                      width: span.colSpan * (CELL + GAP) - GAP,
+                      marginLeft: i === 0 ? span.startCol * (CELL + GAP) : 0,
+                    },
+                  ]}
+                >
+                  {span.colSpan >= 2 ? span.label : ''}
+                </Text>
+              ))}
+            </View>
 
-          <View style={styles.weeksRow}>
-            {weeks.map((week, wi) => (
-              <View key={wi} style={styles.weekCol}>
-                {week.map((cell) => (
-                  <View
-                    key={cell.key}
-                    style={[
-                      styles.cell,
-                      { backgroundColor: getCellColor(cell.xp) },
-                      cell.isToday && styles.cellToday,
-                    ]}
-                  />
-                ))}
-              </View>
-            ))}
+            {/* Week columns */}
+            <View style={styles.weeksRow}>
+              {weeks.map((week, wi) => (
+                <View key={wi} style={[styles.weekCol, { gap: GAP }]}>
+                  {week.map((cell, di) => (
+                    <Pressable
+                      key={cell.date}
+                      onPress={() => {
+                        if (cell.isPadding) return;
+                        setTooltip(prev =>
+                          prev?.date === cell.date
+                            ? null
+                            : { date: cell.date, xp: cell.xp, col: wi, row: di }
+                        );
+                      }}
+                      style={[
+                        {
+                          width: CELL,
+                          height: CELL,
+                          borderRadius: 2,
+                          backgroundColor: cell.isPadding
+                            ? 'transparent'
+                            : getCellColor(cell.xp),
+                        },
+                        cell.isToday && styles.cellToday,
+                      ]}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </View>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <Pressable style={styles.tooltipOverlay} onPress={() => setTooltip(null)}>
+          <View
+            style={[
+              styles.tooltip,
+              {
+                // We can't position inside the ScrollView accurately,
+                // so show a centered floating tooltip instead
+              },
+            ]}
+          >
+            <Text style={styles.tooltipDate}>{formatTooltipDate(tooltip.date)}</Text>
+            <Text style={styles.tooltipXP}>
+              {tooltip.xp > 0 ? `+${tooltip.xp} XP` : 'No activity'}
+            </Text>
+          </View>
+        </Pressable>
+      )}
 
       {/* Legend */}
       <View style={styles.legendRow}>
         <Text style={styles.legendLabel}>No activity</Text>
-        {[0, 80, 180, 300, 450].map((xp) => (
+        {[0, 80, 180, 300, 450].map(xp => (
           <View key={xp} style={[styles.legendCell, { backgroundColor: getCellColor(xp) }]} />
         ))}
         <Text style={styles.legendLabel}>350+ XP</Text>
@@ -168,8 +330,7 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
   );
 }
 
-const CELL = 13;
-const GAP = 3;
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -177,26 +338,14 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    gap: 12,
+    padding: CONTAINER_PAD,
+    gap: 10,
   },
 
   // Header
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    letterSpacing: 2,
-  },
-  dateRange: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-  },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 2 },
+  dateRange: { fontSize: 10, color: COLORS.textMuted },
 
   // Stats
   statsRow: { flexDirection: 'row', gap: 6 },
@@ -213,57 +362,53 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 18, fontWeight: '800', color: COLORS.gold },
   statLbl: { fontSize: 9, color: COLORS.textMuted, textAlign: 'center' },
 
-  // Grid wrapper
-  gridWrapper: { gap: 2 },
+  // Heatmap
+  heatmapContainer: { flexDirection: 'row' },
+  scrollView: { flex: 1 },
 
-  // Month labels
-  monthRow: {
-    flexDirection: 'row',
-    gap: GAP,
-    marginBottom: 2,
-  },
-  dayLabelSpacer: { width: CELL + 6 },
-  monthLabel: {
-    width: CELL,
-    fontSize: 8,
-    color: 'transparent',
-    textAlign: 'left',
-  },
-  monthLabelActive: {
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
+  // Day labels (fixed left column)
+  dayLabelCol: { gap: GAP },
+  dayLabel: { fontSize: 9, color: COLORS.textMuted, textAlign: 'right', paddingRight: 4 },
+
+  // Month labels (above grid, inside scroll)
+  monthRow: { flexDirection: 'row' },
+  monthLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600' },
 
   // Grid
-  grid: { flexDirection: 'row', gap: 6 },
-  dayLabels: { gap: GAP, paddingTop: 1 },
-  dayLabel: {
-    width: CELL,
-    height: CELL,
-    fontSize: 8,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: CELL,
+  weeksRow: { flexDirection: 'row', gap: GAP },
+  weekCol: {},
+
+  // Today highlight
+  cellToday: { borderWidth: 1.5, borderColor: '#fff' },
+
+  // Tooltip
+  tooltipOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
-  weeksRow: { flex: 1, flexDirection: 'row', gap: GAP },
-  weekCol: { gap: GAP },
-  cell: {
-    width: CELL,
-    height: CELL,
-    borderRadius: 3,
+  tooltip: {
+    backgroundColor: '#1f2937',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+    alignItems: 'center',
+    gap: 2,
+    // Subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  cellToday: {
-    borderWidth: 1.5,
-    borderColor: '#fff',
-  },
+  tooltipDate: { fontSize: 12, fontWeight: '600', color: '#f9fafb' },
+  tooltipXP: { fontSize: 11, color: COLORS.gold, fontWeight: '700' },
 
   // Legend
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-end',
-  },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
   legendLabel: { fontSize: 9, color: COLORS.textMuted },
   legendCell: { width: 10, height: 10, borderRadius: 2 },
 });
