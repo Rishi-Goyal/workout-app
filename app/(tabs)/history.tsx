@@ -1,21 +1,77 @@
 /**
- * History Screen — workout log with calendar heatmap and flat session list.
+ * History Screen — workout log with calendar heatmap and expandable session cards.
  */
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WorkoutCalendar from '@/components/dungeon/WorkoutCalendar';
 import Badge from '@/components/ui/Badge';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useHistoryStore } from '@/stores/useHistoryStore';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS } from '@/lib/constants';
+import type { DungeonSession, Quest, MuscleGroup } from '@/types';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatDuration(startedAt: string, completedAt?: string): string | null {
+  if (!completedAt) return null;
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (ms <= 0) return null;
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function uniqueMuscles(quests: Quest[]): MuscleGroup[] {
+  const seen = new Set<MuscleGroup>();
+  for (const q of quests) {
+    for (const m of q.targetMuscles) seen.add(m as MuscleGroup);
+  }
+  return Array.from(seen).slice(0, 5);
+}
+
+function formatWeight(w: number | 'bodyweight'): string {
+  return w === 'bodyweight' ? 'BW' : `${w}kg`;
+}
+
+function questSummary(q: Quest): string {
+  if (q.loggedSets && q.loggedSets.length > 0) {
+    const last = q.loggedSets[q.loggedSets.length - 1];
+    const sets = q.loggedSets.length;
+    const reps = q.loggedSets.map(s => s.repsCompleted).join('/');
+    const w = formatWeight(last.weight);
+    return `${sets}s ${reps}r @ ${w}`;
+  }
+  return `${q.sets}x${q.reps}`;
+}
+
+const STATUS_ICON: Record<string, string> = {
+  complete: '\u2705',
+  half_complete: '\u26A0\uFE0F',
+  skipped: '\u23ED\uFE0F',
+  pending: '\u23F3',
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export default function HistoryScreen() {
   const sessions = useHistoryStore(s => s.sessions);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggle(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -28,29 +84,15 @@ export default function HistoryScreen() {
         {sessions.length > 0 && (
           <View>
             <SectionLabel>RECENT</SectionLabel>
-            {sessions.slice(0, 30).map((session, index) => {
-              const exerciseCount = session.quests.length;
-              return (
-                <View key={session.id}>
-                  {index > 0 && <View style={styles.divider} />}
-                  <View style={styles.sessionRow}>
-                    <View style={styles.sessionLeft}>
-                      <Text style={styles.sessionLabel}>Workout {session.floor}</Text>
-                      <Text style={styles.sessionMeta}>
-                        +{session.totalXPEarned} XP {'\u2022'} {exerciseCount} exercises
-                      </Text>
-                    </View>
-                    <View style={styles.sessionRight}>
-                      <Text style={styles.sessionDate}>{formatDate(session.startedAt)}</Text>
-                      <Badge
-                        label={session.status === 'completed' ? 'Done' : 'Partial'}
-                        variant={session.status === 'completed' ? 'jade' : 'muted'}
-                      />
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
+            {sessions.slice(0, 30).map((session, index) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                isExpanded={expanded.has(session.id)}
+                onToggle={() => toggle(session.id)}
+                showDivider={index > 0}
+              />
+            ))}
           </View>
         )}
 
@@ -67,23 +109,129 @@ export default function HistoryScreen() {
   );
 }
 
+// ── Session Card ─────────────────────────────────────────────────────────────
+
+function SessionCard({ session, isExpanded, onToggle, showDivider }: {
+  session: DungeonSession;
+  isExpanded: boolean;
+  onToggle: () => void;
+  showDivider: boolean;
+}) {
+  const duration = formatDuration(session.startedAt, session.completedAt);
+  const muscles = uniqueMuscles(session.quests);
+  const exerciseCount = session.quests.length;
+  const completed = session.quests.filter(q => q.status === 'complete').length;
+
+  return (
+    <View>
+      {showDivider && <View style={styles.divider} />}
+      <Pressable style={styles.sessionRow} onPress={onToggle}>
+        {/* Left: date + summary */}
+        <View style={styles.sessionLeft}>
+          <View style={styles.sessionHeader}>
+            <Text style={styles.sessionDate}>{formatDate(session.startedAt)}</Text>
+            {duration && <Text style={styles.sessionDuration}>{duration}</Text>}
+          </View>
+          <Text style={styles.sessionMeta}>
+            {completed}/{exerciseCount} exercises{' '}
+            {session.totalXPEarned > 0 && `\u00B7 +${session.totalXPEarned} XP`}
+          </Text>
+          {/* Muscle tags */}
+          <View style={styles.muscleTags}>
+            {muscles.map(m => (
+              <View key={m} style={styles.muscleChip}>
+                <Text style={styles.muscleChipText}>
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Right: status + expand chevron */}
+        <View style={styles.sessionRight}>
+          <Badge
+            label={session.status === 'completed' ? 'Done' : 'Partial'}
+            variant={session.status === 'completed' ? 'jade' : 'muted'}
+          />
+          <Text style={styles.chevron}>{isExpanded ? '\u25B2' : '\u25BC'}</Text>
+        </View>
+      </Pressable>
+
+      {/* Expanded: per-exercise breakdown */}
+      {isExpanded && (
+        <View style={styles.exerciseList}>
+          {session.quests.map(q => (
+            <View key={q.id} style={styles.exerciseRow}>
+              <Text style={styles.exerciseStatus}>{STATUS_ICON[q.status] ?? ''}</Text>
+              <View style={styles.exerciseInfo}>
+                <Text style={styles.exerciseName}>{q.exerciseName}</Text>
+                <Text style={styles.exerciseDetail}>{questSummary(q)}</Text>
+              </View>
+              {q.xpEarned > 0 && (
+                <Text style={styles.exerciseXP}>+{q.xpEarned}</Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 16, gap: 16, paddingBottom: 36 },
   title: { fontSize: 24, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
 
   divider: { height: 1, backgroundColor: COLORS.border },
+
   sessionRow: {
     paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  sessionLeft: { flex: 1, gap: 3 },
-  sessionLabel: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  sessionLeft: { flex: 1, gap: 4 },
+  sessionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sessionDate: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  sessionDuration: { fontSize: 12, color: COLORS.textMuted },
   sessionMeta: { fontSize: 12, color: COLORS.textMuted },
-  sessionRight: { alignItems: 'flex-end', gap: 4 },
-  sessionDate: { fontSize: 12, color: COLORS.textMuted },
+
+  muscleTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 },
+  muscleChip: {
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  muscleChipText: { fontSize: 10, color: COLORS.gold, fontWeight: '600' },
+
+  sessionRight: { alignItems: 'flex-end', gap: 6, paddingTop: 2 },
+  chevron: { fontSize: 10, color: COLORS.textMuted },
+
+  // Expanded exercise breakdown
+  exerciseList: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+    gap: 10,
+    marginBottom: 8,
+  },
+  exerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  exerciseStatus: { fontSize: 14, width: 22, textAlign: 'center' },
+  exerciseInfo: { flex: 1, gap: 1 },
+  exerciseName: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  exerciseDetail: { fontSize: 11, color: COLORS.textMuted },
+  exerciseXP: { fontSize: 12, fontWeight: '700', color: COLORS.gold },
 
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 36 },

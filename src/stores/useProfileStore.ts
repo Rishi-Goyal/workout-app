@@ -102,7 +102,7 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
@@ -114,6 +114,15 @@ export const useProfileStore = create<ProfileStore>()(
         if (s.profile && typeof s.profile === 'object') {
           const p = s.profile as Record<string, unknown>;
           if (!p.weightUnit) p.weightUnit = 'kg';
+        }
+        // v3 → v4: add lastTrained to each muscle entry (undefined = never trained)
+        if (s.muscleXP && typeof s.muscleXP === 'object') {
+          const mxp = s.muscleXP as Record<string, Record<string, unknown>>;
+          for (const key of Object.keys(mxp)) {
+            if (mxp[key] && mxp[key].lastTrained === undefined) {
+              mxp[key].lastTrained = undefined;
+            }
+          }
         }
         return s as unknown as Partial<ProfileStore>;
       },

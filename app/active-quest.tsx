@@ -1,9 +1,7 @@
 /**
- * Active Quest Screen — exercise animation, anatomical muscle map, and set/rest timer.
+ * Active Quest Screen — exercise guide, anatomical muscle map, and set/rest timer.
  *
- * Tabs: Video+Steps (combined), Muscles, Guide
- * The Video tab shows the YouTube thumbnail + inline steps/form cues. When no
- * curated video exists an animated motion preview replaces the thumbnail.
+ * Tabs: Guide (video + steps + cues), Muscles
  */
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
@@ -12,7 +10,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
-import ExerciseAnimator from '@/components/dungeon/ExerciseAnimator';
 import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
@@ -61,7 +58,7 @@ export default function ActiveQuestScreen() {
   const { profile } = useProfileStore();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
-  const [tab, setTab] = useState<'video' | 'muscles' | 'guide'>('video');
+  const [tab, setTab] = useState<'guide' | 'muscles'>('guide');
 
   if (!quest) {
     return (
@@ -129,14 +126,14 @@ export default function ActiveQuestScreen() {
           </Text>
         </View>
 
-        {/* 3 tabs: Video+Steps combined, Muscles, Guide */}
+        {/* 2 tabs: Guide (video + steps + cues), Muscles */}
         <View style={styles.tabs}>
           <PressableButton
-            label="📹 Video"
-            variant={tab === 'video' ? 'primary' : 'ghost'}
+            label="📖 Guide"
+            variant={tab === 'guide' ? 'primary' : 'ghost'}
             size="sm"
             style={styles.tab}
-            onPress={() => setTab('video')}
+            onPress={() => setTab('guide')}
           />
           <PressableButton
             label="💪 Muscles"
@@ -144,13 +141,6 @@ export default function ActiveQuestScreen() {
             size="sm"
             style={styles.tab}
             onPress={() => setTab('muscles')}
-          />
-          <PressableButton
-            label="🎯 Guide"
-            variant={tab === 'guide' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('guide')}
           />
         </View>
 
@@ -163,15 +153,14 @@ export default function ActiveQuestScreen() {
             tab === 'muscles' && styles.tabContentCentered,
           ]}
         >
-          {/* Video tab: thumbnail (or animated fallback) + inline steps */}
-          {tab === 'video' && (
-            <View style={styles.videoTabContent}>
+          {/* Guide tab: video (if available) + steps + form cues */}
+          {tab === 'guide' && (
+            <View style={styles.guideTabContent}>
               <ExerciseVideo
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}
                 muscles={quest.targetMuscles as MuscleGroup[]}
               />
-              <View style={styles.stepsDivider} />
               <InstructionsPanel
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}
@@ -184,13 +173,6 @@ export default function ActiveQuestScreen() {
             <MuscleMap
               targets={quest.targetMuscles as MuscleGroup[]}
               secondary={secondary}
-            />
-          )}
-
-          {tab === 'guide' && (
-            <ExerciseAnimator
-              exerciseName={quest.exerciseName}
-              muscles={quest.targetMuscles as MuscleGroup[]}
             />
           )}
         </Animated.View>
@@ -252,13 +234,8 @@ const styles = StyleSheet.create({
   tabContentCentered: {
     alignItems: 'center',
   },
-  videoTabContent: {
+  guideTabContent: {
     gap: 16,
-  },
-  stepsDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 2,
   },
   divider:      { height: 1, backgroundColor: COLORS.border, marginVertical: 4 },
   timerSection: {

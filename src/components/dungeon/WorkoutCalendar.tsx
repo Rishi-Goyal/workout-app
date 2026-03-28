@@ -1,18 +1,23 @@
 /**
  * WorkoutCalendar — GitHub-style contribution heatmap for workout history.
- * Shows the last 13 weeks (91 days) as a 7×13 grid with month labels.
+ *
+ * Shows the last 13 weeks as a 7-row (Sun–Sat) × 13-column grid.
+ * Month names appear above the grid at each month boundary.
+ * The date range (e.g. "Jan 5 – Mar 28") is shown below the title.
+ * Streak stats, weekly count, and an XP-keyed colour legend are included.
  */
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '@/lib/constants';
+import { COLORS, RADIUS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
 
 interface WorkoutCalendarProps {
   sessions: DungeonSession[];
 }
 
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];  // show only M/W/F for compactness
 const WEEKS = 13;
 const TOTAL_DAYS = WEEKS * 7;
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function getDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -26,8 +31,13 @@ function getCellColor(xp: number): string {
   return COLORS.gold;
 }
 
+function formatShortDate(key: string): string {
+  const d = new Date(key);
+  return `${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
 export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
-  // Build a map of date → totalXP
+  // ── Build date → XP map ──────────────────────────────────────────────────
   const xpByDay: Record<string, number> = {};
   for (const session of sessions) {
     if (session.status !== 'completed') continue;
@@ -35,35 +45,39 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
     xpByDay[key] = (xpByDay[key] ?? 0) + session.totalXPEarned;
   }
 
-  // Build the grid: last TOTAL_DAYS days, oldest first
+  // ── Build the grid ───────────────────────────────────────────────────────
   const today = new Date();
   const startDay = new Date(today);
   startDay.setDate(today.getDate() - TOTAL_DAYS + 1);
 
-  const cells: { key: string; xp: number; isToday: boolean }[] = [];
+  const cells: { key: string; xp: number; isToday: boolean; day: number; month: number }[] = [];
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const d = new Date(startDay);
     d.setDate(startDay.getDate() + i);
     const key = getDateKey(d);
-    cells.push({ key, xp: xpByDay[key] ?? 0, isToday: key === getDateKey(today) });
+    cells.push({
+      key,
+      xp: xpByDay[key] ?? 0,
+      isToday: key === getDateKey(today),
+      day: d.getUTCDate(),
+      month: d.getUTCMonth(),
+    });
   }
 
-  // Split into weeks (columns of 7)
+  // Split into week columns (7 days each)
   const weeks: typeof cells[] = [];
   for (let w = 0; w < WEEKS; w++) {
     weeks.push(cells.slice(w * 7, w * 7 + 7));
   }
 
-  // Month label for each week column: show 3-letter month name when a new month starts
+  // ── Month labels — show at first column of each new month ────────────────
   const monthLabels = weeks.map((week, wi) => {
-    const d = new Date(week[0].key);
-    const prevMonth = wi > 0 ? new Date(weeks[wi - 1][0].key).getMonth() : -1;
-    return d.getMonth() !== prevMonth
-      ? d.toLocaleString('default', { month: 'short' })
-      : '';
+    const curMonth = week[0].month;
+    const prevMonth = wi > 0 ? weeks[wi - 1][0].month : -1;
+    return curMonth !== prevMonth ? MONTHS_SHORT[curMonth] : '';
   });
 
-  // Streak calculation (consecutive days ending today)
+  // ── Stats ────────────────────────────────────────────────────────────────
   let streak = 0;
   for (let i = TOTAL_DAYS - 1; i >= 0; i--) {
     if (cells[i].xp > 0) streak++;
@@ -71,46 +85,58 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
   }
 
   const totalWorkouts = sessions.filter(s => s.status === 'completed').length;
-  const thisWeekWorkouts = cells.slice(-7).filter(c => c.xp > 0).length;
+  const thisWeekCount = cells.slice(-7).filter(c => c.xp > 0).length;
+  const totalActiveDays = cells.filter(c => c.xp > 0).length;
+  const dateRange = `${formatShortDate(cells[0].key)} \u2013 ${formatShortDate(cells[cells.length - 1].key)}`;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>WORKOUT ACTIVITY</Text>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <Text style={styles.sectionTitle}>WORKOUT ACTIVITY</Text>
+        <Text style={styles.dateRange}>{dateRange}</Text>
+      </View>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statNum}>{streak}</Text>
-          <Text style={styles.statLbl}>Day Streak 🔥</Text>
+          <Text style={styles.statLbl}>Day Streak</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{thisWeekWorkouts}</Text>
+          <Text style={styles.statNum}>{thisWeekCount}</Text>
           <Text style={styles.statLbl}>This Week</Text>
         </View>
         <View style={styles.statBox}>
+          <Text style={styles.statNum}>{totalActiveDays}</Text>
+          <Text style={styles.statLbl}>Active Days</Text>
+        </View>
+        <View style={styles.statBox}>
           <Text style={styles.statNum}>{totalWorkouts}</Text>
-          <Text style={styles.statLbl}>All Time</Text>
+          <Text style={styles.statLbl}>Workouts</Text>
         </View>
       </View>
 
-      {/* Month labels + grid */}
-      <View>
-        {/* Month labels row — aligned above week columns */}
+      {/* Calendar grid */}
+      <View style={styles.gridWrapper}>
+        {/* Month labels row */}
         <View style={styles.monthRow}>
+          <View style={styles.dayLabelSpacer} />
           {monthLabels.map((label, i) => (
-            <Text key={i} style={styles.monthLabel}>{label}</Text>
+            <Text key={i} style={[styles.monthLabel, label ? styles.monthLabelActive : null]}>
+              {label}
+            </Text>
           ))}
         </View>
 
-        {/* Day-of-week labels + week columns */}
+        {/* Day labels + heatmap cells */}
         <View style={styles.grid}>
           <View style={styles.dayLabels}>
-            {DAYS.map((d, i) => (
+            {DAY_LABELS.map((d, i) => (
               <Text key={i} style={styles.dayLabel}>{d}</Text>
             ))}
           </View>
 
-          {/* Week columns */}
           <View style={styles.weeksRow}>
             {weeks.map((week, wi) => (
               <View key={wi} style={styles.weekCol}>
@@ -131,15 +157,12 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
       </View>
 
       {/* Legend */}
-      <View style={styles.legendWrapper}>
-        <Text style={styles.legendTitle}>Activity (XP earned)</Text>
-        <View style={styles.legend}>
-          <Text style={styles.legendLabel}>0 XP</Text>
-          {[0, 80, 180, 300, 450].map((xp) => (
-            <View key={xp} style={[styles.legendCell, { backgroundColor: getCellColor(xp) }]} />
-          ))}
-          <Text style={styles.legendLabel}>350+ XP</Text>
-        </View>
+      <View style={styles.legendRow}>
+        <Text style={styles.legendLabel}>No activity</Text>
+        {[0, 80, 180, 300, 450].map((xp) => (
+          <View key={xp} style={[styles.legendCell, { backgroundColor: getCellColor(xp) }]} />
+        ))}
+        <Text style={styles.legendLabel}>350+ XP</Text>
       </View>
     </View>
   );
@@ -149,56 +172,98 @@ const CELL = 13;
 const GAP = 3;
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  title: {
+  container: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    gap: 12,
+  },
+
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
     fontSize: 10,
     fontWeight: '700',
     color: COLORS.textMuted,
     letterSpacing: 2,
   },
-  statsRow: { flexDirection: 'row', gap: 8 },
+  dateRange: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+
+  // Stats
+  statsRow: { flexDirection: 'row', gap: 6 },
   statBox: {
     flex: 1,
     backgroundColor: COLORS.bg,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 8,
+    padding: 8,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-    gap: 2,
+    gap: 1,
   },
-  statNum: { fontSize: 20, fontWeight: '800', color: COLORS.gold },
-  statLbl: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center' },
-  // Month labels sit above week columns; left-pad to clear the day-label column
+  statNum: { fontSize: 18, fontWeight: '800', color: COLORS.gold },
+  statLbl: { fontSize: 9, color: COLORS.textMuted, textAlign: 'center' },
+
+  // Grid wrapper
+  gridWrapper: { gap: 2 },
+
+  // Month labels
   monthRow: {
     flexDirection: 'row',
     gap: GAP,
-    paddingLeft: CELL + 6,
     marginBottom: 2,
   },
+  dayLabelSpacer: { width: CELL + 6 },
   monthLabel: {
     width: CELL,
-    fontSize: 7,
-    color: COLORS.textMuted,
-    textAlign: 'center',
+    fontSize: 8,
+    color: 'transparent',
+    textAlign: 'left',
   },
+  monthLabelActive: {
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+
+  // Grid
   grid: { flexDirection: 'row', gap: 6 },
   dayLabels: { gap: GAP, paddingTop: 1 },
-  dayLabel: { width: CELL, height: CELL, fontSize: 8, color: COLORS.textMuted, textAlign: 'center', lineHeight: CELL },
+  dayLabel: {
+    width: CELL,
+    height: CELL,
+    fontSize: 8,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: CELL,
+  },
   weeksRow: { flex: 1, flexDirection: 'row', gap: GAP },
   weekCol: { gap: GAP },
   cell: {
     width: CELL,
     height: CELL,
-    borderRadius: 2,
+    borderRadius: 3,
   },
   cellToday: {
     borderWidth: 1.5,
-    borderColor: COLORS.gold,
+    borderColor: '#fff',
   },
-  legendWrapper: { alignSelf: 'flex-end', alignItems: 'flex-end', gap: 3 },
-  legendTitle: { fontSize: 8, color: COLORS.textMuted },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+
+  // Legend
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-end',
+  },
   legendLabel: { fontSize: 9, color: COLORS.textMuted },
   legendCell: { width: 10, height: 10, borderRadius: 2 },
 });
