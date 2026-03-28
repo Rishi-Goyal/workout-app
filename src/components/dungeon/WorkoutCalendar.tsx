@@ -1,6 +1,6 @@
 /**
  * WorkoutCalendar — GitHub-style contribution heatmap for workout history.
- * Shows the last 13 weeks (91 days) as a 7×13 grid.
+ * Shows the last 13 weeks (91 days) as a 7×13 grid with month labels.
  */
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/lib/constants';
@@ -54,6 +54,15 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
     weeks.push(cells.slice(w * 7, w * 7 + 7));
   }
 
+  // Month label for each week column: show 3-letter month name when a new month starts
+  const monthLabels = weeks.map((week, wi) => {
+    const d = new Date(week[0].key);
+    const prevMonth = wi > 0 ? new Date(weeks[wi - 1][0].key).getMonth() : -1;
+    return d.getMonth() !== prevMonth
+      ? d.toLocaleString('default', { month: 'short' })
+      : '';
+  });
+
   // Streak calculation (consecutive days ending today)
   let streak = 0;
   for (let i = TOTAL_DAYS - 1; i >= 0; i--) {
@@ -84,40 +93,53 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
         </View>
       </View>
 
-      {/* Day labels */}
-      <View style={styles.grid}>
-        <View style={styles.dayLabels}>
-          {DAYS.map((d, i) => (
-            <Text key={i} style={styles.dayLabel}>{d}</Text>
+      {/* Month labels + grid */}
+      <View>
+        {/* Month labels row — aligned above week columns */}
+        <View style={styles.monthRow}>
+          {monthLabels.map((label, i) => (
+            <Text key={i} style={styles.monthLabel}>{label}</Text>
           ))}
         </View>
 
-        {/* Week columns */}
-        <View style={styles.weeksRow}>
-          {weeks.map((week, wi) => (
-            <View key={wi} style={styles.weekCol}>
-              {week.map((cell) => (
-                <View
-                  key={cell.key}
-                  style={[
-                    styles.cell,
-                    { backgroundColor: getCellColor(cell.xp) },
-                    cell.isToday && styles.cellToday,
-                  ]}
-                />
-              ))}
-            </View>
-          ))}
+        {/* Day-of-week labels + week columns */}
+        <View style={styles.grid}>
+          <View style={styles.dayLabels}>
+            {DAYS.map((d, i) => (
+              <Text key={i} style={styles.dayLabel}>{d}</Text>
+            ))}
+          </View>
+
+          {/* Week columns */}
+          <View style={styles.weeksRow}>
+            {weeks.map((week, wi) => (
+              <View key={wi} style={styles.weekCol}>
+                {week.map((cell) => (
+                  <View
+                    key={cell.key}
+                    style={[
+                      styles.cell,
+                      { backgroundColor: getCellColor(cell.xp) },
+                      cell.isToday && styles.cellToday,
+                    ]}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
       {/* Legend */}
-      <View style={styles.legend}>
-        <Text style={styles.legendLabel}>Less</Text>
-        {[0, 80, 180, 300, 450].map((xp) => (
-          <View key={xp} style={[styles.legendCell, { backgroundColor: getCellColor(xp) }]} />
-        ))}
-        <Text style={styles.legendLabel}>More</Text>
+      <View style={styles.legendWrapper}>
+        <Text style={styles.legendTitle}>Activity (XP earned)</Text>
+        <View style={styles.legend}>
+          <Text style={styles.legendLabel}>0 XP</Text>
+          {[0, 80, 180, 300, 450].map((xp) => (
+            <View key={xp} style={[styles.legendCell, { backgroundColor: getCellColor(xp) }]} />
+          ))}
+          <Text style={styles.legendLabel}>350+ XP</Text>
+        </View>
       </View>
     </View>
   );
@@ -147,6 +169,19 @@ const styles = StyleSheet.create({
   },
   statNum: { fontSize: 20, fontWeight: '800', color: COLORS.gold },
   statLbl: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center' },
+  // Month labels sit above week columns; left-pad to clear the day-label column
+  monthRow: {
+    flexDirection: 'row',
+    gap: GAP,
+    paddingLeft: CELL + 6,
+    marginBottom: 2,
+  },
+  monthLabel: {
+    width: CELL,
+    fontSize: 7,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+  },
   grid: { flexDirection: 'row', gap: 6 },
   dayLabels: { gap: GAP, paddingTop: 1 },
   dayLabel: { width: CELL, height: CELL, fontSize: 8, color: COLORS.textMuted, textAlign: 'center', lineHeight: CELL },
@@ -161,7 +196,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.gold,
   },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
+  legendWrapper: { alignSelf: 'flex-end', alignItems: 'flex-end', gap: 3 },
+  legendTitle: { fontSize: 8, color: COLORS.textMuted },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendLabel: { fontSize: 9, color: COLORS.textMuted },
   legendCell: { width: 10, height: 10, borderRadius: 2 },
 });
