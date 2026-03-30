@@ -4,10 +4,14 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import WorkoutCalendar from '@/components/dungeon/WorkoutCalendar';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
+import PressableButton from '@/components/ui/PressableButton';
 import { useHistoryStore } from '@/stores/useHistoryStore';
+import { daysSince, isWithinDays } from '@/lib/dateUtils';
 import { COLORS, RADIUS } from '@/lib/constants';
 import type { DungeonSession, Quest, MuscleGroup } from '@/types';
 
@@ -73,6 +77,11 @@ export default function HistoryScreen() {
     });
   }
 
+  // Contextual state logic
+  const hasAny            = sessions.length > 0;
+  const hasTrainedRecently = hasAny && isWithinDays(sessions[0].startedAt, 7);
+  const daysSinceLast      = hasAny ? daysSince(sessions[0].startedAt) : null;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -81,7 +90,41 @@ export default function HistoryScreen() {
 
         <WorkoutCalendar sessions={sessions} />
 
-        {sessions.length > 0 && (
+        {/* ── State 1: no sessions at all ── */}
+        {!hasAny && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>No workouts yet</Text>
+            <Text style={styles.emptyText}>Complete your first workout to start building your history.</Text>
+            <PressableButton
+              label="Start a Workout →"
+              size="md"
+              style={styles.emptyCta}
+              onPress={() => router.replace('/(tabs)')}
+            />
+          </View>
+        )}
+
+        {/* ── State 2: sessions exist but nothing in the last 7 days ── */}
+        {hasAny && !hasTrainedRecently && (
+          <Card padding={16} style={styles.gapCard}>
+            <Text style={styles.gapIcon}>⚔️</Text>
+            <Text style={styles.gapTitle}>The dungeon grows stronger while you rest.</Text>
+            <Text style={styles.gapSub}>
+              Your last session was {daysSinceLast} {daysSinceLast === 1 ? 'day' : 'days'} ago.
+              {' '}Time to return.
+            </Text>
+            <PressableButton
+              label="Start a Workout →"
+              size="md"
+              style={styles.gapCta}
+              onPress={() => router.replace('/(tabs)')}
+            />
+          </Card>
+        )}
+
+        {/* ── Session list (states 2 + 3) ── */}
+        {hasAny && (
           <View>
             <SectionLabel>RECENT</SectionLabel>
             {sessions.slice(0, 30).map((session, index) => (
@@ -93,14 +136,6 @@ export default function HistoryScreen() {
                 showDivider={index > 0}
               />
             ))}
-          </View>
-        )}
-
-        {sessions.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>No workouts yet</Text>
-            <Text style={styles.emptyText}>Complete your first workout to see your history.</Text>
           </View>
         )}
 
@@ -233,8 +268,17 @@ const styles = StyleSheet.create({
   exerciseDetail: { fontSize: 11, color: COLORS.textMuted },
   exerciseXP: { fontSize: 12, fontWeight: '700', color: COLORS.gold },
 
-  emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 36 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 12 },
-  emptyText: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', marginTop: 6 },
+  // State 1 — no sessions
+  emptyState: { alignItems: 'center', paddingTop: 48, gap: 6 },
+  emptyIcon:  { fontSize: 36 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 6 },
+  emptyText:  { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
+  emptyCta:   { marginTop: 14, alignSelf: 'stretch', marginHorizontal: 32 },
+
+  // State 2 — gap > 7 days
+  gapCard:  { gap: 8, borderColor: 'rgba(249,115,22,0.2)' },
+  gapIcon:  { fontSize: 28 },
+  gapTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  gapSub:   { fontSize: 13, color: COLORS.textMuted },
+  gapCta:   { marginTop: 6, alignSelf: 'stretch' },
 });
