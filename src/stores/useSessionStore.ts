@@ -19,12 +19,16 @@ interface SessionStore {
   activeSession: DungeonSession | null;
   isLoading: boolean;
   error: string | null;
+  /** Reps logged from a background notification while the app was backgrounded. Not persisted. */
+  pendingSetReps: { questId: string; setNumber: number; reps: number } | null;
   startSession: (floor: number, rawQuests: RawQuest[]) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   markQuest: (questId: string, status: QuestStatus, loggedSets?: SetLog[]) => void;
   finalizeSession: () => DungeonSession | null;
   clearSession: () => void;
+  setPendingSetReps: (v: { questId: string; setNumber: number; reps: number }) => void;
+  clearPendingSetReps: () => void;
 }
 
 function buildQuests(rawQuests: RawQuest[]): Quest[] {
@@ -42,6 +46,7 @@ export const useSessionStore = create<SessionStore>()(
       activeSession: null,
       isLoading: false,
       error: null,
+      pendingSetReps: null,
 
       startSession: (floor, rawQuests) => {
         set({
@@ -118,9 +123,12 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       clearSession: () => {
-        set({ activeSession: null, isLoading: false, error: null });
+        set({ activeSession: null, isLoading: false, error: null, pendingSetReps: null });
         WidgetBridge?.clearWidget();
       },
+
+      setPendingSetReps: (v) => set({ pendingSetReps: v }),
+      clearPendingSetReps: () => set({ pendingSetReps: null }),
     }),
     {
       name: 'dungeon-session',
