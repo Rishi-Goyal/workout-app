@@ -190,6 +190,8 @@ export default function ActiveQuestScreen() {
             weightUnit={weightUnit}
             lastSessionLog={lastSessionLog}
             baseXP={quest.xpReward}
+            exerciseName={quest.exerciseName}
+            questId={quest.id}
             onComplete={logs => handleMark('complete', logs)}
             onSkip={() =>
               Alert.alert(

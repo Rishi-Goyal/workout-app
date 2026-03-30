@@ -17,6 +17,13 @@ import { COLORS } from '@/lib/constants';
 import PressableButton from '@/components/ui/PressableButton';
 import { formatWeight } from '@/lib/weights';
 import { calculateSetBonus, calculateIsometricBonus, calculateSetXP } from '@/lib/muscleXP';
+import {
+  showWorkoutNotification,
+  showRestInProgressNotification,
+  scheduleRestCompleteNotification,
+  cancelRestNotification,
+} from '@/lib/workoutNotification';
+import { useSessionStore } from '@/stores/useSessionStore';
 import type { SetLog } from '@/types';
 import type { ExerciseLastLog } from '@/stores/useHistoryStore';
 
@@ -32,6 +39,10 @@ interface WorkoutTimerProps {
   lastSessionLog?: ExerciseLastLog | null;
   /** Full quest XP reward — used for per-set XP display in done phase */
   baseXP: number;
+  /** Exercise name shown in background rest notifications. */
+  exerciseName: string;
+  /** Quest ID passed to the rest-complete notification for rep logging. */
+  questId: string;
   onComplete: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
 }
@@ -119,6 +130,8 @@ export default function WorkoutTimer({
   weightUnit = 'kg',
   lastSessionLog,
   baseXP,
+  exerciseName,
+  questId,
   onComplete, onSkip,
 }: WorkoutTimerProps) {
   const recommendedReps              = parseInt(reps, 10) || 0;
@@ -243,6 +256,20 @@ export default function WorkoutTimer({
     const updated = logCurrentSet(repsInput);
     setPhase('resting');
     setRestLeft(restSeconds);
+
+    // Fire background notifications so the user can track rest from outside the app
+    showRestInProgressNotification(exerciseName, currentSet, sets, restSeconds);
+    if (currentSet < sets) {
+      scheduleRestCompleteNotification(
+        exerciseName,
+        currentSet + 1,
+        sets,
+        questId,
+        reps,
+        restSeconds,
+      );
+    }
+
     let remaining = restSeconds;
     clearTimer();
     intervalRef.current = setInterval(() => {
@@ -250,6 +277,7 @@ export default function WorkoutTimer({
       setRestLeft(remaining);
       if (remaining <= 0) {
         clearTimer();
+        cancelRestNotification();
         if (currentSet >= sets) {
           setPhase('done');
         } else {
@@ -257,10 +285,11 @@ export default function WorkoutTimer({
           setRepsInput(recommendedReps);
           setLastSetBonus(0);
           setPhase('active');
+          showWorkoutNotification(exerciseName, currentSet + 1, sets);
         }
       }
     }, 1000);
-  }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps]);
+  }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps, exerciseName, questId, reps]);
 
   // Reset holdStarted when moving to the next set
   useEffect(() => {
@@ -282,7 +311,22 @@ export default function WorkoutTimer({
     }
   }, [phase, currentSet, holdStarted]);
 
-  useEffect(() => () => { clearTimer(); clearExtraHold(); }, []);
+  useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); }, []);
+
+  // Pre-fill reps logged via a background notification (user typed reps while app was closed).
+  const pendingSetReps = useSessionStore(s => s.pendingSetReps);
+  const clearPendingSetReps = useSessionStore(s => s.clearPendingSetReps);
+  useEffect(() => {
+    if (
+      pendingSetReps &&
+      pendingSetReps.questId === questId &&
+      pendingSetReps.setNumber === currentSet &&
+      phase === 'active'
+    ) {
+      setRepsInput(pendingSetReps.reps);
+      clearPendingSetReps();
+    }
+  }, [pendingSetReps, phase, currentSet, questId]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
@@ -363,7 +407,7 @@ export default function WorkoutTimer({
         <PressableButton
           label="⚔️  Begin Quest"
           size="lg"
-          onPress={() => { setRepsInput(recommendedReps); setPhase('active'); }}
+          onPress={() => { showWorkoutNotification(exerciseName, 1, sets); setRepsInput(recommendedReps); setPhase('active'); }}
           style={styles.mainBtn}
         />
         <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
@@ -613,10 +657,12 @@ export default function WorkoutTimer({
           size="sm"
           onPress={() => {
             clearTimer();
+            cancelRestNotification();
             setCurrentSet(s => s + 1);
             setRepsInput(recommendedReps);
             setLastSetBonus(0);
             setPhase('active');
+            showWorkoutNotification(exerciseName, currentSet + 1, sets);
           }}
         />
       </View>
