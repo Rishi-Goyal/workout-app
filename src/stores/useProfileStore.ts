@@ -13,6 +13,8 @@ import {
 import { fetchLatestVersion } from '../lib/versionCheck';
 import type { QuestDifficulty } from '../types';
 import { getMuscleFatigue, EXERCISE_MAP } from '../lib/exerciseDatabase';
+import { useAdaptationStore } from './useAdaptationStore';
+import { useWeeklyGoalStore } from './useWeeklyGoalStore';
 
 interface MuscleXPResult {
   levelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
@@ -105,13 +107,8 @@ export const useProfileStore = create<ProfileStore>()(
       resetProfile: () => {
         set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP });
         // Clear all dependent stores so no stale data persists after a profile wipe
-        // Lazy imports avoid a circular-dependency chain at module load time
-        import('./useAdaptationStore').then(({ useAdaptationStore }) =>
-          useAdaptationStore.getState().clearAllAdaptations(),
-        );
-        import('./useWeeklyGoalStore').then(({ useWeeklyGoalStore }) =>
-          useWeeklyGoalStore.getState().resetAll(),
-        );
+        useAdaptationStore.getState().clearAllAdaptations();
+        useWeeklyGoalStore.getState().resetAll();
       },
     }),
     {
