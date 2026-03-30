@@ -14,6 +14,10 @@ type AppEnv = 'development' | 'staging' | 'production';
 
 const APP_ENV = (process.env.APP_ENV ?? 'development') as AppEnv;
 
+// Always read the canonical version from package.json so all build flavours
+// report the same version string to Constants.expoConfig.version.
+const PKG_VERSION = (require('./package.json') as { version: string }).version;
+
 const envConfig: Record<AppEnv, {
   appName: string;
   packageSuffix: string;
@@ -43,7 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: appName,
   slug: 'dungeonfit',
-  version: '2.0.0',
+  version: PKG_VERSION,
   orientation: 'portrait',
   icon,
   userInterfaceStyle: 'dark',

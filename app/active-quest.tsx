@@ -126,59 +126,7 @@ export default function ActiveQuestScreen() {
           </Text>
         </View>
 
-        {/* 2 tabs: Guide (video + steps + cues), Muscles */}
-        <View style={styles.tabs}>
-          <PressableButton
-            label="📖 Guide"
-            variant={tab === 'guide' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('guide')}
-          />
-          <PressableButton
-            label="💪 Muscles"
-            variant={tab === 'muscles' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('muscles')}
-          />
-        </View>
-
-        <Animated.View
-          entering={FadeIn.duration(220)}
-          exiting={FadeOut.duration(120)}
-          key={tab}
-          style={[
-            styles.tabContent,
-            tab === 'muscles' && styles.tabContentCentered,
-          ]}
-        >
-          {/* Guide tab: video (if available) + steps + form cues */}
-          {tab === 'guide' && (
-            <View style={styles.guideTabContent}>
-              <ExerciseVideo
-                exerciseId={quest.exerciseId ?? ''}
-                exerciseName={quest.exerciseName}
-                muscles={quest.targetMuscles as MuscleGroup[]}
-              />
-              <InstructionsPanel
-                exerciseId={quest.exerciseId ?? ''}
-                exerciseName={quest.exerciseName}
-                muscles={quest.targetMuscles as MuscleGroup[]}
-              />
-            </View>
-          )}
-
-          {tab === 'muscles' && (
-            <MuscleMap
-              targets={quest.targetMuscles as MuscleGroup[]}
-              secondary={secondary}
-            />
-          )}
-        </Animated.View>
-
-        <View style={styles.divider} />
-
+        {/* ── Workout timer first — primary action is always above the fold ── */}
         <View style={styles.timerSection}>
           <SectionLabel>WORKOUT</SectionLabel>
           <WorkoutTimer
@@ -210,6 +158,60 @@ export default function ActiveQuestScreen() {
           <Text style={styles.xpLabel}>XP per set · scales with reps</Text>
           <Text style={styles.xpValue}>up to +{quest.xpReward} XP</Text>
         </View>
+
+        <View style={styles.divider} />
+
+        {/* ── Reference material — guide + muscle map below the fold ── */}
+        <SectionLabel>EXERCISE GUIDE</SectionLabel>
+
+        <View style={styles.tabs}>
+          <PressableButton
+            label="📖 Guide"
+            variant={tab === 'guide' ? 'primary' : 'ghost'}
+            size="sm"
+            style={styles.tab}
+            onPress={() => setTab('guide')}
+          />
+          <PressableButton
+            label="💪 Muscles"
+            variant={tab === 'muscles' ? 'primary' : 'ghost'}
+            size="sm"
+            style={styles.tab}
+            onPress={() => setTab('muscles')}
+          />
+        </View>
+
+        <Animated.View
+          entering={FadeIn.duration(220)}
+          exiting={FadeOut.duration(120)}
+          key={tab}
+          style={[
+            styles.tabContent,
+            tab === 'muscles' && styles.tabContentCentered,
+          ]}
+        >
+          {tab === 'guide' && (
+            <View style={styles.guideTabContent}>
+              <ExerciseVideo
+                exerciseId={quest.exerciseId ?? ''}
+                exerciseName={quest.exerciseName}
+                muscles={quest.targetMuscles as MuscleGroup[]}
+              />
+              <InstructionsPanel
+                exerciseId={quest.exerciseId ?? ''}
+                exerciseName={quest.exerciseName}
+                muscles={quest.targetMuscles as MuscleGroup[]}
+              />
+            </View>
+          )}
+
+          {tab === 'muscles' && (
+            <MuscleMap
+              targets={quest.targetMuscles as MuscleGroup[]}
+              secondary={secondary}
+            />
+          )}
+        </Animated.View>
 
       </ScrollView>
     </SafeAreaView>
