@@ -18,6 +18,23 @@ const REST_CHANNEL     = 'dungeon-rest-alert';
 // ── Module-level IDs ─────────────────────────────────────────────────────────
 let _sessionNotifId: string | null = null;
 let _scheduledRestId: string | null = null;
+let _permissionGranted = false;
+
+// ── Permission ────────────────────────────────────────────────────────────────
+
+/**
+ * Request notification permission once on app startup.
+ * Call this from _layout.tsx — not from individual notification send paths so
+ * the system dialog never appears mid-workout at a disruptive moment.
+ */
+export async function requestNotificationPermission(): Promise<void> {
+  try {
+    const { status } = await Notifications.requestPermissionsAsync();
+    _permissionGranted = status === 'granted';
+  } catch {
+    _permissionGranted = false;
+  }
+}
 
 // ── Channel setup ─────────────────────────────────────────────────────────────
 
@@ -85,9 +102,8 @@ export async function showWorkoutNotification(
   setNum: number,
   totalSets: number,
 ): Promise<string | null> {
+  if (!_permissionGranted) return null;
   try {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') return null;
     await dismissWorkoutNotification();
 
     const id = await Notifications.scheduleNotificationAsync({
@@ -125,9 +141,8 @@ export async function showRestInProgressNotification(
   totalSets: number,
   restSeconds: number,
 ): Promise<void> {
+  if (!_permissionGranted) return;
   try {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') return;
     await dismissWorkoutNotification();
 
     const endTime = new Date(Date.now() + restSeconds * 1000);

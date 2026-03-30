@@ -6,7 +6,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
-import { setupWorkoutChannel, setupRestAlertChannel, setupRestCompleteCategory } from '@/lib/workoutNotification';
+import {
+  setupWorkoutChannel,
+  setupRestAlertChannel,
+  setupRestCompleteCategory,
+  requestNotificationPermission,
+} from '@/lib/workoutNotification';
 
 // Top-level error boundary — shows a readable message instead of blank screen on crash
 interface EBState { error: Error | null }
@@ -39,10 +44,12 @@ function AppNavigator() {
   // Fire-and-forget on every app launch; silently no-ops on network failure
   useEffect(() => {
     checkForUpdate();
-    // Set up Android notification channels for active-workout tile + rest alert
+    // Set up Android notification channels + request permission once here so
+    // the system dialog appears at a neutral moment (app launch), not mid-quest.
     setupWorkoutChannel();
     setupRestAlertChannel();
     setupRestCompleteCategory();
+    requestNotificationPermission();
   }, []);
 
   // Listen for the "log-reps" text-input action from background rest-complete notifications.
