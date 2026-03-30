@@ -8,14 +8,19 @@ import Constants from 'expo-constants';
 
 const REPO = 'Rishi-Goyal/workout-app';
 
+// Read from package.json directly — reliable in all build types (dev, release APK,
+// Expo Go). Constants.expoConfig.version can be '2.0.0' in dev builds when
+// app.config.ts overrides the version.
+const PKG_VERSION = (require('../../package.json') as { version: string }).version;
+
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
 export const RELEASES_URL   = `https://github.com/${REPO}/releases/latest`;
 
 // ─── Local version ────────────────────────────────────────────────────────────
 
-/** Current app version from app.json / app.config.ts (via Expo Constants). */
+/** Current app version — package.json is the canonical source. */
 export function getCurrentVersion(): string {
-  return Constants.expoConfig?.version ?? '3.0.0';
+  return PKG_VERSION || Constants.expoConfig?.version || '0.0.0';
 }
 
 /** Direct link to the GitHub releases page. */

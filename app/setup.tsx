@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, Pressable, TouchableOpacity,
+  KeyboardAvoidingView, Platform, Pressable, TouchableOpacity, BackHandler,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,6 +38,19 @@ export default function SetupScreen() {
   const [strengths, setStrengths] = useState<MuscleStrengths>(defaultStrengths());
 
   const updateStrength = (m: MuscleGroup, v: number) => setStrengths((p) => ({ ...p, [m]: v }));
+
+  // Intercept Android hardware back: step backwards through the wizard instead
+  // of exiting the app (which is the default behaviour on the root screen).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step > 1) {
+        setStep((s) => (s - 1) as Step);
+        return true; // consumed — don't bubble to OS
+      }
+      return false; // let OS handle (exit app on step 1)
+    });
+    return () => sub.remove();
+  }, [step]);
 
   const canProceed =
     (step === 1 && name.trim().length >= 2) ||
