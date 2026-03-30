@@ -5,6 +5,7 @@ import QuestCard from '@/components/dungeon/QuestCard';
 import QuestSkeleton from '@/components/dungeon/QuestSkeleton';
 import SessionSummary from '@/components/dungeon/SessionSummary';
 import ResumeSessionCard from '@/components/dungeon/ResumeSessionCard';
+import WeeklyGoalWidget from '@/components/dungeon/WeeklyGoalWidget';
 import PressableButton from '@/components/ui/PressableButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
@@ -12,6 +13,8 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
+import { useAdaptationStore } from '@/stores/useAdaptationStore';
+import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
 import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { xpToNextLevel } from '@/lib/xp';
 import { relativeDate } from '@/lib/dateUtils';
@@ -99,6 +102,7 @@ export default function DungeonTabScreen() {
         muscleStrengths: profile.muscleStrengths,
         currentFloor,
         recentSessions: getRecent(3),
+        adaptations: useAdaptationStore.getState().adaptations,
       });
 
       if (rawQuests.length === 0) {
@@ -147,6 +151,12 @@ export default function DungeonTabScreen() {
 
     incrementFloorsCleared();
     addSession(finalized);
+    // Feature 1: update per-exercise progressive overload targets
+    useAdaptationStore.getState().applyAdaptation(finalized);
+    // Feature 2: evaluate last week's streak now that a new session exists
+    useWeeklyGoalStore.getState().evaluateWeek(
+      useHistoryStore.getState().sessions,
+    );
     setSummary({ session: finalized, xpGained, didLevelUp: leveledUp, newLevel, muscleLevelUps: allMuscleLevelUps });
   };
 
@@ -294,11 +304,14 @@ export default function DungeonTabScreen() {
           />
         </Card>
 
+        {/* Weekly goal widget — streak + Mon–Sun dot row + freeze */}
+        <WeeklyGoalWidget />
+
         {/* Stats row */}
         <View style={styles.statsRow}>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.floorsCleared > 0 ? character.floorsCleared : 0}</Text>
-            <Text style={styles.statLabel}>Streak</Text>
+            <Text style={styles.statLabel}>Workouts</Text>
           </Card>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.floorsCleared}</Text>

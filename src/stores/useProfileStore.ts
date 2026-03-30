@@ -102,7 +102,17 @@ export const useProfileStore = create<ProfileStore>()(
         set({ character: { ...c, floorsCleared: c.floorsCleared + 1 } });
       },
 
-      resetProfile: () => set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP }),
+      resetProfile: () => {
+        set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP });
+        // Clear all dependent stores so no stale data persists after a profile wipe
+        // Lazy imports avoid a circular-dependency chain at module load time
+        import('./useAdaptationStore').then(({ useAdaptationStore }) =>
+          useAdaptationStore.getState().clearAllAdaptations(),
+        );
+        import('./useWeeklyGoalStore').then(({ useWeeklyGoalStore }) =>
+          useWeeklyGoalStore.getState().resetAll(),
+        );
+      },
     }),
     {
       name: 'dungeon-profile',
