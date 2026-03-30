@@ -22,6 +22,7 @@ export default function AnimatedBar({
 
   useEffect(() => {
     width.value = withTiming(Math.min(100, Math.max(0, value)), { duration: 600 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- width is a stable Reanimated shared value (ref-like)
   }, [value]);
 
   const animStyle = useAnimatedStyle(() => ({

@@ -41,7 +41,9 @@ function AppNavigator() {
     }
   }, [profile]);
 
-  // Fire-and-forget on every app launch; silently no-ops on network failure
+  // Fire-and-forget on every app launch; silently no-ops on network failure.
+  // checkForUpdate is a stable Zustand action — intentionally omitted from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkForUpdate();
     // Set up Android notification channels + request permission once here so

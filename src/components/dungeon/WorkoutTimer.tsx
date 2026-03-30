@@ -308,9 +308,11 @@ export default function WorkoutTimer({
     }, 1000);
   }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps, exerciseName, questId, reps]);
 
-  // Reset holdStarted when moving to the next set
+  // Reset holdStarted when moving to the next set.
+  // Intentionally only depends on currentSet — phase is read as a guard, not a trigger.
   useEffect(() => {
     if (phase === 'active') setHoldStarted(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSet]);
 
   useEffect(() => {
@@ -326,7 +328,10 @@ export default function WorkoutTimer({
     if (phase === 'done') {
       setEditedSets(prev => prev.length === 0 ? [...loggedSets] : prev);
     }
-  }, [phase, currentSet, holdStarted]);
+    // startHold intentionally omitted: it captures loggedSets in its closure and including it
+    // would re-trigger this effect (and restart the countdown) whenever a set is logged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, currentSet, holdStarted, holdSeconds, pulse]);
 
   useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); }, []);
 
@@ -343,7 +348,7 @@ export default function WorkoutTimer({
       setRepsInput(pendingSetReps.reps);
       clearPendingSetReps();
     }
-  }, [pendingSetReps, phase, currentSet, questId]);
+  }, [pendingSetReps, phase, currentSet, questId, clearPendingSetReps]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
