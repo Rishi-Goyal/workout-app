@@ -65,8 +65,29 @@ export interface Exercise {
   isStatic?: boolean;
   /** Default hold duration in seconds for static exercises */
   defaultHoldSeconds?: number;
+  /**
+   * Fatigue caused per muscle group on a single hard set (1–10 scale).
+   * Omit for muscles not significantly stressed.
+   * Defaults derived from difficultyLevel if not provided.
+   *   primary ≈ difficultyLevel × 2   (capped at 10)
+   *   secondary ≈ difficultyLevel     (capped at 5)
+   */
+  muscleFatigue?: Partial<Record<MuscleGroup, number>>;
   /** Step-by-step how-to instructions (populated from exerciseSteps.ts at runtime) */
   steps?: string[];
+}
+
+/**
+ * Returns the per-muscle fatigue caused by one working set of this exercise.
+ * Uses explicit `muscleFatigue` if provided; otherwise derives from difficulty.
+ */
+export function getMuscleFatigue(exercise: Exercise): Partial<Record<MuscleGroup, number>> {
+  if (exercise.muscleFatigue) return exercise.muscleFatigue;
+  const primary = Math.min(10, exercise.difficultyLevel * 2);
+  const secondary = Math.max(1, Math.ceil(primary * 0.45));
+  const result: Partial<Record<MuscleGroup, number>> = { [exercise.primaryMuscle]: primary };
+  exercise.secondaryMuscles.forEach((m, i) => { result[m] = Math.max(1, secondary - i); });
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +118,19 @@ const chestExercises: Exercise[] = [
     formCues: ['Hands on elevated surface', 'Body rigid plank', 'Chest touches surface'],
     progression: { easierExerciseId: 'wall-push-up', harderExerciseId: 'push-up' },
     tags: ['bodyweight', 'beginner'],
+  },
+  {
+    id: 'wide-push-up',
+    name: 'Wide Push-Up',
+    primaryMuscle: 'chest',
+    secondaryMuscles: ['shoulders', 'triceps'],
+    movementPattern: 'push',
+    difficultyLevel: 2,
+    equipment: ['bodyweight_only'],
+    formCues: ['Hands 1.5× shoulder width', 'Elbows flare ~60°', 'Chest to floor', 'Full lockout'],
+    progression: { easierExerciseId: 'push-up', harderExerciseId: 'archer-push-up' },
+    muscleFatigue: { chest: 6, shoulders: 3, triceps: 2 },
+    tags: ['bodyweight', 'compound', 'beginner'],
   },
   {
     id: 'push-up',
@@ -132,6 +166,7 @@ const chestExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['One arm fully extended laterally', 'Lower to bent arm side', 'Keep hips square'],
     progression: { easierExerciseId: 'diamond-push-up', harderExerciseId: 'one-arm-push-up' },
+    muscleFatigue: { chest: 7, shoulders: 4, triceps: 4, core: 3 },
     tags: ['bodyweight', 'advanced', 'unilateral'],
   },
   {
@@ -144,6 +179,7 @@ const chestExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Feet wide for stability', 'Free arm behind back or at side', 'Avoid rotating hips'],
     progression: { easierExerciseId: 'archer-push-up', harderExerciseId: null },
+    muscleFatigue: { chest: 9, shoulders: 5, triceps: 6, core: 5 },
     tags: ['bodyweight', 'elite', 'unilateral'],
   },
   {
@@ -190,6 +226,7 @@ const chestExercises: Exercise[] = [
       female: { beginner: 25, novice: 42, intermediate: 65, advanced: 95, elite: 130 },
       unit: 'kg',
     },
+    muscleFatigue: { chest: 8, shoulders: 4, triceps: 5 },
     tags: ['barbell', 'compound', 'powerlifting', 'strength'],
   },
   {
@@ -202,6 +239,7 @@ const chestExercises: Exercise[] = [
     equipment: ['barbell', 'bench'],
     formCues: ['1–2 second pause on chest', 'No bounce off chest', 'Maintain tightness at bottom'],
     progression: { easierExerciseId: 'barbell-bench-press', harderExerciseId: 'weighted-dip' },
+    muscleFatigue: { chest: 9, shoulders: 4, triceps: 5 },
     tags: ['barbell', 'compound', 'powerlifting', 'advanced'],
   },
   {
@@ -214,6 +252,7 @@ const chestExercises: Exercise[] = [
     equipment: ['barbell', 'bench'],
     formCues: ['30–45° incline', 'Bar to upper chest / clavicle line', 'Same arch & leg drive as flat'],
     progression: { easierExerciseId: 'incline-dumbbell-press', harderExerciseId: null },
+    muscleFatigue: { chest: 8, shoulders: 5, triceps: 5 },
     tags: ['barbell', 'compound', 'upper chest'],
   },
   {
@@ -267,6 +306,7 @@ const chestExercises: Exercise[] = [
       female: { beginner: -20, novice: -3, intermediate: 20, advanced: 44, elite: 72 },
       unit: 'kg', // added weight (negative = assistance)
     },
+    muscleFatigue: { chest: 7, triceps: 8, shoulders: 5 },
     tags: ['bodyweight', 'compound', 'advanced'],
   },
 ];
@@ -329,6 +369,7 @@ const backExercises: Exercise[] = [
       female: { beginner: 0, novice: 0, intermediate: 6, advanced: 15, elite: 26 },
       unit: 'reps',
     },
+    muscleFatigue: { back: 8, biceps: 6, shoulders: 3, core: 2 },
     tags: ['bodyweight', 'compound', 'intermediate', 'vertical pull'],
   },
   {
@@ -341,6 +382,7 @@ const backExercises: Exercise[] = [
     equipment: ['pull_up_bar'],
     formCues: ['Underhand grip shoulder-width', 'Full extension at bottom', 'Chest to bar for full ROM'],
     progression: { easierExerciseId: 'lat-pulldown', harderExerciseId: 'weighted-pull-up' },
+    muscleFatigue: { biceps: 7, back: 7, shoulders: 3 },
     tags: ['bodyweight', 'compound', 'intermediate', 'bicep emphasis', 'vertical pull'],
   },
   {
@@ -353,6 +395,7 @@ const backExercises: Exercise[] = [
     equipment: ['pull_up_bar'],
     formCues: ['Weight belt or dumbbell between feet', 'Same form as bodyweight pull-up', 'Full ROM every rep'],
     progression: { easierExerciseId: 'pull-up', harderExerciseId: null },
+    muscleFatigue: { back: 9, biceps: 7, shoulders: 4, core: 3 },
     tags: ['bodyweight', 'compound', 'advanced', 'vertical pull'],
   },
   {
@@ -382,6 +425,7 @@ const backExercises: Exercise[] = [
       female: { beginner: 15, novice: 26, intermediate: 41, advanced: 59, elite: 79 },
       unit: 'kg',
     },
+    muscleFatigue: { back: 8, biceps: 5, core: 5, glutes: 2 },
     tags: ['barbell', 'compound', 'intermediate', 'horizontal pull'],
   },
   {
@@ -394,6 +438,7 @@ const backExercises: Exercise[] = [
     equipment: ['barbell'],
     formCues: ['Bar starts on floor each rep', 'Torso nearly horizontal', 'Explosive pull', 'Bar to lower chest'],
     progression: { easierExerciseId: 'barbell-bent-over-row', harderExerciseId: null },
+    muscleFatigue: { back: 9, biceps: 5, core: 6 },
     tags: ['barbell', 'compound', 'advanced', 'horizontal pull', 'powerlifting'],
   },
   {
@@ -429,6 +474,7 @@ const backExercises: Exercise[] = [
       female: { beginner: 38, novice: 60, intermediate: 88, advanced: 120, elite: 157 },
       unit: 'kg',
     },
+    muscleFatigue: { back: 9, glutes: 8, hamstrings: 8, core: 6, quads: 3 },
     tags: ['barbell', 'compound', 'powerlifting', 'posterior chain', 'strength'],
   },
   {
@@ -441,6 +487,7 @@ const backExercises: Exercise[] = [
     equipment: ['barbell'],
     formCues: ['Wide stance, toes angled out', 'Grip inside the legs', 'Push knees out over toes', 'Stay upright'],
     progression: { easierExerciseId: 'deadlift', harderExerciseId: null },
+    muscleFatigue: { glutes: 9, hamstrings: 8, back: 7, quads: 5, core: 5 },
     tags: ['barbell', 'compound', 'powerlifting', 'advanced'],
   },
   {
@@ -465,6 +512,7 @@ const backExercises: Exercise[] = [
     equipment: ['barbell'],
     formCues: ['Bar across upper traps', 'Soft knee bend', 'Hinge until torso ~45°', 'Start light (50% of squat)'],
     progression: { easierExerciseId: 'back-extension', harderExerciseId: 'deadlift' },
+    muscleFatigue: { hamstrings: 7, glutes: 6, back: 6 },
     tags: ['barbell', 'compound', 'posterior chain'],
   },
   {
@@ -486,6 +534,45 @@ const backExercises: Exercise[] = [
 // ---------------------------------------------------------------------------
 
 const shoulderExercises: Exercise[] = [
+  {
+    id: 'band-lateral-raise',
+    name: 'Band Lateral Raise',
+    primaryMuscle: 'shoulders',
+    secondaryMuscles: ['back'],
+    movementPattern: 'isolation',
+    difficultyLevel: 1,
+    equipment: ['resistance_bands'],
+    formCues: ['Slight forward lean', 'Lead with elbows', 'Raise to ear height', 'Slow lower'],
+    progression: { easierExerciseId: null, harderExerciseId: 'lateral-raise' },
+    muscleFatigue: { shoulders: 3, back: 1 },
+    tags: ['isolation', 'beginner', 'home'],
+  },
+  {
+    id: 'pike-push-up',
+    name: 'Pike Push-Up',
+    primaryMuscle: 'shoulders',
+    secondaryMuscles: ['triceps', 'core'],
+    movementPattern: 'push',
+    difficultyLevel: 2,
+    equipment: ['bodyweight_only'],
+    formCues: ['Hips high, body inverted V', 'Hands shoulder-width', 'Lower head between hands', 'Push back up'],
+    progression: { easierExerciseId: 'band-lateral-raise', harderExerciseId: 'elevated-pike-push-up' },
+    muscleFatigue: { shoulders: 5, triceps: 3, core: 2 },
+    tags: ['bodyweight', 'compound', 'beginner'],
+  },
+  {
+    id: 'elevated-pike-push-up',
+    name: 'Elevated Pike Push-Up',
+    primaryMuscle: 'shoulders',
+    secondaryMuscles: ['triceps', 'core'],
+    movementPattern: 'push',
+    difficultyLevel: 3,
+    equipment: ['bodyweight_only', 'bench'],
+    formCues: ['Feet elevated on bench', 'Body near vertical', 'Lower head to floor', 'Drive up explosively'],
+    progression: { easierExerciseId: 'pike-push-up', harderExerciseId: 'barbell-overhead-press' },
+    muscleFatigue: { shoulders: 7, triceps: 4, core: 3 },
+    tags: ['bodyweight', 'compound', 'intermediate'],
+  },
   {
     id: 'band-pull-apart',
     name: 'Band Pull-Apart',
@@ -543,6 +630,7 @@ const shoulderExercises: Exercise[] = [
       female: { beginner: 13, novice: 22, intermediate: 34, advanced: 49, elite: 65 },
       unit: 'kg',
     },
+    muscleFatigue: { shoulders: 8, triceps: 6, core: 4 },
     tags: ['barbell', 'compound', 'intermediate', 'vertical push', 'strength'],
   },
   {
@@ -555,6 +643,7 @@ const shoulderExercises: Exercise[] = [
     equipment: ['barbell'],
     formCues: ['Slight knee dip', 'Explosive leg drive to initiate press', 'Full lock-out overhead', 'Heavier than strict OHP'],
     progression: { easierExerciseId: 'barbell-overhead-press', harderExerciseId: null },
+    muscleFatigue: { shoulders: 7, triceps: 5, core: 5, quads: 3 },
     tags: ['barbell', 'compound', 'advanced', 'vertical push', 'explosive'],
   },
   {
@@ -689,6 +778,32 @@ const bicepsExercises: Exercise[] = [
     progression: { easierExerciseId: 'dumbbell-curl', harderExerciseId: 'preacher-curl' },
     tags: ['cable', 'isolation', 'intermediate'],
   },
+  {
+    id: 'concentration-curl',
+    name: 'Concentration Curl',
+    primaryMuscle: 'biceps',
+    secondaryMuscles: ['shoulders'],
+    movementPattern: 'isolation',
+    difficultyLevel: 2,
+    equipment: ['dumbbells'],
+    formCues: ['Elbow braced on inner thigh', 'Full range of motion', 'Squeeze at top', 'No shoulder involvement'],
+    progression: { easierExerciseId: 'dumbbell-curl', harderExerciseId: 'preacher-curl' },
+    muscleFatigue: { biceps: 6, shoulders: 1 },
+    tags: ['isolation', 'beginner'],
+  },
+  {
+    id: 'spider-curl',
+    name: 'Spider Curl',
+    primaryMuscle: 'biceps',
+    secondaryMuscles: ['shoulders'],
+    movementPattern: 'isolation',
+    difficultyLevel: 3,
+    equipment: ['dumbbells', 'barbell', 'bench'],
+    formCues: ['Chest on incline bench', 'Arms hang free', 'Curl with elbows fixed', 'Full extension each rep'],
+    progression: { easierExerciseId: 'preacher-curl', harderExerciseId: 'incline-dumbbell-curl' },
+    muscleFatigue: { biceps: 7, shoulders: 1 },
+    tags: ['isolation', 'intermediate'],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -742,6 +857,7 @@ const tricepsExercises: Exercise[] = [
     equipment: ['barbell', 'bench'],
     formCues: ['Lower to forehead or behind head', 'Elbows point at ceiling throughout', 'Full extension at top'],
     progression: { easierExerciseId: 'overhead-tricep-extension', harderExerciseId: 'close-grip-bench' },
+    muscleFatigue: { triceps: 8, shoulders: 2 },
     tags: ['barbell', 'isolation', 'intermediate', 'long head'],
   },
   {
@@ -754,6 +870,7 @@ const tricepsExercises: Exercise[] = [
     equipment: ['barbell', 'bench'],
     formCues: ['Grip shoulder-width (not too close)', 'Elbows tucked ~45°', 'Lower to lower chest', 'Compound movement'],
     progression: { easierExerciseId: 'skull-crusher', harderExerciseId: 'weighted-dip' },
+    muscleFatigue: { triceps: 7, chest: 5, shoulders: 3 },
     tags: ['barbell', 'compound', 'intermediate'],
   },
   {
@@ -861,6 +978,7 @@ const coreExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Start kneeling', 'Roll out until hips about to sag', 'Pull back with abs, not arms', 'Advance to standing rollout'],
     progression: { easierExerciseId: 'hanging-leg-raise', harderExerciseId: 'standing-ab-wheel' },
+    muscleFatigue: { core: 9, shoulders: 4 },
     tags: ['bodyweight', 'advanced', 'anti-extension'],
   },
   {
@@ -873,6 +991,7 @@ const coreExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Start standing, feet hip-width', 'Roll out completely', 'Return with only core strength'],
     progression: { easierExerciseId: 'ab-wheel-rollout', harderExerciseId: null },
+    muscleFatigue: { core: 10, shoulders: 5 },
     tags: ['bodyweight', 'elite', 'anti-extension'],
   },
   {
@@ -898,6 +1017,34 @@ const coreExercises: Exercise[] = [
     formCues: ['Lean back ~45°', 'Feet off floor for harder version', 'Rotate fully side to side', 'Touch the floor on each rep'],
     progression: { easierExerciseId: 'plank', harderExerciseId: 'hanging-leg-raise' },
     tags: ['bodyweight', 'intermediate', 'rotation', 'obliques'],
+  },
+  {
+    id: 'side-plank',
+    name: 'Side Plank',
+    primaryMuscle: 'core',
+    secondaryMuscles: ['shoulders', 'glutes'],
+    movementPattern: 'core',
+    difficultyLevel: 2,
+    equipment: ['bodyweight_only'],
+    formCues: ['Elbow directly under shoulder', 'Hips stacked', 'Body in straight line', 'Hold position'],
+    progression: { easierExerciseId: 'plank', harderExerciseId: 'hanging-leg-raise' },
+    muscleFatigue: { core: 5, shoulders: 2, glutes: 2 },
+    isStatic: true,
+    defaultHoldSeconds: 30,
+    tags: ['bodyweight', 'isometric', 'beginner'],
+  },
+  {
+    id: 'pallof-press',
+    name: 'Pallof Press',
+    primaryMuscle: 'core',
+    secondaryMuscles: ['shoulders', 'back'],
+    movementPattern: 'core',
+    difficultyLevel: 2,
+    equipment: ['cable', 'resistance_bands'],
+    formCues: ['Cable at chest height', 'Stand perpendicular to cable', 'Press straight out and return', 'Resist rotation throughout'],
+    progression: { easierExerciseId: 'plank', harderExerciseId: 'cable-crunch' },
+    muscleFatigue: { core: 5, shoulders: 2, back: 2 },
+    tags: ['anti-rotation', 'functional', 'beginner'],
   },
 ];
 
@@ -963,6 +1110,7 @@ const quadExercises: Exercise[] = [
       female: { beginner: 29, novice: 49, intermediate: 73, advanced: 103, elite: 136 },
       unit: 'kg',
     },
+    muscleFatigue: { quads: 9, glutes: 8, hamstrings: 5, core: 6 },
     tags: ['barbell', 'compound', 'powerlifting', 'strength'],
   },
   {
@@ -975,6 +1123,7 @@ const quadExercises: Exercise[] = [
     equipment: ['barbell'],
     formCues: ['Bar on front delts / clavicle', 'Elbows high parallel to floor', 'Very upright torso required', 'Deep knee flexion emphasis'],
     progression: { easierExerciseId: 'barbell-back-squat', harderExerciseId: 'pause-squat' },
+    muscleFatigue: { quads: 9, core: 7, glutes: 6, hamstrings: 4 },
     tags: ['barbell', 'compound', 'advanced', 'olympic lifting'],
   },
   {
@@ -1028,6 +1177,7 @@ const quadExercises: Exercise[] = [
     equipment: ['bench', 'dumbbells', 'barbell'],
     formCues: ['Rear foot elevated on bench', 'Front foot far enough for vertical shin', 'Deep knee bend', 'Controlled descent'],
     progression: { easierExerciseId: 'lunge', harderExerciseId: 'front-squat' },
+    muscleFatigue: { quads: 8, glutes: 7, hamstrings: 4, core: 3 },
     tags: ['compound', 'intermediate', 'unilateral', 'glute emphasis'],
   },
   {
@@ -1054,6 +1204,45 @@ const quadExercises: Exercise[] = [
     progression: { easierExerciseId: 'bodyweight-squat', harderExerciseId: 'bulgarian-split-squat' },
     tags: ['bodyweight', 'dumbbell', 'compound', 'unilateral', 'beginner'],
   },
+  {
+    id: 'walking-lunge',
+    name: 'Walking Lunge',
+    primaryMuscle: 'quads',
+    secondaryMuscles: ['glutes', 'hamstrings', 'core'],
+    movementPattern: 'squat',
+    difficultyLevel: 2,
+    equipment: ['bodyweight_only', 'dumbbells', 'barbell'],
+    formCues: ['Step forward into lunge', 'Back knee near floor', 'Front shin vertical', 'Drive through front heel to next step'],
+    progression: { easierExerciseId: 'lunge', harderExerciseId: 'bulgarian-split-squat' },
+    muscleFatigue: { quads: 6, glutes: 5, hamstrings: 3, core: 2 },
+    tags: ['compound', 'beginner', 'functional'],
+  },
+  {
+    id: 'hack-squat',
+    name: 'Hack Squat (Machine)',
+    primaryMuscle: 'quads',
+    secondaryMuscles: ['glutes', 'hamstrings'],
+    movementPattern: 'squat',
+    difficultyLevel: 3,
+    equipment: ['machine'],
+    formCues: ['Feet shoulder-width on platform', 'Toes slightly out', 'Descend until thighs parallel', 'Drive through heels'],
+    progression: { easierExerciseId: 'leg-press', harderExerciseId: 'barbell-back-squat' },
+    muscleFatigue: { quads: 8, glutes: 5, hamstrings: 3 },
+    tags: ['machine', 'intermediate', 'compound'],
+  },
+  {
+    id: 'sissy-squat',
+    name: 'Sissy Squat',
+    primaryMuscle: 'quads',
+    secondaryMuscles: ['core'],
+    movementPattern: 'squat',
+    difficultyLevel: 4,
+    equipment: ['bodyweight_only'],
+    formCues: ['Hold support', 'Lean back as you descend', 'Heels rise', 'Knee travels far forward', 'Control descent'],
+    progression: { easierExerciseId: 'leg-extension', harderExerciseId: 'barbell-back-squat' },
+    muscleFatigue: { quads: 9, core: 3 },
+    tags: ['bodyweight', 'advanced', 'isolation'],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1071,6 +1260,7 @@ const posteriorChainExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Feet flat, knees bent', 'Drive hips to ceiling', 'Squeeze glutes at top', 'Hold 1–2 seconds'],
     progression: { easierExerciseId: null, harderExerciseId: 'hip-thrust' },
+    muscleFatigue: { glutes: 4, hamstrings: 2, core: 1 },
     tags: ['bodyweight', 'compound', 'beginner', 'rehabilitation'],
   },
   {
@@ -1100,6 +1290,7 @@ const posteriorChainExercises: Exercise[] = [
       female: { beginner: 29, novice: 45, intermediate: 66, advanced: 91, elite: 119 },
       unit: 'kg',
     },
+    muscleFatigue: { hamstrings: 8, glutes: 7, back: 4 },
     tags: ['barbell', 'dumbbell', 'compound', 'intermediate', 'posterior chain'],
   },
   {
@@ -1112,6 +1303,7 @@ const posteriorChainExercises: Exercise[] = [
     equipment: ['dumbbells', 'barbell'],
     formCues: ['Balance on one leg', 'Hinge at hip, free leg extends back', 'Keep hips square', 'Use wall for balance initially'],
     progression: { easierExerciseId: 'romanian-deadlift', harderExerciseId: null },
+    muscleFatigue: { hamstrings: 8, glutes: 8, core: 4 },
     tags: ['dumbbell', 'compound', 'intermediate', 'unilateral', 'balance'],
   },
   {
@@ -1124,6 +1316,7 @@ const posteriorChainExercises: Exercise[] = [
     equipment: ['bodyweight_only'],
     formCues: ['Kneel, feet anchored under bench/bar', 'Lower body as slowly as possible', 'Use hands to push back up initially', 'Eccentric-only until strong enough'],
     progression: { easierExerciseId: 'romanian-deadlift', harderExerciseId: null },
+    muscleFatigue: { hamstrings: 10, glutes: 5, core: 3 },
     tags: ['bodyweight', 'advanced', 'eccentric', 'hamstring injury prevention'],
   },
   {
@@ -1148,7 +1341,34 @@ const posteriorChainExercises: Exercise[] = [
     equipment: ['kettlebell'],
     formCues: ['Hinge, not squat', 'Explosive hip snap', 'Glutes and core at top', 'Bell drives by hip power, not arms'],
     progression: { easierExerciseId: 'hip-thrust', harderExerciseId: 'deadlift' },
+    muscleFatigue: { glutes: 8, hamstrings: 7, back: 6, core: 5 },
     tags: ['kettlebell', 'compound', 'intermediate', 'explosive', 'conditioning'],
+  },
+  {
+    id: 'lying-leg-curl',
+    name: 'Lying Leg Curl',
+    primaryMuscle: 'hamstrings',
+    secondaryMuscles: ['glutes', 'calves'],
+    movementPattern: 'isolation',
+    difficultyLevel: 2,
+    equipment: ['machine'],
+    formCues: ['Pad just above ankles', 'Curl fully to glutes', 'No hip rise', 'Slow eccentric'],
+    progression: { easierExerciseId: 'glute-bridge', harderExerciseId: 'nordic-curl' },
+    muscleFatigue: { hamstrings: 6, glutes: 2, calves: 2 },
+    tags: ['machine', 'isolation', 'beginner'],
+  },
+  {
+    id: 'single-leg-hip-thrust',
+    name: 'Single-Leg Hip Thrust',
+    primaryMuscle: 'glutes',
+    secondaryMuscles: ['hamstrings', 'core'],
+    movementPattern: 'hinge',
+    difficultyLevel: 3,
+    equipment: ['bodyweight_only', 'bench'],
+    formCues: ['Upper back on bench', 'One leg extended', 'Drive through heel of planted leg', 'Full hip extension at top'],
+    progression: { easierExerciseId: 'hip-thrust', harderExerciseId: 'romanian-deadlift' },
+    muscleFatigue: { glutes: 7, hamstrings: 5, core: 4 },
+    tags: ['bodyweight', 'intermediate', 'unilateral'],
   },
 ];
 

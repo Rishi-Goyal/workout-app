@@ -12,6 +12,7 @@ import {
 } from '../lib/muscleXP';
 import { fetchLatestVersion } from '../lib/versionCheck';
 import type { QuestDifficulty } from '../types';
+import { getMuscleFatigue, EXERCISE_MAP } from '../lib/exerciseDatabase';
 
 interface MuscleXPResult {
   levelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
@@ -32,6 +33,7 @@ interface ProfileStore {
     secondaryMuscles: MuscleGroup[],
     difficulty: QuestDifficulty,
     completion: 'complete' | 'half_complete',
+    exerciseId?: string,
   ) => MuscleXPResult;
   incrementFloorsCleared: () => void;
   resetProfile: () => void;
@@ -75,10 +77,13 @@ export const useProfileStore = create<ProfileStore>()(
         return { leveledUp, levelsGained };
       },
 
-      awardMuscleXP: (primaryMuscles, secondaryMuscles, difficulty, completion) => {
+      awardMuscleXP: (primaryMuscles, secondaryMuscles, difficulty, completion, exerciseId) => {
         const current = get().muscleXP;
         const awards = calculateMuscleXP(primaryMuscles, secondaryMuscles, difficulty, completion);
-        const { muscleXP: updated, levelUps } = applyMuscleXP(current, awards);
+        // Look up exercise-specific fatigue if exerciseId provided
+        const exercise = exerciseId ? EXERCISE_MAP[exerciseId] : undefined;
+        const fatigue = exercise ? getMuscleFatigue(exercise) : undefined;
+        const { muscleXP: updated, levelUps } = applyMuscleXP(current, awards, fatigue);
 
         // Re-derive class from the updated muscle distribution after every session
         const character = get().character;
@@ -102,7 +107,7 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
@@ -121,6 +126,15 @@ export const useProfileStore = create<ProfileStore>()(
           for (const key of Object.keys(mxp)) {
             if (mxp[key] && mxp[key].lastTrained === undefined) {
               mxp[key].lastTrained = undefined;
+            }
+          }
+        }
+        // v4 → v5: add lastFatigueScore to each muscle entry
+        if (s.muscleXP && typeof s.muscleXP === 'object') {
+          const mxp = s.muscleXP as Record<string, Record<string, unknown>>;
+          for (const key of Object.keys(mxp)) {
+            if (mxp[key] && mxp[key].lastFatigueScore === undefined) {
+              mxp[key].lastFatigueScore = undefined;
             }
           }
         }

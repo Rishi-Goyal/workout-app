@@ -5,13 +5,11 @@
  * All functions fail gracefully: no exceptions bubble up to the caller.
  */
 import Constants from 'expo-constants';
+// package.json is always bundled — reliable in dev, Expo Go, and production APKs
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PKG_VERSION: string = (require('../../package.json') as { version: string }).version;
 
 const REPO = 'Rishi-Goyal/workout-app';
-
-// Read from package.json directly — reliable in all build types (dev, release APK,
-// Expo Go). Constants.expoConfig.version can be '2.0.0' in dev builds when
-// app.config.ts overrides the version.
-const PKG_VERSION = (require('../../package.json') as { version: string }).version;
 
 export const GITHUB_API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
 export const RELEASES_URL   = `https://github.com/${REPO}/releases/latest`;

@@ -139,6 +139,7 @@ export default function DungeonTabScreen() {
           secondary as MuscleGroup[],
           quest.difficulty,
           completion,
+          quest.exerciseId,  // ADD THIS
         );
         allMuscleLevelUps.push(...levelUps);
       }

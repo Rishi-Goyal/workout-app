@@ -41,29 +41,20 @@ function zoneAvg(zone: ZoneConfig, muscleXP: MuscleXP): number {
 
 // ─── Recovery status logic ────────────────────────────────────────────────────
 
-function formatTimeAgo(isoDate: string): string {
-  const diffMs = Date.now() - new Date(isoDate).getTime();
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (hours < 1) return 'just now';
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'yesterday';
-  return `${days}d ago`;
-}
-
-function getRecoveryStatus(lastTrained?: string): {
-  badge: 'jade' | 'crimson' | 'gold' | 'muted';
-  label: string;
-  timeAgo: string;
-} {
-  if (!lastTrained) return { badge: 'muted', label: 'Not trained', timeAgo: '—' };
-
+function getRecoveryStatus(lastTrained?: string, fatigueScore?: number) {
+  if (!lastTrained) return { badge: 'muted' as const, label: 'Not trained', timeAgo: '—' };
   const hoursAgo = (Date.now() - new Date(lastTrained).getTime()) / (1000 * 60 * 60);
-  const timeAgo = formatTimeAgo(lastTrained);
-
-  if (hoursAgo < 24) return { badge: 'crimson', label: 'Fatigued', timeAgo };
-  if (hoursAgo < 48) return { badge: 'gold', label: 'Recovering', timeAgo };
-  return { badge: 'jade', label: 'Recovered', timeAgo };
+  const timeAgo = hoursAgo < 1
+    ? `${Math.round(hoursAgo * 60)}m ago`
+    : hoursAgo < 24
+    ? `${Math.round(hoursAgo)}h ago`
+    : `${Math.round(hoursAgo / 24)}d ago`;
+  // Recovery window scales with how hard the muscle was worked:
+  // fatigueScore 0 → 24h, 5 → 36h, 10 → 48h
+  const recoveryHours = 24 + (fatigueScore ?? 5) * 2.4;
+  if (hoursAgo < recoveryHours * 0.5) return { badge: 'crimson' as const, label: 'Fatigued', timeAgo };
+  if (hoursAgo < recoveryHours) return { badge: 'gold' as const, label: 'Recovering', timeAgo };
+  return { badge: 'jade' as const, label: 'Recovered', timeAgo };
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -83,7 +74,7 @@ export default function MusclesScreen() {
         <Card padding={16}>
           <SectionLabel>RECOVERY STATUS</SectionLabel>
           {ALL_MUSCLES.map((muscle, i) => {
-            const { badge, label, timeAgo } = getRecoveryStatus(muscleXP[muscle]?.lastTrained);
+            const { badge, label, timeAgo } = getRecoveryStatus(muscleXP[muscle]?.lastTrained, muscleXP[muscle]?.lastFatigueScore);
             const isLast = i === ALL_MUSCLES.length - 1;
             return (
               <View
