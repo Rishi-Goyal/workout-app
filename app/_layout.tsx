@@ -1,5 +1,5 @@
 import { Component, useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, DeviceEventEmitter, NativeModules, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -54,9 +54,8 @@ function AppNavigator() {
     requestNotificationPermission();
   }, []);
 
-  // Listen for the "log-reps" text-input action from background rest-complete notifications.
-  // When the user types reps in the notification shade and taps Save, we store them so
-  // WorkoutTimer can pre-fill the rep counter on next foreground.
+  // Listen for the "log-reps" text-input action from background rest-complete notifications
+  // (expo-notifications channel — the vibrating post-rest alert).
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       if (response.actionIdentifier !== 'log-reps') return;
@@ -72,6 +71,24 @@ function AppNavigator() {
           questId: data.questId,
           setNumber: data.setNumber,
           reps,
+        });
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Listen for "Log reps" inline-reply from the persistent native notification
+  // (SessionNotifBridge channel — the ongoing active-session tile).
+  // RepLogReceiver emits 'repLogged' with { questId, setNumber, reps } when
+  // the user types a count in the notification shade and taps Save.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !NativeModules.SessionNotifBridge) return;
+    const sub = DeviceEventEmitter.addListener('repLogged', (event: { questId: string; setNumber: number; reps: number }) => {
+      if (event.questId && event.setNumber >= 0 && event.reps >= 0) {
+        useSessionStore.getState().setPendingSetReps({
+          questId: event.questId,
+          setNumber: event.setNumber,
+          reps: event.reps,
         });
       }
     });

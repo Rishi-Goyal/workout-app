@@ -49,5 +49,14 @@
         <action android:name="com.dungeonfit.WIDGET_ACTION" />
       </intent-filter>
     </receiver>
+
+    <!-- Handles "Log reps" inline-reply from the persistent session notification -->
+    <receiver
+        android:name=".widget.RepLogReceiver"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="com.dungeonfit.REP_LOG" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

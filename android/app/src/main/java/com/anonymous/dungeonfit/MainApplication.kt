@@ -14,6 +14,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 import com.anonymous.dungeonfit.widget.WidgetBridgePackage
+import com.anonymous.dungeonfit.widget.SessionNotifBridgePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           add(com.anonymous.dungeonfit.widget.WidgetBridgePackage())
+          add(com.anonymous.dungeonfit.widget.SessionNotifBridgePackage())
         }
     )
   }

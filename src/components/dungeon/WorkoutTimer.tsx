@@ -18,12 +18,18 @@ import PressableButton from '@/components/ui/PressableButton';
 import { formatWeight } from '@/lib/weights';
 import { calculateSetBonus, calculateIsometricBonus, calculateSetXP } from '@/lib/muscleXP';
 import {
-  showWorkoutNotification,
-  showRestInProgressNotification,
   scheduleRestCompleteNotification,
   cancelRestNotification,
 } from '@/lib/workoutNotification';
+import {
+  showActiveSetNotif,
+  showRestingNotif,
+  dismissSessionNotif,
+} from '@/lib/sessionNotifBridge';
+import { NativeModules, Platform } from 'react-native';
 import { useSessionStore } from '@/stores/useSessionStore';
+
+const WidgetBridge = Platform.OS === 'android' ? NativeModules.WidgetBridge : null;
 import type { SetLog } from '@/types';
 import type { ExerciseLastLog } from '@/stores/useHistoryStore';
 
@@ -274,8 +280,15 @@ export default function WorkoutTimer({
     setPhase('resting');
     setRestLeft(restSeconds);
 
-    // Fire background notifications so the user can track rest from outside the app
-    showRestInProgressNotification(exerciseName, currentSet, sets, restSeconds);
+    // Update persistent tile to rest-phase (live countdown) + schedule vibrating alert
+    showRestingNotif(
+      exerciseName,
+      `Set ${currentSet} of ${sets} done`,
+      restSeconds * 1000,
+      questId,
+      currentSet + 1,
+    );
+    WidgetBridge?.updateWidgetTimer(restSeconds * 1000, true);
     if (currentSet < sets) {
       scheduleRestCompleteNotification(
         exerciseName,
@@ -296,13 +309,16 @@ export default function WorkoutTimer({
         clearTimer();
         cancelRestNotification();
         if (currentSet >= sets) {
+          dismissSessionNotif();
+          WidgetBridge?.updateWidgetTimer(0, false);
           setPhase('done');
         } else {
           setCurrentSet(s => s + 1);
           setRepsInput(recommendedReps);
           setLastSetBonus(0);
           setPhase('active');
-          showWorkoutNotification(exerciseName, currentSet + 1, sets);
+          showActiveSetNotif(exerciseName, `Set ${currentSet + 1} of ${sets}`, questId, currentSet + 1);
+          WidgetBridge?.updateWidgetTimer(0, false);
         }
       }
     }, 1000);
@@ -333,7 +349,7 @@ export default function WorkoutTimer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, currentSet, holdStarted, holdSeconds, pulse]);
 
-  useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); }, []);
+  useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); dismissSessionNotif(); }, []);
 
   // Pre-fill reps logged via a background notification (user typed reps while app was closed).
   const pendingSetReps = useSessionStore(s => s.pendingSetReps);
@@ -429,7 +445,12 @@ export default function WorkoutTimer({
         <PressableButton
           label="⚔️  Begin Quest"
           size="lg"
-          onPress={() => { showWorkoutNotification(exerciseName, 1, sets); setRepsInput(recommendedReps); setPhase('active'); }}
+          onPress={() => {
+            showActiveSetNotif(exerciseName, `Set 1 of ${sets}`, questId, 1);
+            WidgetBridge?.updateWidgetTimer(0, false);
+            setRepsInput(recommendedReps);
+            setPhase('active');
+          }}
           style={styles.mainBtn}
         />
         <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
@@ -704,7 +725,8 @@ export default function WorkoutTimer({
             setRepsInput(recommendedReps);
             setLastSetBonus(0);
             setPhase('active');
-            showWorkoutNotification(exerciseName, currentSet + 1, sets);
+            showActiveSetNotif(exerciseName, `Set ${currentSet + 1} of ${sets}`, questId, currentSet + 1);
+            WidgetBridge?.updateWidgetTimer(0, false);
           }}
         />
       </View>
