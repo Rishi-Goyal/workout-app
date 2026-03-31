@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Linking, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QuestCard from '@/components/dungeon/QuestCard';
 import QuestSkeleton from '@/components/dungeon/QuestSkeleton';
 import SessionSummary from '@/components/dungeon/SessionSummary';
+import ResumeSessionCard from '@/components/dungeon/ResumeSessionCard';
 import PressableButton from '@/components/ui/PressableButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
@@ -13,6 +14,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { xpToNextLevel } from '@/lib/xp';
+import { relativeDate } from '@/lib/dateUtils';
 import { COLORS, SPACING } from '@/lib/constants';
 import { getCurrentVersion, compareVersions, getReleasesUrl } from '@/lib/versionCheck';
 import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
@@ -24,22 +26,29 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function relativeDate(isoString: string): string {
-  const now = Date.now();
-  const then = new Date(isoString).getTime();
-  const diffMs = now - then;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  return `${diffDays}d ago`;
-}
-
 export default function DungeonTabScreen() {
   const { profile, character, muscleXP, awardXP, awardMuscleXP, incrementFloorsCleared, latestVersion } = useProfileStore();
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
   const sessions = useHistoryStore((s) => s.sessions);
   const addSession = useHistoryStore((s) => s.addSession);
-  const { activeSession, isLoading, startSession, setLoading, setError, markQuest, finalizeSession } = useSessionStore();
+  const { activeSession, isLoading, startSession, setLoading, setError, markQuest, finalizeSession, clearSession } = useSessionStore();
+
+  // True when activeSession was rehydrated from AsyncStorage (survived a force-quit),
+  // as opposed to being freshly started this launch. Used to show the Resume card on
+  // the entrance view instead of jumping straight into the session.
+  const [sessionWasRehydrated, setSessionWasRehydrated] = useState(false);
+  useEffect(() => {
+    if (useSessionStore.getState().activeSession) {
+      setSessionWasRehydrated(true);
+      return;
+    }
+    // onFinishHydration fires once when Zustand finishes reading from AsyncStorage
+    const unsub = useSessionStore.persist.onFinishHydration(() => {
+      if (useSessionStore.getState().activeSession) setSessionWasRehydrated(true);
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [entering, setEntering] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -143,7 +152,10 @@ export default function DungeonTabScreen() {
   const handleSummaryClose = () => setSummary(null);
 
   // ── Active session view ───────────────────────────────────────────────────
-  if (activeSession || isLoading) {
+  // Skip directly to session view when actively loading OR when a session was
+  // freshly started this launch (not rehydrated). Rehydrated sessions go through
+  // the entrance view first so the user can choose to Resume or Discard.
+  if (isLoading || (activeSession && !sessionWasRehydrated)) {
     const allActioned = activeSession?.quests.every((q) => q.status !== 'pending') ?? false;
     const routineInfoForSession = getDungeonRoutineInfo(profile.goal, activeSession?.floor ?? currentFloor);
     const estimatedXP = activeSession
@@ -214,6 +226,7 @@ export default function DungeonTabScreen() {
             didLevelUp={summary.didLevelUp}
             newLevel={summary.newLevel}
             muscleLevelUps={summary.muscleLevelUps}
+            goal={profile.goal}
             onClose={handleSummaryClose}
           />
         )}
@@ -244,6 +257,19 @@ export default function DungeonTabScreen() {
         <View style={styles.xpBarTrack}>
           <View style={[styles.xpBarFill, { width: `${xpFillPercent * 100}%` }]} />
         </View>
+
+        {/* Resume card — shown when a session survived a force-quit */}
+        {sessionWasRehydrated && activeSession && (
+          <ResumeSessionCard
+            session={activeSession}
+            goal={profile.goal}
+            onResume={() => setSessionWasRehydrated(false)}
+            onDiscard={() => {
+              clearSession();
+              setSessionWasRehydrated(false);
+            }}
+          />
+        )}
 
         {/* Hero card */}
         <Card padding={SPACING.cardLg}>
@@ -311,6 +337,7 @@ export default function DungeonTabScreen() {
           didLevelUp={summary.didLevelUp}
           newLevel={summary.newLevel}
           muscleLevelUps={summary.muscleLevelUps}
+          goal={profile.goal}
           onClose={handleSummaryClose}
         />
       )}

@@ -3,11 +3,14 @@
  */
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import XPBar from '@/components/character/XPBar';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
+import PressableButton from '@/components/ui/PressableButton';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
+import { daysSince } from '@/lib/dateUtils';
 import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
 
@@ -24,6 +27,7 @@ export default function StatsScreen() {
   if (!profile || !character) return null;
 
   const classDef = CLASS_DEFINITIONS[character.class];
+  const daysSinceLast = sessions.length > 0 ? daysSince(sessions[0].startedAt) : null;
 
   // Performance metrics derived from character stats
   const statValues = Object.values(character.stats) as number[];
@@ -66,6 +70,20 @@ export default function StatsScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile.name}</Text>
             <Text style={styles.profileSub}>Level {character.level} · {character.class}</Text>
+            {/* Inactivity pill — shown when last workout was more than 3 days ago */}
+            {daysSinceLast !== null && daysSinceLast > 3 && (
+              <View style={[
+                styles.inactivePill,
+                daysSinceLast >= 7 && styles.inactivePillRed,
+              ]}>
+                <Text style={[
+                  styles.inactivePillText,
+                  daysSinceLast >= 7 && styles.inactivePillTextRed,
+                ]}>
+                  Last workout {daysSinceLast}d ago
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -78,6 +96,27 @@ export default function StatsScreen() {
             <Text style={styles.xpFooterText}>Level {character.level + 1} in {xpToNext} XP</Text>
           </View>
         </Card>
+
+        {/* First-workout nudge — only shown until the user completes their first session */}
+        {sessions.length === 0 && (
+          <Card padding={20} style={styles.nudgeCard}>
+            <View style={styles.nudgeRow}>
+              <Text style={styles.nudgeIcon}>⚔️</Text>
+              <View style={styles.nudgeText}>
+                <Text style={styles.nudgeTitle}>Your stats await</Text>
+                <Text style={styles.nudgeSub}>
+                  Complete a workout to start tracking your performance and progress.
+                </Text>
+              </View>
+            </View>
+            <PressableButton
+              label="Start First Workout →"
+              size="md"
+              style={styles.nudgeCta}
+              onPress={() => router.replace('/(tabs)')}
+            />
+          </Card>
+        )}
 
         {/* Performance Card */}
         <Card padding={16}>
@@ -140,9 +179,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarIcon: { fontSize: 28 },
-  profileInfo: { flex: 1 },
+  profileInfo: { flex: 1, gap: 4 },
   profileName: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  profileSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
+  profileSub:  { fontSize: 13, color: COLORS.textMuted },
+
+  // Inactivity pill
+  inactivePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(249,115,22,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,115,22,0.25)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  inactivePillRed: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderColor: 'rgba(239,68,68,0.25)',
+  },
+  inactivePillText:    { fontSize: 11, fontWeight: '600', color: '#fb923c' },
+  inactivePillTextRed: { color: '#f87171' },
+
+  // First-workout nudge card
+  nudgeCard: { borderColor: 'rgba(59,130,246,0.2)' },
+  nudgeRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  nudgeIcon: { fontSize: 28, marginTop: 2 },
+  nudgeText: { flex: 1, gap: 4 },
+  nudgeTitle:{ fontSize: 15, fontWeight: '700', color: COLORS.text },
+  nudgeSub:  { fontSize: 12, color: COLORS.textMuted },
+  nudgeCta:  { alignSelf: 'stretch' },
 
   // XP card
   sectionLabelNoMargin: { marginBottom: 8 },
