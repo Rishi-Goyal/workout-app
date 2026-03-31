@@ -7,6 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/lib/constants';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
+import FormCueChecklist from '@/components/dungeon/FormCueChecklist';
 import type { MuscleGroup, Equipment } from '@/types';
 
 const TYPE_LABEL: Record<ExerciseType, string> = {
@@ -100,18 +101,11 @@ function InstructionsPanel({
         </View>
       )}
 
-      {/* Key form cues (quick reference) */}
+      {/* Form cue checklist — interactive, tap each cue to check it off during a set */}
       {formCues.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>KEY CUES</Text>
-          <View style={styles.cuesGrid}>
-            {formCues.map((cue, i) => (
-              <View key={i} style={[styles.cueChip, { borderColor: color + '30' }]}>
-                <View style={[styles.cueDot, { backgroundColor: color }]} />
-                <Text style={styles.cueText}>{cue}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.sectionLabel}>FORM CHECKLIST — tap to check off</Text>
+          <FormCueChecklist cues={formCues} accentColor={color} />
         </View>
       )}
 
@@ -210,32 +204,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.text,
     lineHeight: 20,
-  },
-  cuesGrid: {
-    gap: 6,
-  },
-  cueChip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  cueDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    marginTop: 5,
-    flexShrink: 0,
-    opacity: 0.8,
-  },
-  cueText: {
-    flex: 1,
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
   },
 });

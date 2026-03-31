@@ -13,6 +13,8 @@ import {
 import { fetchLatestVersion } from '../lib/versionCheck';
 import type { QuestDifficulty } from '../types';
 import { getMuscleFatigue, EXERCISE_MAP } from '../lib/exerciseDatabase';
+import { useAdaptationStore } from './useAdaptationStore';
+import { useWeeklyGoalStore } from './useWeeklyGoalStore';
 
 interface MuscleXPResult {
   levelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
@@ -102,7 +104,12 @@ export const useProfileStore = create<ProfileStore>()(
         set({ character: { ...c, floorsCleared: c.floorsCleared + 1 } });
       },
 
-      resetProfile: () => set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP }),
+      resetProfile: () => {
+        set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP });
+        // Clear all dependent stores so no stale data persists after a profile wipe
+        useAdaptationStore.getState().clearAllAdaptations();
+        useWeeklyGoalStore.getState().resetAll();
+      },
     }),
     {
       name: 'dungeon-profile',

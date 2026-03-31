@@ -26,6 +26,7 @@ import {
   type WorkoutDay,
 } from './exerciseDatabase';
 import { maxDifficultyForLevel, getWeakestMuscles, type MuscleXP } from './muscleXP';
+import type { AdaptationMap } from './adaptationEngine';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ interface QuestGenInput {
   currentFloor: number;
   recentSessions: DungeonSession[];
   preferredSplit?: WorkoutSplitType;
+  /** Per-exercise progressive overload targets from the adaptation engine. */
+  adaptations?: AdaptationMap;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -240,6 +243,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
   const {
     equipment, goal, muscleXP, muscleStrengths,
     currentFloor, recentSessions, preferredSplit,
+    adaptations,
   } = input;
 
   const isBoss = currentFloor > 0 && currentFloor % 5 === 0;
@@ -294,7 +298,19 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
         )
       : muscleStrengths[primaryMuscle] ?? 50;
 
-    const { sets, reps, restSeconds, holdSeconds } = getSetsReps(goal, questDifficulty, avgStrength, exercise);
+    const base = getSetsReps(goal, questDifficulty, avgStrength, exercise);
+
+    // Apply adaptation overrides — only for non-static exercises with a stored target.
+    // Static (holdSeconds) overrides are skipped because hold time is more sensitive
+    // and the engine only tracks reps/weight progression.
+    const adaptation = adaptations?.[exercise.id];
+    const sets = adaptation?.overrideSets ?? base.sets;
+    const reps = adaptation?.overrideReps != null
+      ? String(adaptation.overrideReps)
+      : base.reps;
+    const restSeconds = base.restSeconds;
+    const holdSeconds = base.holdSeconds;
+    const suggestedWeight = adaptation?.overrideWeight;
 
     quests.push({
       exerciseId: exercise.id,
@@ -304,6 +320,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
       sets,
       reps,
       ...(holdSeconds !== undefined && { holdSeconds }),
+      ...(suggestedWeight !== undefined && { suggestedWeight }),
       restSeconds,
       difficulty: questDifficulty,
       xpReward: XP_REWARDS[questDifficulty],
