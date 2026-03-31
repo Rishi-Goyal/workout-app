@@ -314,8 +314,8 @@ export default function DungeonTabScreen() {
             <Text style={styles.statLabel}>Workouts</Text>
           </Card>
           <Card style={styles.statCard} padding={14}>
-            <Text style={styles.statValue}>{character.floorsCleared}</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
+            <Text style={styles.statValue}>{character.level}</Text>
+            <Text style={styles.statLabel}>Level</Text>
           </Card>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.totalXPEarned}</Text>

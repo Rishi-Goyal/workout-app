@@ -34,9 +34,15 @@ export default function SessionSummary({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
             {/* ── Header ── */}
-            <Text style={styles.icon}>{didLevelUp ? '🎉' : '⚔️'}</Text>
+            <Text style={styles.icon}>
+              {didLevelUp ? '🎉' : completed === 0 && half === 0 ? '📋' : '⚔️'}
+            </Text>
             <Text style={styles.title}>
-              {didLevelUp ? `Level ${newLevel}!` : `Session ${session.floor} Cleared`}
+              {didLevelUp
+                ? `Level ${newLevel}!`
+                : completed === 0 && half === 0
+                  ? `Session ${session.floor} Ended`
+                  : `Session ${session.floor} Cleared`}
             </Text>
             {didLevelUp && <Text style={styles.subtitle}>You leveled up!</Text>}
 

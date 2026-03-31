@@ -46,13 +46,18 @@ function AppNavigator() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkForUpdate();
-    // Set up Android notification channels + request permission once here so
-    // the system dialog appears at a neutral moment (app launch), not mid-quest.
+    // Set up Android notification channels on every launch (idempotent).
     setupWorkoutChannel();
     setupRestAlertChannel();
     setupRestCompleteCategory();
-    requestNotificationPermission();
   }, []);
+
+  // Request notification permission only after the user has completed onboarding
+  // (profile is non-null).  Showing the system dialog during first-run setup is
+  // jarring and reduces acceptance rates.
+  useEffect(() => {
+    if (profile) requestNotificationPermission();
+  }, [profile]);
 
   // Listen for the "log-reps" text-input action from background rest-complete notifications.
   // When the user types reps in the notification shade and taps Save, we store them so
