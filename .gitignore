@@ -62,6 +62,11 @@ next-env.d.ts
 
 # Metro
 .metro-health-check*
+metro-*.log
+
+# Android emulator testing artifacts (UIAutomator window dumps, adb screenshots)
+/*.xml
+/tmp-screen-*.png
 
 # Claude Code internal
 .claude/worktrees/
