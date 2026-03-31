@@ -15,7 +15,7 @@ import type { MuscleGroup, QuestDifficulty } from '@/types';
 
 // ─── Muscle XP types ─────────────────────────────────────────────────────────
 
-export type MuscleXP = Record<MuscleGroup, { xp: number; level: number; lastTrained?: string }>;
+export type MuscleXP = Record<MuscleGroup, { xp: number; level: number; lastTrained?: string; lastFatigueScore?: number }>;
 
 export const DEFAULT_MUSCLE_XP: MuscleXP = {
   chest:      { xp: 0, level: 1 },
@@ -114,6 +114,7 @@ export function calculateMuscleXP(
 export function applyMuscleXP(
   current: MuscleXP,
   awards: MuscleXPAward[],
+  fatigue?: Partial<Record<MuscleGroup, number>>,
 ): { muscleXP: MuscleXP; levelUps: Array<{ muscle: MuscleGroup; newLevel: number }> } {
   const updated = { ...current };
   const levelUps: Array<{ muscle: MuscleGroup; newLevel: number }> = [];
@@ -124,6 +125,9 @@ export function applyMuscleXP(
     const m = { ...updated[award.muscle] };
     m.xp += award.amount;
     m.lastTrained = now;
+    // Update fatigue score for this muscle (use provided value or derive from award role)
+    const fatigueHit = fatigue?.[award.muscle] ?? (award.role === 'primary' ? 6 : 3);
+    m.lastFatigueScore = fatigueHit;
 
     // Level up loop
     let needed = muscleXPToNext(m.level);
