@@ -82,7 +82,14 @@ function WeightSelector({
 
   return (
     <View style={wStyles.row}>
-      <TouchableOpacity style={wStyles.btn} onPress={() => adjust(-1)} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={wStyles.btn}
+        onPress={() => adjust(-1)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Decrease weight"
+        accessibilityHint="Decreases the weight by one step"
+      >
         <Text style={wStyles.btnText}>−</Text>
       </TouchableOpacity>
 
@@ -90,6 +97,9 @@ function WeightSelector({
         style={[wStyles.display, isBW && wStyles.displayBW]}
         onPress={() => onChange(isBW ? 20 : 'bodyweight')}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={isBW ? 'Change to weight' : 'Change to bodyweight'}
+        accessibilityHint="Toggles between entering a specific weight or using bodyweight"
       >
         <Text style={[wStyles.weightText, isBW && wStyles.weightTextBW]}>
           {isBW ? '🧍 BW' : `${value} ${unit}`}
@@ -97,7 +107,14 @@ function WeightSelector({
         <Text style={wStyles.tapHint}>{isBW ? 'tap for weight' : 'tap for BW'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={wStyles.btn} onPress={() => adjust(1)} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={wStyles.btn}
+        onPress={() => adjust(1)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Increase weight"
+        accessibilityHint="Increases the weight by one step"
+      >
         <Text style={wStyles.btnText}>+</Text>
       </TouchableOpacity>
     </View>
@@ -562,7 +579,14 @@ export default function WorkoutTimer({
         <View style={styles.repSection}>
           <Text style={styles.weightHeader}>REPS THIS SET</Text>
           <View style={styles.repRow}>
-            <TouchableOpacity style={wStyles.btn} onPress={() => setRepsInput(r => Math.max(0, r - 1))} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={wStyles.btn}
+              onPress={() => setRepsInput(r => Math.max(0, r - 1))}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Decrease reps"
+              accessibilityHint="Decreases the number of reps"
+            >
               <Text style={wStyles.btnText}>−</Text>
             </TouchableOpacity>
             <View style={styles.repDisplay}>
@@ -573,7 +597,14 @@ export default function WorkoutTimer({
                 </Text>
               )}
             </View>
-            <TouchableOpacity style={wStyles.btn} onPress={() => setRepsInput(r => r + 1)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={wStyles.btn}
+              onPress={() => setRepsInput(r => r + 1)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Increase reps"
+              accessibilityHint="Increases the number of reps"
+            >
               <Text style={wStyles.btnText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -604,7 +635,13 @@ export default function WorkoutTimer({
         />
 
         {/* Skip this set (logs 0 reps, advances) */}
-        <TouchableOpacity style={styles.skipSetLink} onPress={skipCurrentSet} activeOpacity={0.6}>
+        <TouchableOpacity
+          style={styles.skipSetLink}
+          onPress={skipCurrentSet}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Skip this set"
+        >
           <Text style={styles.skipSetText}>— Skip this set (0 reps)</Text>
         </TouchableOpacity>
       </View>
@@ -758,6 +795,9 @@ export default function WorkoutTimer({
                       style={wStyles.btn}
                       onPress={() => updateEditedSet(i, 'reps', s.repsCompleted - 1)}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Decrease reps"
+                      accessibilityHint="Decreases the number of reps"
                     >
                       <Text style={wStyles.btnText}>−</Text>
                     </TouchableOpacity>
@@ -775,6 +815,9 @@ export default function WorkoutTimer({
                       style={wStyles.btn}
                       onPress={() => updateEditedSet(i, 'reps', s.repsCompleted + 1)}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Increase reps"
+                      accessibilityHint="Increases the number of reps"
                     >
                       <Text style={wStyles.btnText}>+</Text>
                     </TouchableOpacity>
