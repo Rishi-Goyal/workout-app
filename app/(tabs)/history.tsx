@@ -156,6 +156,14 @@ function SessionCard({ session, isExpanded, onToggle, showDivider }: {
   const muscles = uniqueMuscles(session.quests);
   const exerciseCount = session.quests.length;
   const completed = session.quests.filter(q => q.status === 'complete').length;
+  const half      = session.quests.filter(q => q.status === 'half_complete').length;
+
+  // Derive a meaningful badge from quest outcomes rather than the top-level
+  // session.status, which is always 'completed' after finalizeSession().
+  const allSkipped = exerciseCount > 0 && completed === 0 && half === 0;
+  const allDone    = completed === exerciseCount;
+  const badgeLabel   = allSkipped ? 'Skipped' : allDone ? 'Done' : 'Partial';
+  const badgeVariant = allSkipped ? 'muted' : allDone ? 'jade' : 'orange';
 
   return (
     <View>
@@ -186,8 +194,8 @@ function SessionCard({ session, isExpanded, onToggle, showDivider }: {
         {/* Right: status + expand chevron */}
         <View style={styles.sessionRight}>
           <Badge
-            label={session.status === 'completed' ? 'Done' : 'Partial'}
-            variant={session.status === 'completed' ? 'jade' : 'muted'}
+            label={badgeLabel}
+            variant={badgeVariant}
           />
           <Text style={styles.chevron}>{isExpanded ? '\u25B2' : '\u25BC'}</Text>
         </View>

@@ -90,6 +90,13 @@ export const useWeeklyGoalStore = create<WeeklyGoalState>()(
         // Idempotency check — only evaluate the previous week once
         if (state.lastEvaluatedWeek === lastWeekKey) return;
 
+        // Brand-new user: no sessions and never evaluated — skip silently so we
+        // don't fire a "goal missed" modal immediately after onboarding.
+        if (sessions.length === 0 && state.lastEvaluatedWeek === null) {
+          set({ lastEvaluatedWeek: lastWeekKey });
+          return;
+        }
+
         const count = countSessionsInWeek(sessions, lastWeekKey);
         const target = state.settings.targetWorkoutsPerWeek;
 
