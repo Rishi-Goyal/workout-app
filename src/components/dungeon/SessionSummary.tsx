@@ -5,7 +5,21 @@ import { getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { STATUS_ICON, exerciseSummaryLine } from '@/lib/questUtils';
 import { COLORS, RADIUS } from '@/lib/constants';
 import { muscleLevelTitle } from '@/lib/muscleXP';
+import type { AdaptationChange } from '@/lib/adaptationEngine';
 import type { DungeonSession, FitnessGoal, MuscleGroup } from '@/types';
+
+const REASON_ICON: Record<AdaptationChange['reason'], string> = {
+  overachieved:  '🔺',
+  met_target:    '📈',
+  underachieved: '🔻',
+  reset:         '🔄',
+};
+const REASON_COLOR: Record<AdaptationChange['reason'], string> = {
+  overachieved:  COLORS.jade,
+  met_target:    '#60a5fa',
+  underachieved: '#f97316',
+  reset:         COLORS.textMuted,
+};
 
 interface Props {
   session: DungeonSession;
@@ -13,13 +27,15 @@ interface Props {
   didLevelUp: boolean;
   newLevel?: number;
   muscleLevelUps?: Array<{ muscle: MuscleGroup; newLevel: number }>;
+  adaptationChanges?: AdaptationChange[];
   /** Used to look up the next floor's split/routine for the "what's next" section. */
   goal: FitnessGoal;
   onClose: () => void;
 }
 
 export default function SessionSummary({
-  session, xpGained, didLevelUp, newLevel, muscleLevelUps = [], goal, onClose,
+  session, xpGained, didLevelUp, newLevel, muscleLevelUps = [],
+  adaptationChanges = [], goal, onClose,
 }: Props) {
   const completed = session.quests.filter((q) => q.status === 'complete').length;
   const half      = session.quests.filter((q) => q.status === 'half_complete').length;
@@ -111,6 +127,32 @@ export default function SessionSummary({
                     </View>
                   </Animated.View>
                 ))}
+              </Animated.View>
+            )}
+
+            {/* ── Next session goals (adaptation changes) ── */}
+            {adaptationChanges.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(400).delay(350)} style={styles.adaptSection}>
+                <Text style={styles.adaptEyebrow}>⚡ NEXT SESSION GOALS</Text>
+                {adaptationChanges.map((ac, i) => {
+                  const color = REASON_COLOR[ac.reason];
+                  const icon  = REASON_ICON[ac.reason];
+                  return (
+                    <Animated.View
+                      key={`${ac.exerciseName}-${i}`}
+                      entering={FadeInRight.duration(260).delay(400 + i * 60)}
+                      style={styles.adaptRow}
+                    >
+                      <Text style={styles.adaptIcon}>{icon}</Text>
+                      <View style={styles.adaptInfo}>
+                        <Text style={styles.adaptName} numberOfLines={1}>{ac.exerciseName}</Text>
+                        {ac.lines.map((line, j) => (
+                          <Text key={j} style={[styles.adaptLine, { color }]}>{line}</Text>
+                        ))}
+                      </View>
+                    </Animated.View>
+                  );
+                })}
               </Animated.View>
             )}
 
@@ -256,6 +298,29 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   muscleLevelText: { fontSize: 11, fontWeight: '700', color: COLORS.jade },
+
+  // Adaptation changes — next session goals
+  adaptSection: {
+    width: '100%',
+    backgroundColor: 'rgba(99,102,241,0.06)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.18)',
+  },
+  adaptEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a78bfa',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  adaptRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  adaptIcon: { fontSize: 14, width: 20, textAlign: 'center', marginTop: 1 },
+  adaptInfo: { flex: 1, gap: 2 },
+  adaptName: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  adaptLine: { fontSize: 11, fontWeight: '500' },
 
   // What's next
   nextSection: {

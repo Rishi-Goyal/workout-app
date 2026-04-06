@@ -187,12 +187,3 @@ export function formatWeight(w: number | 'bodyweight', unit: 'kg' | 'lbs' = 'kg'
   return `${w} kg`;
 }
 
-/** Convert kg → lbs */
-export function kgToLbs(kg: number): number {
-  return Math.round(kg * 2.2046 * 4) / 4; // round to nearest 0.25 lbs
-}
-
-/** Convert lbs → kg */
-export function lbsToKg(lbs: number): number {
-  return Math.round((lbs / 2.2046) * 4) / 4;
-}

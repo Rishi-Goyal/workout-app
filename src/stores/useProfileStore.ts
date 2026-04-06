@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, Character, MuscleGroup } from '../types';
+import type { WorkoutSplitType } from '../lib/exerciseDatabase';
 import { createCharacter, applyLevelUpStats, deriveClassFromMuscles } from '../lib/character';
 import { applyXP } from '../lib/xp';
 import {
   type MuscleXP,
   DEFAULT_MUSCLE_XP,
+  seedMuscleXPFromStrengths,
   calculateMuscleXP,
   applyMuscleXP,
 } from '../lib/muscleXP';
@@ -24,10 +26,12 @@ interface ProfileStore {
   profile: UserProfile | null;
   character: Character | null;
   muscleXP: MuscleXP;
+  preferredSplit: WorkoutSplitType | null;
   // Version checking (transient — not persisted, re-checked each launch)
   latestVersion: string | null;
   checkForUpdate: () => Promise<void>;
   setProfile: (profile: UserProfile) => void;
+  setPreferredSplit: (split: WorkoutSplitType | null) => void;
   updateMuscleStrength: (muscle: MuscleGroup, value: number) => void;
   awardXP: (amount: number) => { leveledUp: boolean; levelsGained: number };
   awardMuscleXP: (
@@ -47,6 +51,7 @@ export const useProfileStore = create<ProfileStore>()(
       profile: null,
       character: null,
       muscleXP: DEFAULT_MUSCLE_XP,
+      preferredSplit: null,
       latestVersion: null,
 
       checkForUpdate: async () => {
@@ -60,9 +65,16 @@ export const useProfileStore = create<ProfileStore>()(
       },
 
       setProfile: (profile) => {
+        const isNew = get().profile === null;
         const existing = get().character;
-        set({ profile, character: existing ?? createCharacter(profile.goal) });
+        set({
+          profile,
+          character: existing ?? createCharacter(profile.goal),
+          ...(isNew && { muscleXP: seedMuscleXPFromStrengths(profile.muscleStrengths) }),
+        });
       },
+
+      setPreferredSplit: (split) => set({ preferredSplit: split }),
 
       updateMuscleStrength: (muscle, value) => {
         const p = get().profile;
@@ -105,7 +117,7 @@ export const useProfileStore = create<ProfileStore>()(
       },
 
       resetProfile: () => {
-        set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP });
+        set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP, preferredSplit: null });
         // Clear all dependent stores so no stale data persists after a profile wipe
         useAdaptationStore.getState().clearAllAdaptations();
         useWeeklyGoalStore.getState().resetAll();
@@ -168,6 +180,7 @@ export const useProfileStore = create<ProfileStore>()(
         profile: state.profile,
         character: state.character,
         muscleXP: state.muscleXP,
+        preferredSplit: state.preferredSplit,
         // latestVersion intentionally excluded — re-checked on every launch
       }),
     }

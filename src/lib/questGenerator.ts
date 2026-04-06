@@ -20,7 +20,6 @@ import {
   EXERCISE_MAP,
   WORKOUT_SPLITS,
   getProgressionChain,
-  getAdjacentProgressions,
   type Exercise,
   type WorkoutSplitType,
   type WorkoutDay,
@@ -152,7 +151,7 @@ function getSetsReps(
 ): { sets: number; reps: string; restSeconds: number; holdSeconds?: number } {
   // Static/isometric exercises: use hold time instead of reps
   if (exercise?.isStatic) {
-    const factor = 0.7 + (muscleStrength / 100) * 0.6; // 0.7 to 1.3
+    const factor = 0.7 + ((muscleStrength - 1) / 9) * 0.6; // 0.7–1.3 across 1–10 scale
     const base = exercise.defaultHoldSeconds ?? 30;
     let holdSeconds = Math.round(base * factor);
     let sets = 3;
@@ -162,7 +161,7 @@ function getSetsReps(
   }
 
   // Muscle strength 0-100, scale factor
-  const factor = 0.7 + (muscleStrength / 100) * 0.6; // 0.7 to 1.3
+  const factor = 0.7 + ((muscleStrength - 1) / 9) * 0.6; // 0.7–1.3 across 1–10 scale
 
   const templates: Record<FitnessGoal, { sets: number; reps: number; rest: number }> = {
     strength:     { sets: 4, reps: 6,  rest: 120 },
@@ -293,7 +292,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     const avgStrength = exercise.secondaryMuscles.length > 0
       ? Math.round(
           (muscleStrengths[primaryMuscle] +
-            exercise.secondaryMuscles.reduce((s, m) => s + (muscleStrengths[m] ?? 50), 0)) /
+            exercise.secondaryMuscles.reduce((s, m) => s + (muscleStrengths[m] ?? 5), 0)) /
           (1 + exercise.secondaryMuscles.length)
         )
       : muscleStrengths[primaryMuscle] ?? 50;

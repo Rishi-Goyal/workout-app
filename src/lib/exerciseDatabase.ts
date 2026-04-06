@@ -75,6 +75,8 @@ export interface Exercise {
   muscleFatigue?: Partial<Record<MuscleGroup, number>>;
   /** Step-by-step how-to instructions (populated from exerciseSteps.ts at runtime) */
   steps?: string[];
+  /** Static CDN URL for an exercise animation or image — populated at init time */
+  animationUrl?: string;
 }
 
 /**
@@ -1448,25 +1450,119 @@ export const ALL_EXERCISES: Exercise[] = [
   ...calfExercises,
 ];
 
-/** Keyed lookup map for O(1) access by exercise ID — steps merged in at init time */
+// ─── Exercise animation / image URLs ──────────────────────────────────────────
+// Animated GIFs (exercisedb.dev) are preferred; static JPGs (jsDelivr CDN)
+// are used where animated GIFs were not available.
+// Exercises omitted here fall back to the runtime ExerciseDB API search.
+const JDLV = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+const EXDB = 'https://static.exercisedb.dev/media/';
+const ANIMATION_URLS: Partial<Record<string, string>> = {
+  // ── Chest ───────────────────────────────────────────────────────────────────
+  'wall-push-up':           EXDB + 'P9GFBME.gif',
+  'incline-push-up':        EXDB + 'CB8WET1.gif',
+  'wide-push-up':           EXDB + 'wpbD28t.gif',
+  'push-up':                EXDB + 'Snj1wSv.gif',
+  'diamond-push-up':        EXDB + 'soIB2rj.gif',
+  'archer-push-up':         EXDB + 'A9qxk2F.gif',
+  'one-arm-push-up':        EXDB + 'osdXT3K.gif',
+  'machine-chest-press':    EXDB + 'jHAnWmT.gif',
+  'dumbbell-bench-press':   EXDB + 'SpYC0Kp.gif',
+  'barbell-bench-press':    EXDB + 'EIeI8Vf.gif',
+  'paused-bench-press':     EXDB + '7xI5MXA.gif',
+  'incline-barbell-press':  EXDB + '3TZduzM.gif',
+  'incline-dumbbell-press': EXDB + 'PG1kcIb.gif',
+  'cable-chest-fly':        EXDB + 'w4dLzSx.gif',
+  'dumbbell-fly':           EXDB + 'yz9nUhF.gif',
+  'weighted-dip':           EXDB + 'HMzLjXx.gif',
+  // ── Back ────────────────────────────────────────────────────────────────────
+  'dead-hang':              EXDB + '03lzqwk.gif',
+  'australian-pull-up':     EXDB + 'bZGHsAZ.gif',
+  'lat-pulldown':           EXDB + 'ecpY0rH.gif',
+  'pull-up':                EXDB + '0V2YQjW.gif',
+  'chin-up':                JDLV + 'Chin-Up/0.jpg',
+  'weighted-pull-up':       JDLV + 'Weighted_Pull_Ups/0.jpg',
+  'dumbbell-row':           JDLV + 'Bent_Over_Two-Dumbbell_Row/0.jpg',
+  'barbell-bent-over-row':  JDLV + 'Bent_Over_Barbell_Row/0.jpg',
+  'pendlay-row':            JDLV + 'Bent_Over_Barbell_Row/0.jpg',
+  'seated-cable-row':       JDLV + 'Seated_Cable_Rows/0.jpg',
+  'deadlift':               JDLV + 'Deadlift_with_Bands/0.jpg',
+  'sumo-deadlift':          JDLV + 'Sumo_Deadlift/0.jpg',
+  'back-extension':         JDLV + 'Hyperextensions_Back_Extensions/0.jpg',
+  'good-morning':           JDLV + 'Good_Morning/0.jpg',
+  // ── Shoulders ───────────────────────────────────────────────────────────────
+  'face-pull':              JDLV + 'Face_Pull/0.jpg',
+  'band-lateral-raise':     JDLV + 'Lateral_Raise_-_With_Bands/0.jpg',
+  'pike-push-up':           JDLV + 'Hanging_Pike/0.jpg',
+  'elevated-pike-push-up':  JDLV + 'Hanging_Pike/0.jpg',
+  'band-pull-apart':        JDLV + 'Band_Pull_Apart/0.jpg',
+  'lateral-raise':          JDLV + 'Cable_Seated_Lateral_Raise/0.jpg',
+  'seated-db-press':        JDLV + 'Seated_Dumbbell_Press/0.jpg',
+  'barbell-overhead-press': JDLV + 'Standing_Military_Press/0.jpg',
+  'push-press':             JDLV + 'Push_Press/0.jpg',
+  'upright-row':            JDLV + 'Upright_Row_-_With_Bands/0.jpg',
+  'reverse-fly':            JDLV + 'Cable_Rear_Delt_Fly/0.jpg',
+  'arnold-press':           JDLV + 'Kettlebell_Arnold_Press/0.jpg',
+  // ── Biceps ──────────────────────────────────────────────────────────────────
+  'resistance-band-curl':   JDLV + 'Close-Grip_EZ-Bar_Curl_with_Band/0.jpg',
+  'dumbbell-curl':          JDLV + 'Dumbbell_Bicep_Curl/0.jpg',
+  'hammer-curl':            JDLV + 'Hammer_Curls/0.jpg',
+  'barbell-curl':           JDLV + 'Barbell_Curl/0.jpg',
+  'preacher-curl':          JDLV + 'Preacher_Curl/0.jpg',
+  'incline-dumbbell-curl':  JDLV + 'Incline_Dumbbell_Curl/0.jpg',
+  'cable-curl':             JDLV + 'High_Cable_Curls/0.jpg',
+  'concentration-curl':     JDLV + 'Concentration_Curls/0.jpg',
+  'spider-curl':            JDLV + 'Spider_Curl/0.jpg',
+  // ── Triceps ─────────────────────────────────────────────────────────────────
+  'tricep-pushdown-band':         JDLV + 'Reverse_Grip_Triceps_Pushdown/0.jpg',
+  'tricep-pushdown':              JDLV + 'Triceps_Pushdown_-_Rope_Attachment/0.jpg',
+  'overhead-tricep-extension':    JDLV + 'Cable_Rope_Overhead_Triceps_Extension/0.jpg',
+  'skull-crusher':                JDLV + 'Decline_Close-Grip_Bench_To_Skull_Crusher/0.jpg',
+  'close-grip-bench':             JDLV + 'Close-Grip_Barbell_Bench_Press/0.jpg',
+  'bench-dip':                    JDLV + 'Bench_Dips/0.jpg',
+  'parallel-bar-dip':             JDLV + 'Dips_-_Triceps_Version/0.jpg',
+  // ── Core ────────────────────────────────────────────────────────────────────
+  'dead-bug':               JDLV + 'Dead_Bug/0.jpg',
+  'plank':                  JDLV + 'Plank/0.jpg',
+  'hanging-leg-raise':      JDLV + 'Hanging_Leg_Raise/0.jpg',
+  'ab-wheel-rollout':       JDLV + 'Barbell_Ab_Rollout/0.jpg',
+  'standing-ab-wheel':      JDLV + 'Barbell_Ab_Rollout/0.jpg',
+  'cable-crunch':           JDLV + 'Cable_Crunch/0.jpg',
+  'russian-twist':          JDLV + 'Russian_Twist/0.jpg',
+  'side-plank':             JDLV + 'Side_Bridge/0.jpg',
+  'pallof-press':           JDLV + 'Pallof_Press/0.jpg',
+  // ── Quads ───────────────────────────────────────────────────────────────────
+  'bodyweight-squat':       JDLV + 'Bodyweight_Squat/0.jpg',
+  'goblet-squat':           JDLV + 'Goblet_Squat/0.jpg',
+  'dumbbell-squat':         JDLV + 'Dumbbell_Squat/0.jpg',
+  'barbell-back-squat':     JDLV + 'Barbell_Squat/0.jpg',
+  'front-squat':            JDLV + 'Front_Squat_Clean_Grip/0.jpg',
+  'leg-press':              JDLV + 'Leg_Press/0.jpg',
+  'lunge':                  JDLV + 'Lunge_Pass_Through/0.jpg',
+  'bulgarian-split-squat':  JDLV + 'Split_Squat_with_Dumbbells/0.jpg',
+  'leg-extension':          JDLV + 'Leg_Extensions/0.jpg',
+  'step-up':                JDLV + 'Barbell_Step_Ups/0.jpg',
+  'walking-lunge':          JDLV + 'Barbell_Walking_Lunge/0.jpg',
+  'hack-squat':             JDLV + 'Hack_Squat/0.jpg',
+  'sissy-squat':            JDLV + 'Weighted_Sissy_Squat/0.jpg',
+  // ── Posterior chain ─────────────────────────────────────────────────────────
+  'glute-bridge':           JDLV + 'Barbell_Glute_Bridge/0.jpg',
+  'hip-thrust':             JDLV + 'Barbell_Hip_Thrust/0.jpg',
+  'romanian-deadlift':      JDLV + 'Romanian_Deadlift/0.jpg',
+  'single-leg-rdl':         JDLV + 'Romanian_Deadlift/0.jpg',
+  'leg-curl':               JDLV + 'Ball_Leg_Curl/0.jpg',
+  'kettlebell-swing':       JDLV + 'One-Arm_Kettlebell_Swings/0.jpg',
+  'lying-leg-curl':         JDLV + 'Lying_Leg_Curls/0.jpg',
+  // ── Calves ──────────────────────────────────────────────────────────────────
+  'seated-calf-raise':      JDLV + 'Seated_Calf_Raise/0.jpg',
+  'standing-calf-raise':    JDLV + 'Standing_Calf_Raises/0.jpg',
+  'single-leg-calf-raise':  JDLV + 'Calf_Raise_On_A_Dumbbell/0.jpg',
+  'leg-press-calf-raise':   JDLV + 'Leg_Press/0.jpg',
+};
+
+/** Keyed lookup map for O(1) access by exercise ID — steps and animationUrl merged in at init time */
 export const EXERCISE_MAP: Record<string, Exercise> = Object.fromEntries(
-  ALL_EXERCISES.map((e) => [e.id, { ...e, steps: EXERCISE_STEPS[e.id] }])
+  ALL_EXERCISES.map((e) => [e.id, { ...e, steps: EXERCISE_STEPS[e.id], animationUrl: ANIMATION_URLS[e.id] }])
 );
-
-/** Get all exercises for a given muscle group */
-export function getExercisesByMuscle(muscle: MuscleGroup): Exercise[] {
-  return ALL_EXERCISES.filter(
-    (e) => e.primaryMuscle === muscle || e.secondaryMuscles.includes(muscle)
-  );
-}
-
-/** Get exercises for given equipment set (returns exercises that can be done with any of the listed equipment) */
-export function getExercisesByEquipment(available: Equipment[]): Exercise[] {
-  const availableSet = new Set<string>(available);
-  return ALL_EXERCISES.filter((e) =>
-    e.equipment.some((eq) => availableSet.has(eq))
-  );
-}
 
 /** Get the full progression chain for an exercise, ordered easiest → hardest */
 export function getProgressionChain(exerciseId: string): Exercise[] {
@@ -1491,23 +1587,6 @@ export function getProgressionChain(exerciseId: string): Exercise[] {
   }
 
   return chain;
-}
-
-/** Get the immediately easier and harder exercises for a given exercise */
-export function getAdjacentProgressions(exerciseId: string): {
-  easier: Exercise | null;
-  harder: Exercise | null;
-} {
-  const ex = EXERCISE_MAP[exerciseId];
-  if (!ex) return { easier: null, harder: null };
-  return {
-    easier: ex.progression.easierExerciseId
-      ? (EXERCISE_MAP[ex.progression.easierExerciseId] ?? null)
-      : null,
-    harder: ex.progression.harderExerciseId
-      ? (EXERCISE_MAP[ex.progression.harderExerciseId] ?? null)
-      : null,
-  };
 }
 
 // ---------------------------------------------------------------------------

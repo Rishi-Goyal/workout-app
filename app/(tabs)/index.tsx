@@ -103,6 +103,7 @@ export default function DungeonTabScreen() {
         currentFloor,
         recentSessions: getRecent(3),
         adaptations: useAdaptationStore.getState().adaptations,
+        preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
       });
 
       if (rawQuests.length === 0) {
@@ -152,7 +153,7 @@ export default function DungeonTabScreen() {
     incrementFloorsCleared();
     addSession(finalized);
     // Feature 1: update per-exercise progressive overload targets
-    useAdaptationStore.getState().applyAdaptation(finalized);
+    useAdaptationStore.getState().applyAdaptation(finalized, useProfileStore.getState().muscleXP);
     // Feature 2: evaluate last week's streak now that a new session exists
     useWeeklyGoalStore.getState().evaluateWeek(
       useHistoryStore.getState().sessions,

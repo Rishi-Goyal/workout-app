@@ -25,6 +25,7 @@ export default function WeeklyGoalWidget() {
     consumeFreeze,
     breakStreak,
     evaluateWeek,
+    setWeeklyTarget,
   } = useWeeklyGoalStore();
 
   const sessions = useHistoryStore((s) => s.sessions);
@@ -124,7 +125,7 @@ export default function WeeklyGoalWidget() {
           })}
         </View>
 
-        {/* Progress line */}
+        {/* Progress line — tap label to adjust target */}
         <View style={styles.progressRow}>
           <View style={styles.progressTrack}>
             <View
@@ -135,13 +136,23 @@ export default function WeeklyGoalWidget() {
               ]}
             />
           </View>
-          <Text style={[styles.progressLabel, goalMet && styles.progressLabelGoalMet]}>
-            {goalMet
-              ? '✓ Goal met!'
-              : remaining === 1
-                ? '1 more this week'
-                : `${remaining} more this week`}
-          </Text>
+          <Pressable
+            onPress={() => {
+              const buttons = [];
+              if (target > 1) buttons.push({ text: `Less (${target - 1}x)`, onPress: () => setWeeklyTarget(target - 1) });
+              if (target < 7) buttons.push({ text: `More (${target + 1}x)`, onPress: () => setWeeklyTarget(target + 1) });
+              buttons.push({ text: 'Keep', style: 'cancel' as const });
+              Alert.alert('Weekly Target', `Currently ${target}x per week`, buttons);
+            }}
+          >
+            <Text style={[styles.progressLabel, goalMet && styles.progressLabelGoalMet]}>
+              {goalMet
+                ? '✓ Goal met!'
+                : remaining === 1
+                  ? '1 more this week'
+                  : `${remaining} more this week`}
+            </Text>
+          </Pressable>
         </View>
 
       </Card>

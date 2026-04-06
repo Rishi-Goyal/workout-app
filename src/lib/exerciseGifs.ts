@@ -56,7 +56,7 @@ export async function fetchExerciseGif(exerciseName: string): Promise<string | n
   try {
     const encodedName = encodeURIComponent(normalise(exerciseName));
     const res = await fetch(
-      `${EXERCISEDB_BASE}/exercises/search?query=${encodedName}&limit=5`,
+      `${EXERCISEDB_BASE}/exercises/search?q=${encodedName}&limit=5`,
       { signal: makeTimeoutSignal(5000) },
     );
     if (res.ok) {

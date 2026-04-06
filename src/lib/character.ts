@@ -5,11 +5,6 @@ import type { MuscleXP } from './muscleXP';
 
 const BASE_STATS: CharacterStats = { strength: 5, endurance: 5, agility: 5, vitality: 5 };
 
-/** @deprecated Use deriveClassFromMuscles instead */
-export function classFromGoal(goal: FitnessGoal): CharacterClass {
-  return GOAL_TO_CLASS[goal];
-}
-
 export function titleForLevel(level: number): string {
   return TITLES_BY_LEVEL.find((t) => level <= t.maxLevel)?.title ?? 'Eternal Conqueror';
 }

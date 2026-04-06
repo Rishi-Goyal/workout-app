@@ -11,7 +11,7 @@
  *   Level 10-14 → up to difficulty 4
  *   Level 15+   → all difficulties
  */
-import type { MuscleGroup, QuestDifficulty } from '@/types';
+import type { MuscleGroup, MuscleStrengths, QuestDifficulty } from '@/types';
 
 // ─── Muscle XP types ─────────────────────────────────────────────────────────
 
@@ -29,6 +29,25 @@ export const DEFAULT_MUSCLE_XP: MuscleXP = {
   glutes:     { xp: 0, level: 1 },
   calves:     { xp: 0, level: 1 },
 };
+
+/** Map a 1–10 onboarding slider value to a starting muscle level */
+function strengthToLevel(strength: number): number {
+  if (strength <= 2) return 1;   // Untrained  → max difficulty 1
+  if (strength <= 4) return 3;   // Novice     → max difficulty 2
+  if (strength <= 6) return 6;   // Trained    → max difficulty 3
+  if (strength <= 8) return 10;  // Seasoned   → max difficulty 4
+  return 15;                     // Elite      → max difficulty 5
+}
+
+/** Build an initial MuscleXP state seeded from onboarding strength sliders (1–10 scale). */
+export function seedMuscleXPFromStrengths(strengths: MuscleStrengths): MuscleXP {
+  return Object.fromEntries(
+    (Object.keys(strengths) as MuscleGroup[]).map((muscle) => [
+      muscle,
+      { xp: 0, level: strengthToLevel(strengths[muscle]) },
+    ]),
+  ) as MuscleXP;
+}
 
 // ─── Level progression ───────────────────────────────────────────────────────
 
