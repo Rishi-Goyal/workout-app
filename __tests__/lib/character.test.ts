@@ -1,47 +1,11 @@
 import {
-  classFromGoal,
   titleForLevel,
   createCharacter,
   applyLevelUpStats,
   maxStatValue,
 } from '@/lib/character';
 import { xpToNextLevel } from '@/lib/xp';
-import { GOAL_TO_CLASS } from '@/lib/constants';
 import type { Character } from '@/types';
-
-// ─── classFromGoal (deprecated) ───────────────────────────────────────────────
-// classFromGoal is deprecated — all goals now map to 'Wanderer' as a
-// starting class; actual class is derived from muscle XP via deriveClassFromMuscles.
-
-describe('classFromGoal', () => {
-  it('maps strength → Wanderer (deprecated, all goals start as Wanderer)', () => {
-    expect(classFromGoal('strength')).toBe('Wanderer');
-  });
-
-  it('maps endurance → Wanderer', () => {
-    expect(classFromGoal('endurance')).toBe('Wanderer');
-  });
-
-  it('maps calisthenics → Wanderer', () => {
-    expect(classFromGoal('calisthenics')).toBe('Wanderer');
-  });
-
-  it('maps balanced → Wanderer', () => {
-    expect(classFromGoal('balanced')).toBe('Wanderer');
-  });
-
-  it('maps weight_loss → Wanderer', () => {
-    expect(classFromGoal('weight_loss')).toBe('Wanderer');
-  });
-
-  it('every goal has a corresponding class', () => {
-    const goals = Object.keys(GOAL_TO_CLASS) as (keyof typeof GOAL_TO_CLASS)[];
-    goals.forEach((goal) => {
-      expect(() => classFromGoal(goal)).not.toThrow();
-      expect(classFromGoal(goal)).toBeTruthy();
-    });
-  });
-});
 
 // ─── titleForLevel ────────────────────────────────────────────────────────────
 

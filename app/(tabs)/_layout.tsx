@@ -52,6 +52,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="📜" focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="⚙️" focused={focused} />,
+        }}
+      />
       {/* Hidden tabs — kept for file existence, not shown in tab bar */}
       <Tabs.Screen
         name="dungeon"

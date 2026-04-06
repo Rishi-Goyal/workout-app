@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
+import ExerciseGif from '@/components/dungeon/ExerciseGif';
 import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
@@ -192,6 +193,10 @@ export default function ActiveQuestScreen() {
         >
           {tab === 'guide' && (
             <View style={styles.guideTabContent}>
+              <ExerciseGif
+                animationUrl={exerciseEntry?.animationUrl}
+                exerciseName={quest.exerciseName}
+              />
               <ExerciseVideo
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}

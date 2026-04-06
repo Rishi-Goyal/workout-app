@@ -1,26 +1,35 @@
 /**
- * ExerciseGif — loads and displays a real exercise GIF from ExerciseDB API.
- * Falls back gracefully to a "no preview" placeholder if no GIF is found.
+ * ExerciseGif — displays an exercise animation or image.
+ *
+ * Priority:
+ *   1. Static animationUrl baked into the Exercise object (instant, no network)
+ *   2. Runtime fetch from ExerciseDB API (for the few exercises without a static URL)
+ *   3. null — caller shows ExerciseVideo / steps instead
  */
 import { useState, useEffect } from 'react';
 import { View, Image, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { fetchExerciseGif } from '@/lib/exerciseGifs';
 import { COLORS } from '@/lib/constants';
-import type { MuscleGroup } from '@/types';
 
 interface ExerciseGifProps {
-  exerciseName: string;
-  /** muscles prop kept for API compatibility but no longer drives a fallback animation */
-  muscles?: MuscleGroup[];
+  animationUrl?: string;   // static URL from exercise object — renders instantly
+  exerciseName: string;    // fallback: used for runtime API search
 }
 
 type State = 'loading' | 'loaded' | 'empty';
 
-export default function ExerciseGif({ exerciseName }: ExerciseGifProps) {
-  const [state, setState] = useState<State>('loading');
-  const [gifUrl, setGifUrl] = useState<string | null>(null);
+export default function ExerciseGif({ animationUrl, exerciseName }: ExerciseGifProps) {
+  const [state, setState] = useState<State>(animationUrl ? 'loaded' : 'loading');
+  const [gifUrl, setGifUrl] = useState<string | null>(animationUrl ?? null);
 
   useEffect(() => {
+    // Static URL already available — nothing to fetch
+    if (animationUrl) {
+      setState('loaded');
+      setGifUrl(animationUrl);
+      return;
+    }
+
     let cancelled = false;
     setState('loading');
     setGifUrl(null);
@@ -32,7 +41,7 @@ export default function ExerciseGif({ exerciseName }: ExerciseGifProps) {
     });
 
     return () => { cancelled = true; };
-  }, [exerciseName]);
+  }, [animationUrl, exerciseName]);
 
   if (state === 'loading') {
     return (
@@ -44,6 +53,7 @@ export default function ExerciseGif({ exerciseName }: ExerciseGifProps) {
   }
 
   if (state === 'loaded' && gifUrl) {
+    const isGif = gifUrl.endsWith('.gif');
     return (
       <View style={styles.gifContainer}>
         <Image
@@ -51,12 +61,12 @@ export default function ExerciseGif({ exerciseName }: ExerciseGifProps) {
           style={styles.gif}
           resizeMode="contain"
         />
-        <Text style={styles.sourceLabel}>ExerciseDB</Text>
+        <Text style={styles.sourceLabel}>{isGif ? 'ANIMATED · ExerciseDB' : 'EXERCISE GUIDE'}</Text>
       </View>
     );
   }
 
-  // No GIF available — caller should show ExerciseVideo or steps instead
+  // No media available — caller shows ExerciseVideo / steps instead
   return null;
 }
 
@@ -76,8 +86,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   gif: {
-    width: 240,
-    height: 240,
+    width: '100%',
+    aspectRatio: 1,
     borderRadius: 12,
     backgroundColor: COLORS.surface,
   },

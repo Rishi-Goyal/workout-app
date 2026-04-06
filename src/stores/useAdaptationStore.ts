@@ -7,25 +7,44 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { computeAdaptation, type AdaptationMap, type ExerciseAdaptation } from '@/lib/adaptationEngine';
-import type { DungeonSession } from '@/types';
+import {
+  computeAdaptation,
+  type AdaptationMap,
+  type AdaptationChange,
+  type ExerciseAdaptation,
+} from '@/lib/adaptationEngine';
+import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
+import type { DungeonSession, MuscleGroup } from '@/types';
+import type { MuscleXP } from '@/lib/muscleXP';
+
+/** Weight step (kg) derived from exercise equipment & tags. */
+function weightStepFor(exerciseId: string): number {
+  const ex = EXERCISE_MAP[exerciseId];
+  if (!ex) return 2.5;
+  const hasBarbell  = ex.equipment.includes('barbell');
+  const hasDumbbell = ex.equipment.includes('dumbbells');
+  const isCompound  = ex.tags.includes('compound');
+  if (hasBarbell && isCompound)  return 2.5;
+  if (hasDumbbell && isCompound) return 2;
+  return 1.25; // isolation / cable / machine
+}
 
 interface AdaptationStore {
   adaptations: AdaptationMap;
 
-  /** Returns the stored adaptation for an exercise, or null if none. */
   getAdaptation: (exerciseId: string) => ExerciseAdaptation | null;
 
   /**
-   * Iterates every non-skipped quest in a finalized session and updates the
-   * adaptation map. Called once inside `handleFinalize` in index.tsx.
+   * Computes and persists progressive overload adjustments for every non-skipped
+   * quest in the finalized session. Returns a list of human-readable changes for
+   * display in SessionSummary.
+   *
+   * @param session  The just-finalized DungeonSession.
+   * @param muscleXP Current muscleXP state — used to calibrate progression rate.
    */
-  applyAdaptation: (session: DungeonSession) => void;
+  applyAdaptation: (session: DungeonSession, muscleXP: MuscleXP) => AdaptationChange[];
 
-  /** Reset one exercise to formula defaults (e.g. after a long break). */
   resetAdaptation: (exerciseId: string) => void;
-
-  /** Clear all adaptations — called on profile reset. */
   clearAllAdaptations: () => void;
 }
 
@@ -36,18 +55,29 @@ export const useAdaptationStore = create<AdaptationStore>()(
 
       getAdaptation: (exerciseId) => get().adaptations[exerciseId] ?? null,
 
-      applyAdaptation: (session) => {
+      applyAdaptation: (session, muscleXP) => {
         const current = get().adaptations;
         const updated = { ...current };
+        const changes: AdaptationChange[] = [];
 
         for (const quest of session.quests) {
           if (!quest.exerciseId) continue;
+
+          // Primary muscle for this quest drives the progression rate
+          const primaryMuscle = quest.targetMuscles[0] as MuscleGroup | undefined;
+          const muscleLevel   = primaryMuscle ? (muscleXP[primaryMuscle]?.level ?? 1) : 1;
+          const weightStep    = weightStepFor(quest.exerciseId);
+
           const existing = current[quest.exerciseId] ?? null;
-          const next = computeAdaptation(quest, existing);
-          if (next) updated[quest.exerciseId] = next;
+          const result   = computeAdaptation(quest, existing, muscleLevel, weightStep);
+          if (!result) continue;
+
+          updated[quest.exerciseId] = result.adaptation;
+          changes.push(result.change);
         }
 
         set({ adaptations: updated });
+        return changes;
       },
 
       resetAdaptation: (exerciseId) => {
