@@ -17,15 +17,38 @@
         android:textStyle="bold"
         android:letterSpacing="0.1" />
 
-    <TextView
-        android:id="@+id/widget_exercise_name"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No active session"
-        android:textColor="#e8dcc8"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:layout_marginTop="2dp" />
+        android:orientation="horizontal"
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_exercise_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="No active session"
+            android:textColor="#e8dcc8"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <!-- Live timer: counts up during active sets, down during rest.
+             Visibility is GONE when no session is active. -->
+        <Chronometer
+            android:id="@+id/widget_timer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="#6366f1"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_set_progress"
