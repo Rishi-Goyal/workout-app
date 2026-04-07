@@ -71,5 +71,8 @@ metro-*.log
 # Claude Code internal
 .claude/worktrees/
 
+# Kotlin compiler cache (build artifact)
+android/.kotlin/
+
 # Local user assets / APK builds
 user_created_assets/
