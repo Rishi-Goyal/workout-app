@@ -128,39 +128,66 @@ export const TITLES_BY_LEVEL: { maxLevel: number; title: string }[] = [
   { maxLevel: Infinity, title: 'Eternal Conqueror' },
 ];
 
+/**
+ * v4 "Solo Leveling" design tokens.
+ * Source: Claude Design handoff bundle (api.anthropic.com/v1/design/h/yxrB0zRn_jGZeo8jf8l9Lg).
+ * Key names kept stable to avoid downstream churn — only values changed from the v3 indigo set.
+ */
 export const COLORS = {
-  // Backgrounds — pure near-black
-  bg:           '#0a0a0a',
-  surface:      '#171717',
-  surfaceHover: '#1f1f1f',
-  surfaceAccent:'#222222',
+  // Backgrounds — deep obsidian
+  bg:           '#07061A',
+  surface:      '#0E0C24',
+  surfaceHover: '#141230',
+  surfaceAccent:'#18153C',
+  surfaceGlow:  '#221B55',
 
   // Borders
-  border:       '#262626',
-  borderLight:  '#333333',
+  border:       '#1E1A40',
+  borderLight:  '#2E2A60',
+  borderStrong: '#3A3375',
 
-  // Brand — Blue primary (key names kept for zero-diff in screens)
-  gold:         '#3b82f6',       // blue — primary action
-  goldLight:    '#60a5fa',       // lighter blue
-  goldDim:      '#2563eb',       // deep blue
+  // Brand — gold primary (key names kept for zero-diff in screens)
+  gold:         '#F5A623',       // primary accent / CTAs / XP
+  goldLight:    '#FFC857',
+  goldDim:      '#B27712',
 
-  // Semantic — kept for gamification moments only
-  crimson:      '#e53e3e',
-  jade:         '#0ea472',
-  jadeLight:    '#10b981',
-  violet:       '#a855f7',
-  violetLight:  '#c084fc',
-  orange:       '#f97316',
+  // Brand — violet secondary (level-up glow, accents)
+  violet:       '#6366F1',
+  violetLight:  '#A5B4FC',
+  violetDim:    '#3730A3',
+
+  // Semantic
+  crimson:      '#E53E3E',       // boss / danger
+  jade:         '#10B981',       // cleared / success
+  jadeLight:    '#34D399',
+  orange:       '#F97316',       // hard difficulty
+  cyan:         '#38BDF8',
 
   // Text
-  text:         '#ffffff',
-  textSecondary:'#a3a3a3',
-  textMuted:    '#737373',
+  text:         '#EDEAF8',
+  textSecondary:'#C4B8E4',
+  textMuted:    '#7A6D9A',
+  textInverse:  '#07061A',
 };
+
+/**
+ * Font families. Loaded via @expo-google-fonts in app/_layout.tsx.
+ * Use these constants everywhere instead of hard-coded font names.
+ */
+export const FONTS = {
+  display:     'Unbounded_500Medium',     // screen titles, level numbers, big stats
+  displayBold: 'Unbounded_700Bold',
+  sans:        'Inter_400Regular',        // body
+  sansMed:     'Inter_500Medium',         // labels
+  sansBold:    'Inter_700Bold',           // buttons / emphasis
+  mono:        'DMMono_400Regular',       // numbers, weights
+  monoMed:     'DMMono_500Medium',        // emphasized numerics (XP, timers)
+} as const;
 
 /** Border-radius scale — use everywhere, no magic numbers. */
 export const RADIUS = {
   card:   16,
+  cardLg: 20,
   button: 12,
   pill:   999,
   sm:     8,
@@ -174,3 +201,17 @@ export const SPACING = {
   gap:    16,   // between sections
   gapSm:  8,    // between list items
 } as const;
+
+/**
+ * Class rank thresholds. Computed from a class's primary muscle/dimension level.
+ * SS (Ascendant) is special — only awarded when ALL dimensions ≥ 12.
+ */
+export const RANK_THRESHOLDS = {
+  C:  1,
+  B:  4,
+  A:  7,
+  S:  11,
+  SS: 12,
+} as const;
+
+export type ClassRank = 'C' | 'B' | 'A' | 'S' | 'SS';

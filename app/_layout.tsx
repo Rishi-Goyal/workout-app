@@ -12,6 +12,7 @@ import {
   setupRestCompleteCategory,
   requestNotificationPermission,
 } from '@/lib/workoutNotification';
+import { COLORS } from '@/lib/constants';
 
 // Top-level error boundary — shows a readable message instead of blank screen on crash
 interface EBState { error: Error | null }
@@ -21,7 +22,7 @@ class RootErrorBoundary extends Component<{ children: React.ReactNode }, EBState
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#080610', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <Text style={{ color: '#f5a623', fontSize: 18, fontWeight: '800', marginBottom: 12 }}>Something went wrong</Text>
           <Text style={{ color: '#7a6d8a', fontSize: 12, textAlign: 'center' }}>{this.state.error.message}</Text>
         </View>
@@ -102,12 +103,12 @@ function AppNavigator() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#080610' }}>
-      <StatusBar style="light" backgroundColor="#080610" />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <StatusBar style="light" backgroundColor={COLORS.bg} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#080610' },
+          contentStyle: { backgroundColor: COLORS.bg },
           animation: 'slide_from_right',
         }}
       >
