@@ -51,12 +51,12 @@ describe('createCharacter', () => {
     expect(c.xpToNextLevel).toBe(xpToNextLevel(1));
   });
 
-  it('always starts as Wanderer regardless of goal (class is derived from muscle XP later)', () => {
-    expect(createCharacter('strength').class).toBe('Wanderer');
-    expect(createCharacter('endurance').class).toBe('Wanderer');
-    expect(createCharacter('calisthenics').class).toBe('Wanderer');
-    expect(createCharacter('balanced').class).toBe('Wanderer');
-    expect(createCharacter('weight_loss').class).toBe('Wanderer');
+  it('always starts as Awakened Novice regardless of goal (class is derived from muscle XP later)', () => {
+    expect(createCharacter('strength').class).toBe('Awakened Novice');
+    expect(createCharacter('endurance').class).toBe('Awakened Novice');
+    expect(createCharacter('calisthenics').class).toBe('Awakened Novice');
+    expect(createCharacter('balanced').class).toBe('Awakened Novice');
+    expect(createCharacter('weight_loss').class).toBe('Awakened Novice');
   });
 
   it('starts with base stats of 5 in all attributes', () => {
@@ -89,11 +89,14 @@ describe('applyLevelUpStats', () => {
       stats: { strength: 5, endurance: 5, agility: 5, vitality: 5 },
       title: 'Initiate',
       floorsCleared: 0,
+      cardioMinutes: 0,
+      mobilityScore: 5,
+      gripScore: 5,
     };
   }
 
-  it('Mirror Knight gains +1 to strength, +0.5 to others on 1 level-up', () => {
-    const c = makeCharAtLevel(2, 'Mirror Knight');
+  it('Iron Bulwark (STR) gains +1 to strength, +0.5 to others on 1 level-up', () => {
+    const c = makeCharAtLevel(2, 'Iron Bulwark');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.strength).toBe(6);
     expect(updated.stats.endurance).toBe(5.5);
@@ -101,43 +104,43 @@ describe('applyLevelUpStats', () => {
     expect(updated.stats.vitality).toBe(5.5);
   });
 
-  it('Berserker gains +1 to endurance, +0.5 to others', () => {
-    const c = makeCharAtLevel(2, 'Berserker');
+  it('Flame Herald (END) gains +1 to endurance, +0.5 to others', () => {
+    const c = makeCharAtLevel(2, 'Flame Herald');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.endurance).toBe(6);
     expect(updated.stats.strength).toBe(5.5);
   });
 
-  it('Iron Monk gains +1 to agility, +0.5 to others', () => {
-    const c = makeCharAtLevel(2, 'Iron Monk');
+  it('Void Monk (AGI) gains +1 to agility, +0.5 to others', () => {
+    const c = makeCharAtLevel(2, 'Void Monk');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.agility).toBe(6);
     expect(updated.stats.strength).toBe(5.5);
   });
 
-  it('Wanderer gains +1 to vitality, +0.5 to others', () => {
-    const c = makeCharAtLevel(2, 'Wanderer');
+  it('Awakened Novice (VIT) gains +1 to vitality, +0.5 to others', () => {
+    const c = makeCharAtLevel(2, 'Awakened Novice');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.stats.vitality).toBe(6);
     expect(updated.stats.strength).toBe(5.5);
   });
 
   it('scales gains for multiple levels gained at once', () => {
-    const c = makeCharAtLevel(3, 'Mirror Knight');
+    const c = makeCharAtLevel(3, 'Iron Bulwark');
     const updated = applyLevelUpStats(c, 3);
-    expect(updated.stats.strength).toBe(8); // 5 + 3*1
-    expect(updated.stats.endurance).toBe(6.5); // 5 + 3*0.5
+    expect(updated.stats.strength).toBe(8);
+    expect(updated.stats.endurance).toBe(6.5);
   });
 
   it('does not mutate the original character', () => {
-    const c = makeCharAtLevel(2, 'Wanderer');
+    const c = makeCharAtLevel(2, 'Awakened Novice');
     const original = { ...c.stats };
     applyLevelUpStats(c, 1);
     expect(c.stats.strength).toBe(original.strength);
   });
 
   it('updates the title after leveling up', () => {
-    const c = makeCharAtLevel(4, 'Wanderer'); // level 4 → 'Seeker'
+    const c = makeCharAtLevel(4, 'Awakened Novice');
     const updated = applyLevelUpStats(c, 1);
     expect(updated.title).toBe('Seeker');
   });

@@ -5,6 +5,9 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import XPBar from '@/components/character/XPBar';
+import ClassIcon from '@/components/character/ClassIcon';
+import { classRank } from '@/lib/character';
+import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
@@ -21,12 +24,13 @@ function formatTotalTime(sessions: DungeonSession[]): string {
 }
 
 export default function StatsScreen() {
-  const { profile, character } = useProfileStore();
+  const { profile, character, muscleXP } = useProfileStore();
   const sessions = useHistoryStore((s) => s.sessions);
 
   if (!profile || !character) return null;
 
   const classDef = CLASS_DEFINITIONS[character.class];
+  const rank = classRank(character, muscleXP);
   const daysSinceLast = sessions.length > 0 ? daysSince(sessions[0].startedAt) : null;
 
   // Performance metrics derived from character stats
@@ -65,11 +69,16 @@ export default function StatsScreen() {
         {/* Profile header */}
         <View style={styles.profileRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarIcon}>{classDef.icon}</Text>
+            <ClassIcon name={character.class} size={40} color={COLORS.gold} strokeWidth={2} />
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile.name}</Text>
-            <Text style={styles.profileSub}>LV.{character.level} · {character.class.toUpperCase()}</Text>
+            <View style={styles.profileMeta}>
+              <Text style={styles.profileSub}>LV.{character.level}</Text>
+              <Text style={styles.profileSubDim}>·</Text>
+              <Text style={styles.profileSub}>{character.class.toUpperCase()}</Text>
+              <Badge label={`RANK ${rank}`} variant="gold" />
+            </View>
             {/* Inactivity pill — shown when last workout was more than 3 days ago */}
             {daysSinceLast !== null && daysSinceLast > 3 && (
               <View style={[
@@ -184,9 +193,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   avatarIcon: { fontSize: 32 },
-  profileInfo: { flex: 1, gap: 4 },
+  profileInfo: { flex: 1, gap: 6 },
   profileName: { fontSize: 22, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  profileMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   profileSub:  { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 1.5 },
+  profileSubDim: { fontSize: 11, color: COLORS.textMuted },
 
   // Inactivity pill
   inactivePill: {
