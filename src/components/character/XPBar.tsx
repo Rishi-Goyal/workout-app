@@ -12,7 +12,8 @@ export default function XPBar({ character }: { character: Character }) {
         value={progress}
         color={COLORS.gold}
         height={10}
-        label={`Lv.${character.level} — ${character.title}`}
+        segmented
+        label={`LV.${character.level} — ${character.title}`}
         rightLabel={`${character.currentXP}/${character.xpToNextLevel} XP`}
       />
     </View>

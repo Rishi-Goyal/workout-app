@@ -17,7 +17,7 @@ import {
   LayoutChangeEvent,
   useWindowDimensions,
 } from 'react-native';
-import { COLORS, RADIUS } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ const CONTAINER_PAD = 14;   // padding inside the card
 const GAP = 2;
 const MIN_CELL = 10;
 const MAX_CELL = 14;
-const EMPTY_COLOR = '#161b22';
+const EMPTY_COLOR = COLORS.surfaceAccent;
 
 interface WorkoutCalendarProps {
   sessions: DungeonSession[];
@@ -60,9 +60,9 @@ function dateKey(d: Date): string {
 
 function getCellColor(xp: number): string {
   if (xp === 0) return EMPTY_COLOR;
-  if (xp < 100) return 'rgba(59,130,246,0.25)';
-  if (xp < 200) return 'rgba(59,130,246,0.50)';
-  if (xp < 350) return 'rgba(59,130,246,0.75)';
+  if (xp < 100) return 'rgba(245,166,35,0.22)';
+  if (xp < 200) return 'rgba(245,166,35,0.45)';
+  if (xp < 350) return 'rgba(245,166,35,0.70)';
   return COLORS.gold;
 }
 
@@ -202,7 +202,7 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>WORKOUT ACTIVITY</Text>
+        <Text style={styles.sectionTitle}>EXPEDITION LOG</Text>
         <Text style={styles.dateRange}>{dateRange}</Text>
       </View>
 
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
 
   // Header
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 2 },
-  dateRange: { fontSize: 10, color: COLORS.textMuted },
+  sectionTitle: { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.textSecondary, letterSpacing: 2.5 },
+  dateRange: { fontSize: 10, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.5 },
 
   // Stats
   statsRow: { flexDirection: 'row', gap: 6 },
@@ -359,8 +359,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     gap: 1,
   },
-  statNum: { fontSize: 18, fontWeight: '800', color: COLORS.gold },
-  statLbl: { fontSize: 9, color: COLORS.textMuted, textAlign: 'center' },
+  statNum: { fontSize: 19, fontFamily: FONTS.displayBold, color: COLORS.gold, letterSpacing: 0.3 },
+  statLbl: { fontSize: 9, fontFamily: FONTS.sansBold, color: COLORS.textMuted, textAlign: 'center', letterSpacing: 0.8 },
 
   // Heatmap
   heatmapContainer: { flexDirection: 'row' },
@@ -368,11 +368,11 @@ const styles = StyleSheet.create({
 
   // Day labels (fixed left column)
   dayLabelCol: { gap: GAP },
-  dayLabel: { fontSize: 9, color: COLORS.textMuted, textAlign: 'right', paddingRight: 4 },
+  dayLabel: { fontSize: 9, fontFamily: FONTS.sansMed, color: COLORS.textMuted, textAlign: 'right', paddingRight: 4 },
 
   // Month labels (above grid, inside scroll)
   monthRow: { flexDirection: 'row' },
-  monthLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600' },
+  monthLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 0.5 },
 
   // Grid
   weeksRow: { flexDirection: 'row', gap: GAP },
@@ -389,26 +389,25 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   tooltip: {
-    backgroundColor: '#1f2937',
+    backgroundColor: COLORS.surfaceAccent,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: COLORS.borderStrong,
     alignItems: 'center',
     gap: 2,
-    // Subtle shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 8,
   },
-  tooltipDate: { fontSize: 12, fontWeight: '600', color: '#f9fafb' },
-  tooltipXP: { fontSize: 11, color: COLORS.gold, fontWeight: '700' },
+  tooltipDate: { fontSize: 12, fontFamily: FONTS.sansMed, color: COLORS.text, letterSpacing: 0.3 },
+  tooltipXP: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 
   // Legend
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
-  legendLabel: { fontSize: 9, color: COLORS.textMuted },
+  legendLabel: { fontSize: 9, fontFamily: FONTS.sansMed, color: COLORS.textMuted, letterSpacing: 0.3 },
   legendCell: { width: 10, height: 10, borderRadius: 2 },
 });

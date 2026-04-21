@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInRight, ZoomIn } from 'react-native-reanimated';
 import PressableButton from '@/components/ui/PressableButton';
+import CornerBrackets from '@/components/ui/CornerBrackets';
 import { getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { STATUS_ICON, exerciseSummaryLine } from '@/lib/questUtils';
-import { COLORS, RADIUS } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import { muscleLevelTitle } from '@/lib/muscleXP';
 import type { AdaptationChange } from '@/lib/adaptationEngine';
 import type { DungeonSession, FitnessGoal, MuscleGroup } from '@/types';
@@ -16,8 +17,8 @@ const REASON_ICON: Record<AdaptationChange['reason'], string> = {
 };
 const REASON_COLOR: Record<AdaptationChange['reason'], string> = {
   overachieved:  COLORS.jade,
-  met_target:    '#60a5fa',
-  underachieved: '#f97316',
+  met_target:    COLORS.violetLight,
+  underachieved: COLORS.orange,
   reset:         COLORS.textMuted,
 };
 
@@ -47,20 +48,22 @@ export default function SessionSummary({
     <Modal transparent animationType="fade" visible>
       <View style={styles.backdrop}>
         <Animated.View entering={ZoomIn.springify()} style={styles.card}>
+          <CornerBrackets color={didLevelUp ? COLORS.gold : COLORS.violet} size={18} thickness={2} inset={8} />
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
             {/* ── Header ── */}
             <Text style={styles.icon}>
               {didLevelUp ? '🎉' : completed === 0 && half === 0 ? '📋' : '⚔️'}
             </Text>
+            <Text style={styles.eyebrow}>
+              {didLevelUp ? 'RANK UP' : completed === 0 && half === 0 ? 'FLOOR ABANDONED' : 'FLOOR CLEARED'}
+            </Text>
             <Text style={styles.title}>
               {didLevelUp
-                ? `Level ${newLevel}!`
-                : completed === 0 && half === 0
-                  ? `Session ${session.floor} Ended`
-                  : `Session ${session.floor} Cleared`}
+                ? `LEVEL ${newLevel}`
+                : `Floor ${session.floor}`}
             </Text>
-            {didLevelUp && <Text style={styles.subtitle}>You leveled up!</Text>}
+            {didLevelUp && <Text style={styles.subtitle}>The hunter ascends.</Text>}
 
             {/* ── Done / Half / Skip counts ── */}
             <View style={styles.statsRow}>
@@ -84,7 +87,7 @@ export default function SessionSummary({
                 +{xpGained} XP
               </Animated.Text>
               <Animated.Text entering={FadeIn.duration(400).delay(350)} style={styles.xpLbl}>
-                Experience Earned
+                EXPERIENCE EARNED
               </Animated.Text>
             </View>
 
@@ -161,10 +164,10 @@ export default function SessionSummary({
               entering={FadeInDown.duration(350).delay(400)}
               style={styles.nextSection}
             >
-              <Text style={styles.nextEyebrow}>WHAT'S NEXT</Text>
-              <Text style={styles.nextRest}>Rest before your next session to let your muscles recover.</Text>
+              <Text style={styles.nextEyebrow}>NEXT EXPEDITION</Text>
+              <Text style={styles.nextRest}>Rest between dungeon runs. Your muscles rebuild stronger in recovery.</Text>
               <View style={styles.nextRoutineRow}>
-                <Text style={styles.nextRoutineLabel}>Next up</Text>
+                <Text style={styles.nextRoutineLabel}>NEXT UP</Text>
                 <View style={styles.nextRoutineInfo}>
                   <Text style={styles.nextRoutineName}>{nextRoutine.splitName}</Text>
                   <Text style={styles.nextRoutineDay}>{nextRoutine.dayName}</Text>
@@ -183,7 +186,7 @@ export default function SessionSummary({
               )}
             </Animated.View>
 
-            <PressableButton label="Continue" size="lg" onPress={onClose} style={styles.btn} />
+            <PressableButton label="Continue" size="lg" onPress={onClose} style={styles.btn} variant="primary" />
           </ScrollView>
         </Animated.View>
       </View>
@@ -214,33 +217,34 @@ const styles = StyleSheet.create({
 
   // Header
   icon:     { fontSize: 52 },
-  title:    { fontSize: 24, fontWeight: '800', color: COLORS.gold, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: COLORS.textMuted, marginTop: -8 },
+  eyebrow:  { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 3, marginTop: -4 },
+  title:    { fontSize: 26, fontFamily: FONTS.displayBold, color: COLORS.gold, textAlign: 'center', letterSpacing: 1, marginTop: -2 },
+  subtitle: { fontSize: 13, fontFamily: FONTS.sans, color: COLORS.textSecondary, marginTop: -6, fontStyle: 'italic' },
 
   // Counts
   statsRow: { flexDirection: 'row', gap: 24 },
   stat:     { alignItems: 'center' },
-  statNum:  { fontSize: 28, fontWeight: '700' },
-  statLbl:  { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  statNum:  { fontSize: 28, fontFamily: FONTS.displayBold, letterSpacing: 0.5 },
+  statLbl:  { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, marginTop: 2, letterSpacing: 1.5 },
 
   // XP box
   xpBox: {
-    backgroundColor: 'rgba(245,158,11,0.1)',
+    backgroundColor: 'rgba(245,166,35,0.1)',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: 'rgba(245,166,35,0.3)',
     alignItems: 'center',
     width: '100%',
   },
-  xpNum: { fontSize: 32, fontWeight: '800', color: COLORS.gold },
-  xpLbl: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  xpNum: { fontSize: 34, fontFamily: FONTS.displayBold, color: COLORS.gold, letterSpacing: 1 },
+  xpLbl: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, marginTop: 4, letterSpacing: 2 },
 
   // Per-exercise outcomes
   exerciseSection: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(165,180,252,0.04)',
     borderRadius: 14,
     padding: 14,
     gap: 10,
@@ -249,17 +253,17 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    letterSpacing: 1.2,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.textSecondary,
+    letterSpacing: 2,
     marginBottom: 2,
   },
   exerciseRow:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
   exerciseStatus: { fontSize: 14, width: 22, textAlign: 'center' },
   exerciseInfo:   { flex: 1, gap: 1 },
-  exerciseName:   { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  exerciseDetail: { fontSize: 11, color: COLORS.textMuted },
-  exerciseXP:     { fontSize: 12, fontWeight: '700', color: COLORS.gold },
+  exerciseName:   { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.text },
+  exerciseDetail: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
+  exerciseXP:     { fontSize: 12, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 
   // Muscle level-ups (unchanged)
   muscleLevelUps: {
@@ -272,10 +276,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16,185,129,0.2)',
   },
   muscleSectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontFamily: FONTS.sansBold,
     color: COLORS.jade,
-    letterSpacing: 1.2,
+    letterSpacing: 2,
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -287,7 +291,7 @@ const styles = StyleSheet.create({
   },
   muscleName: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FONTS.sansMed,
     color: COLORS.text,
     textTransform: 'capitalize',
   },
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  muscleLevelText: { fontSize: 11, fontWeight: '700', color: COLORS.jade },
+  muscleLevelText: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.jade, letterSpacing: 0.5 },
 
   // Adaptation changes — next session goals
   adaptSection: {
@@ -311,53 +315,53 @@ const styles = StyleSheet.create({
   },
   adaptEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#a78bfa',
-    letterSpacing: 1.2,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.violetLight,
+    letterSpacing: 2,
     marginBottom: 2,
   },
   adaptRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   adaptIcon: { fontSize: 14, width: 20, textAlign: 'center', marginTop: 1 },
   adaptInfo: { flex: 1, gap: 2 },
-  adaptName: { fontSize: 12, fontWeight: '600', color: COLORS.text },
-  adaptLine: { fontSize: 11, fontWeight: '500' },
+  adaptName: { fontSize: 12, fontFamily: FONTS.sansMed, color: COLORS.text },
+  adaptLine: { fontSize: 11, fontFamily: FONTS.sans },
 
   // What's next
   nextSection: {
     width: '100%',
-    backgroundColor: 'rgba(59,130,246,0.06)',
+    backgroundColor: 'rgba(99,102,241,0.06)',
     borderRadius: 14,
     padding: 14,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.15)',
+    borderColor: 'rgba(99,102,241,0.18)',
   },
   nextEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#60a5fa',
-    letterSpacing: 1.2,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.violetLight,
+    letterSpacing: 2,
   },
-  nextRest: { fontSize: 12, color: COLORS.textMuted },
+  nextRest: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textSecondary },
   nextRoutineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  nextRoutineLabel: { fontSize: 11, color: COLORS.textMuted, width: 44 },
+  nextRoutineLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, width: 52, letterSpacing: 1.2 },
   nextRoutineInfo: { flex: 1 },
-  nextRoutineName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  nextRoutineDay:  { fontSize: 12, color: COLORS.textMuted },
+  nextRoutineName: { fontSize: 14, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.3 },
+  nextRoutineDay:  { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.5 },
   nextMuscleChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   nextMuscleChip: {
-    backgroundColor: 'rgba(59,130,246,0.1)',
+    backgroundColor: 'rgba(99,102,241,0.12)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.2)',
+    borderColor: 'rgba(99,102,241,0.25)',
   },
-  nextMuscleChipText: { fontSize: 10, fontWeight: '600', color: '#60a5fa', textTransform: 'capitalize' },
+  nextMuscleChipText: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, textTransform: 'uppercase', letterSpacing: 0.8 },
 
   btn: { width: '100%', marginTop: 4 },
 });
