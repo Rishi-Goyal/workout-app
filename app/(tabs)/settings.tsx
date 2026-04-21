@@ -11,7 +11,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
 import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
 import { WORKOUT_SPLITS, type WorkoutSplitType } from '@/lib/exerciseDatabase';
-import { COLORS, RADIUS, SPACING } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 
 // ─── Split picker data ──────────────────────────────────────────────────────
 
@@ -49,6 +49,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>HUNTER CONFIGURATION</Text>
 
         {/* ── WEEKLY GOAL ──────────────────────────────────────────── */}
         <Card padding={16}>
@@ -218,7 +219,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: SPACING.screen, gap: SPACING.gap, paddingBottom: 36 },
 
-  title: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+  title: { fontSize: 28, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  subtitle: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 2.5, marginTop: -6, marginBottom: 4 },
 
   // Weekly goal stepper
   stepperRow: {
@@ -226,7 +228,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  stepperLabel: { fontSize: 14, color: COLORS.textSecondary },
+  stepperLabel: { fontSize: 14, fontFamily: FONTS.sansMed, color: COLORS.textSecondary },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepperBtn: {
     width: 36,
@@ -239,12 +241,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepperBtnDisabled: { opacity: 0.3 },
-  stepperBtnText: { fontSize: 18, color: COLORS.text, fontWeight: '700' },
-  stepperValue: { fontSize: 20, fontWeight: '700', color: COLORS.gold, minWidth: 24, textAlign: 'center' },
+  stepperBtnText: { fontSize: 18, color: COLORS.text, fontFamily: FONTS.sansBold },
+  stepperValue: { fontSize: 20, fontFamily: FONTS.mono, color: COLORS.gold, minWidth: 24, textAlign: 'center', letterSpacing: 0.5 },
 
   // Training section
-  fieldLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  fieldHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, marginBottom: 10 },
+  fieldLabel: { fontSize: 14, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
+  fieldHint: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textMuted, marginTop: 2, marginBottom: 10 },
 
   splitRow: { gap: 8, paddingVertical: 4 },
   splitChip: {
@@ -259,8 +261,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold,
     backgroundColor: COLORS.gold + '1a', // 10% opacity
   },
-  splitChipText: { fontSize: 13, color: COLORS.textSecondary },
-  splitChipTextActive: { color: COLORS.gold, fontWeight: '600' },
+  splitChipText: { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.textSecondary },
+  splitChipTextActive: { color: COLORS.gold, fontFamily: FONTS.sansBold },
 
   splitDescription: {
     fontSize: 12,

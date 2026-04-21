@@ -12,7 +12,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { daysSince, isWithinDays } from '@/lib/dateUtils';
-import { COLORS, RADIUS } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import type { DungeonSession, Quest, MuscleGroup } from '@/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,7 +86,8 @@ export default function HistoryScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.title}>History</Text>
+        <Text style={styles.title}>Expedition Log</Text>
+        <Text style={styles.subtitle}>PAST DUNGEON RUNS</Text>
 
         <WorkoutCalendar sessions={sessions} />
 
@@ -94,10 +95,10 @@ export default function HistoryScreen() {
         {!hasAny && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>No workouts yet</Text>
-            <Text style={styles.emptyText}>Complete your first workout to start building your history.</Text>
+            <Text style={styles.emptyTitle}>EXPEDITION LOG EMPTY</Text>
+            <Text style={styles.emptyText}>Clear your first floor to begin chronicling the dungeon.</Text>
             <PressableButton
-              label="Start a Workout →"
+              label="⚔️ Enter the Dungeon"
               size="md"
               style={styles.emptyCta}
               onPress={() => router.replace('/(tabs)')}
@@ -115,7 +116,7 @@ export default function HistoryScreen() {
               {' '}Time to return.
             </Text>
             <PressableButton
-              label="Start a Workout →"
+              label="⚔️ Return to the Dungeon"
               size="md"
               style={styles.gapCta}
               onPress={() => router.replace('/(tabs)')}
@@ -227,7 +228,8 @@ function SessionCard({ session, isExpanded, onToggle, showDivider }: {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: 16, gap: 16, paddingBottom: 36 },
-  title: { fontSize: 24, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  title: { fontSize: 28, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  subtitle: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 2.5, marginTop: -4, marginBottom: 4 },
 
   divider: { height: 1, backgroundColor: COLORS.border },
 
@@ -239,7 +241,7 @@ const styles = StyleSheet.create({
   },
   sessionLeft: { flex: 1, gap: 4 },
   sessionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sessionDate: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  sessionDate: { fontSize: 15, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
   sessionDuration: { fontSize: 12, color: COLORS.textMuted },
   sessionMeta: { fontSize: 12, color: COLORS.textMuted },
 
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  muscleChipText: { fontSize: 10, color: COLORS.gold, fontWeight: '600' },
+  muscleChipText: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.gold, letterSpacing: 0.5, textTransform: 'uppercase' },
 
   sessionRight: { alignItems: 'flex-end', gap: 6, paddingTop: 2 },
   chevron: { fontSize: 10, color: COLORS.textMuted },
@@ -272,21 +274,21 @@ const styles = StyleSheet.create({
   },
   exerciseStatus: { fontSize: 14, width: 22, textAlign: 'center' },
   exerciseInfo: { flex: 1, gap: 1 },
-  exerciseName: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  exerciseName: { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.text },
   exerciseDetail: { fontSize: 11, color: COLORS.textMuted },
-  exerciseXP: { fontSize: 12, fontWeight: '700', color: COLORS.gold },
+  exerciseXP: { fontSize: 12, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 
   // State 1 — no sessions
   emptyState: { alignItems: 'center', paddingTop: 48, gap: 6 },
   emptyIcon:  { fontSize: 36 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 6 },
+  emptyTitle: { fontSize: 16, fontFamily: FONTS.displayBold, color: COLORS.text, marginTop: 6, letterSpacing: 0.3 },
   emptyText:  { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
   emptyCta:   { marginTop: 14, alignSelf: 'stretch', marginHorizontal: 32 },
 
   // State 2 — gap > 7 days
   gapCard:  { gap: 8, borderColor: 'rgba(249,115,22,0.2)' },
   gapIcon:  { fontSize: 28 },
-  gapTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  gapTitle: { fontSize: 15, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.3 },
   gapSub:   { fontSize: 13, color: COLORS.textMuted },
   gapCta:   { marginTop: 6, alignSelf: 'stretch' },
 });
