@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
@@ -29,10 +30,13 @@ const SPLIT_OPTIONS: { key: WorkoutSplitType | 'auto'; label: string }[] = [
 export default function SettingsScreen() {
   const router = useRouter();
   const profile = useProfileStore((s) => s.profile);
+  const character = useProfileStore((s) => s.character);
+  const muscleXP = useProfileStore((s) => s.muscleXP);
   const preferredSplit = useProfileStore((s) => s.preferredSplit);
   const setPreferredSplit = useProfileStore((s) => s.setPreferredSplit);
   const updateMuscleStrength = useProfileStore((s) => s.updateMuscleStrength);
   const resetProfile = useProfileStore((s) => s.resetProfile);
+  const sessions = useHistoryStore((s) => s.sessions);
   const clearHistory = useHistoryStore((s) => s.clearHistory);
   const clearAllAdaptations = useAdaptationStore((s) => s.clearAllAdaptations);
   const target = useWeeklyGoalStore((s) => s.settings.targetWorkoutsPerWeek);
@@ -43,6 +47,28 @@ export default function SettingsScreen() {
   if (!profile) return null;
 
   const activeSplit = preferredSplit ?? 'auto';
+  const appVersion =
+    (Constants.expoConfig?.version as string | undefined) ?? '4.0.1';
+
+  async function exportData() {
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        appVersion,
+        profile,
+        character,
+        muscleXP,
+        sessions,
+      };
+      const json = JSON.stringify(payload, null, 2);
+      await Share.share({
+        title: 'DungeonFit Expedition Data',
+        message: json,
+      });
+    } catch (err) {
+      Alert.alert('Export failed', String(err));
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -55,7 +81,7 @@ export default function SettingsScreen() {
         <Card padding={16}>
           <SectionLabel>WEEKLY GOAL</SectionLabel>
           <View style={styles.stepperRow}>
-            <Text style={styles.stepperLabel}>Workouts per week</Text>
+            <Text style={styles.stepperLabel}>Floors per week</Text>
             <View style={styles.stepper}>
               <Pressable
                 onPress={() => setWeeklyTarget(target - 1)}
@@ -87,7 +113,7 @@ export default function SettingsScreen() {
           <SectionLabel>TRAINING</SectionLabel>
 
           {/* Split Picker */}
-          <Text style={styles.fieldLabel}>Workout Split</Text>
+          <Text style={styles.fieldLabel}>Training Split</Text>
           <Text style={styles.fieldHint}>
             Auto cycles splits based on your goal. Pick one to always use that split.
           </Text>
@@ -141,18 +167,46 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
+        {/* ── DATA ─────────────────────────────────────────────────── */}
+        <Card padding={16}>
+          <SectionLabel>DATA</SectionLabel>
+          <Text style={styles.fieldHint}>
+            Export your profile, character, and full expedition log as JSON
+            via the system share sheet.
+          </Text>
+          <PressableButton
+            label="📦 Export Expedition Data"
+            variant="ghost"
+            onPress={exportData}
+            style={styles.exportBtn}
+          />
+        </Card>
+
+        {/* ── ABOUT ────────────────────────────────────────────────── */}
+        <Card padding={16}>
+          <SectionLabel>ABOUT</SectionLabel>
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>App version</Text>
+            <Text style={styles.aboutValue}>{appVersion}</Text>
+          </View>
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>Class system</Text>
+            <Text style={styles.aboutValue}>v4 · Solo Leveling</Text>
+          </View>
+        </Card>
+
         {/* ── DANGER ZONE ──────────────────────────────────────────── */}
         <Card padding={16} style={styles.dangerCard}>
           <SectionLabel style={{ color: COLORS.crimson }}>DANGER ZONE</SectionLabel>
 
           <PressableButton
-            label="Reset Workout Progression"
+            label="Reset Progression"
             variant="ghost"
             style={styles.dangerBtn}
             onPress={() =>
               Alert.alert(
                 'Reset Progression?',
-                'This resets all progressive overload targets. Your next workouts will start from baseline weights.',
+                'This resets all progressive overload targets. Your next floors will start from baseline weights.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   {
@@ -166,13 +220,13 @@ export default function SettingsScreen() {
           />
 
           <PressableButton
-            label="Clear Workout History"
+            label="Clear Expedition Log"
             variant="ghost"
             style={styles.dangerBtn}
             onPress={() =>
               Alert.alert(
-                'Clear History?',
-                'This permanently deletes all session records. Your streak and XP are unaffected.',
+                'Clear Expedition Log?',
+                'This permanently deletes all floor records. Your streak and XP are unaffected.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   {
@@ -281,6 +335,17 @@ const styles = StyleSheet.create({
   },
   chevron: { fontSize: 12, color: COLORS.textMuted },
   slidersWrapper: { marginTop: 12 },
+
+  // Data / About
+  exportBtn: { marginTop: 4 },
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  aboutLabel: { fontSize: 13, fontFamily: FONTS.sans, color: COLORS.textSecondary },
+  aboutValue: { fontSize: 13, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 
   // Danger zone
   dangerCard: { borderColor: COLORS.crimson + '33' },

@@ -9,21 +9,33 @@ import GoalSelector from '@/components/setup/GoalSelector';
 import EquipmentPicker from '@/components/setup/EquipmentPicker';
 import MuscleStrengthSliders from '@/components/setup/MuscleStrengthSliders';
 import PressableButton from '@/components/ui/PressableButton';
+import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import ClassIcon, { type ClassGlyph } from '@/components/character/ClassIcon';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { MUSCLE_GROUPS, COLORS, FONTS, RADIUS } from '@/lib/constants';
+import { deriveClass } from '@/lib/character';
+import { seedMuscleXPFromStrengths } from '@/lib/muscleXP';
+import {
+  MUSCLE_GROUPS,
+  COLORS,
+  FONTS,
+  RADIUS,
+  CLASS_DEFINITIONS,
+  RANK_THRESHOLDS,
+  type ClassRank,
+} from '@/lib/constants';
 import type { FitnessGoal, Equipment, MuscleGroup, MuscleStrengths } from '@/types';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 const STEPS = [
-  { label: 'Name',      desc: 'Who enters the dungeon?' },
-  { label: 'Body',      desc: 'Your hunter stats' },
-  { label: 'Goal',      desc: 'What drives your quest?' },
-  { label: 'Gear',      desc: 'Your arsenal' },
-  { label: 'Strength',  desc: 'Rate your muscles' },
-  { label: 'Cardio',    desc: 'Cardio and mobility' },
-  { label: 'Class',     desc: 'Your emerging class' },
+  { label: 'Name',        desc: 'Who enters the dungeon?' },
+  { label: 'Body',        desc: 'Your hunter stats' },
+  { label: 'Goal',        desc: 'What drives your quest?' },
+  { label: 'Arsenal',     desc: 'Your equipment' },
+  { label: 'Strength',    desc: 'Rate your muscles' },
+  { label: 'Conditioning', desc: 'Cardio, mobility, and grip' },
+  { label: 'Class',       desc: 'Your emerging class' },
 ];
 
 const defaultStrengths = (): MuscleStrengths =>
@@ -59,6 +71,48 @@ function StepSlider({ value, min, max, step, onChange, suffix }: {
     </View>
   );
 }
+
+// ── Rank preview (keyed off the derived class's primary dimension) ─────────
+function previewRank(
+  primaryDimension: string,
+  strengths: MuscleStrengths,
+  cardioMinutes: number,
+  mobilityScore: number,
+  gripScore: number,
+): ClassRank {
+  const push = (strengths.chest + strengths.shoulders + strengths.triceps) / 3;
+  const pull = (strengths.back + strengths.biceps) / 2;
+  const legs = (strengths.quads + strengths.hamstrings + strengths.glutes + strengths.calves) / 4;
+  const core = strengths.core;
+  const cardio = Math.min(20, cardioMinutes / 15);
+  const mobility = Math.min(20, mobilityScore);
+  const grip = Math.min(20, gripScore);
+  const balanced = (push + pull + legs + core + cardio + mobility + grip) / 7;
+
+  const score =
+    primaryDimension === 'push' ? push :
+    primaryDimension === 'pull' ? pull :
+    primaryDimension === 'legs' ? legs :
+    primaryDimension === 'core' ? core :
+    primaryDimension === 'cardio' ? cardio :
+    primaryDimension === 'mobility' ? mobility :
+    primaryDimension === 'grip' ? grip :
+    balanced;
+
+  if (score >= RANK_THRESHOLDS.SS) return 'SS';
+  if (score >= RANK_THRESHOLDS.S)  return 'S';
+  if (score >= RANK_THRESHOLDS.A)  return 'A';
+  if (score >= RANK_THRESHOLDS.B)  return 'B';
+  return 'C';
+}
+
+const RANK_VARIANT: Record<ClassRank, 'muted' | 'jade' | 'gold' | 'orange' | 'crimson'> = {
+  C: 'muted',
+  B: 'jade',
+  A: 'gold',
+  S: 'orange',
+  SS: 'crimson',
+};
 
 // ── Dominant-dimension preview (pre-Phase 8 stopgap) ───────────────────────
 function dominantDimensions(
@@ -300,34 +354,71 @@ export default function SetupScreen() {
             </View>
           )}
 
-          {step === 7 && (
-            <View style={{ gap: 16 }}>
-              <Text style={styles.hint}>
-                Your class emerges from what you train. Here are your strongest dimensions — your true class will
-                crystallize after your first dungeon run.
-              </Text>
-              <Card padding={16}>
-                <Text style={styles.previewLabel}>TRAINING PATTERN</Text>
-                <View style={styles.dimList}>
-                  {dims.slice(0, 4).map((d, i) => (
-                    <View key={d.label} style={styles.dimRow}>
-                      <Text style={[styles.dimRank, i === 0 && { color: COLORS.gold }]}>
-                        #{i + 1}
-                      </Text>
-                      <Text style={[styles.dimName, i === 0 && { color: COLORS.text }]}>
-                        {d.label}
-                      </Text>
-                      <Text style={styles.dimTag}>{d.tag}</Text>
-                      <Text style={styles.dimValue}>{d.value.toFixed(1)}</Text>
-                    </View>
-                  ))}
-                </View>
-              </Card>
-              <Text style={styles.skipHint}>
-                Every floor you clear sharpens the signal. Ranks unlock at C → B → A → S → SS.
-              </Text>
-            </View>
-          )}
+          {step === 7 && (() => {
+            const seededXP = seedMuscleXPFromStrengths(strengths);
+            const derivedClass = deriveClass(seededXP, {
+              cardioMinutes,
+              mobilityScore,
+              gripScore,
+            });
+            const def = CLASS_DEFINITIONS[derivedClass];
+            const rank = previewRank(
+              def.primaryDimension,
+              strengths,
+              cardioMinutes,
+              mobilityScore,
+              gripScore,
+            );
+            return (
+              <View style={{ gap: 16 }}>
+                <Text style={styles.hint}>
+                  Your class emerges from what you train. Here's what the System sees right now — every floor
+                  you clear will sharpen the signal.
+                </Text>
+
+                {/* Class preview card — SVG glyph + class name + rank pill */}
+                <Card padding={20} style={styles.classPreviewCard}>
+                  <View style={styles.classGlyphWrap}>
+                    <ClassIcon
+                      name={derivedClass as ClassGlyph}
+                      size={72}
+                      color={COLORS.gold}
+                      strokeWidth={2}
+                    />
+                  </View>
+                  <View style={styles.classHeaderRow}>
+                    <Text style={styles.classEyebrow}>EMERGING CLASS</Text>
+                    <Badge label={`RANK ${rank}`} variant={RANK_VARIANT[rank]} />
+                  </View>
+                  <Text style={styles.className}>{derivedClass}</Text>
+                  <Text style={styles.classTagline}>{def.tagline}</Text>
+                </Card>
+
+                {/* Dimension breakdown */}
+                <Card padding={16}>
+                  <Text style={styles.previewLabel}>TRAINING PATTERN</Text>
+                  <View style={styles.dimList}>
+                    {dims.slice(0, 4).map((d, i) => (
+                      <View key={d.label} style={styles.dimRow}>
+                        <Text style={[styles.dimRank, i === 0 && { color: COLORS.gold }]}>
+                          #{i + 1}
+                        </Text>
+                        <Text style={[styles.dimName, i === 0 && { color: COLORS.text }]}>
+                          {d.label}
+                        </Text>
+                        <Text style={styles.dimTag}>{d.tag}</Text>
+                        <Text style={styles.dimValue}>{d.value.toFixed(1)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Card>
+
+                <Text style={styles.skipHint}>
+                  Ranks climb C → B → A → S → SS as your primary dimension grows.
+                </Text>
+              </View>
+            );
+          })()}
 
           <View style={styles.navRow}>
             {step > 1 && (
@@ -415,6 +506,56 @@ const styles = StyleSheet.create({
   sliderHeader: { gap: 2 },
   sliderLabel:  { fontSize: 14, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
   sliderHint:   { fontSize: 11, fontFamily: FONTS.sans, color: COLORS.textMuted },
+
+  // Class preview card (step 7)
+  classPreviewCard: {
+    borderColor: 'rgba(245,166,35,0.35)',
+    alignItems: 'center',
+    gap: 6,
+  },
+  classGlyphWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: COLORS.surfaceAccent,
+    borderWidth: 1.5,
+    borderColor: COLORS.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  classHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  classEyebrow: {
+    fontSize: 10,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.violetLight,
+    letterSpacing: 2.5,
+  },
+  className: {
+    fontSize: 22,
+    fontFamily: FONTS.displayBold,
+    color: COLORS.text,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  classTagline: {
+    fontSize: 13,
+    fontFamily: FONTS.sans,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 
   // Preview (step 7)
   previewLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 2, marginBottom: 10 },

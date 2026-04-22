@@ -49,7 +49,7 @@ export default function CharacterScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statBlock}>
               <Text style={styles.statValue}>{character.floorsCleared}</Text>
-              <Text style={styles.statLabel}>Workouts</Text>
+              <Text style={styles.statLabel}>Floors</Text>
             </View>
             <View style={styles.statBlock}>
               <Text style={styles.statValue}>{character.level}</Text>

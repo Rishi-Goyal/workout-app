@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
@@ -60,6 +60,7 @@ export default function ActiveQuestScreen() {
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
   const [tab, setTab] = useState<'guide' | 'muscles'>('guide');
+  const insets = useSafeAreaInsets();
 
   if (!quest) {
     return (
@@ -112,8 +113,11 @@ export default function ActiveQuestScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}
+        showsVerticalScrollIndicator={false}
+      >
 
         <View style={styles.header}>
           <PressableButton label="← Back" variant="ghost" size="sm" onPress={() => router.back()} />
@@ -128,9 +132,9 @@ export default function ActiveQuestScreen() {
           </Text>
         </View>
 
-        {/* ── Workout timer first — primary action is always above the fold ── */}
+        {/* ── Timer first — primary action is always above the fold ── */}
         <View style={styles.timerSection}>
-          <SectionLabel>WORKOUT</SectionLabel>
+          <SectionLabel>THE QUEST</SectionLabel>
           <WorkoutTimer
             sets={quest.sets}
             reps={quest.reps}
@@ -226,7 +230,7 @@ export default function ActiveQuestScreen() {
 
 const styles = StyleSheet.create({
   safe:         { flex: 1, backgroundColor: COLORS.bg },
-  scroll:       { padding: 20, paddingBottom: 40, gap: 18 },
+  scroll:       { padding: 20, gap: 18 },
   center:       { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorText:    { color: COLORS.textMuted, fontSize: 15, fontFamily: FONTS.sansMed },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

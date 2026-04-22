@@ -13,6 +13,7 @@ import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
+import { useSessionStore } from '@/stores/useSessionStore';
 import { daysSince } from '@/lib/dateUtils';
 import { COLORS, CLASS_DEFINITIONS, FONTS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
@@ -26,6 +27,7 @@ function formatTotalTime(sessions: DungeonSession[]): string {
 export default function StatsScreen() {
   const { profile, character, muscleXP } = useProfileStore();
   const sessions = useHistoryStore((s) => s.sessions);
+  const activeSession = useSessionStore((s) => s.activeSession);
 
   if (!profile || !character) return null;
 
@@ -107,7 +109,7 @@ export default function StatsScreen() {
         </Card>
 
         {/* First-workout nudge — only shown until the user completes their first session */}
-        {sessions.length === 0 && (
+        {sessions.length === 0 && !activeSession && (
           <Card padding={20} style={styles.nudgeCard}>
             <View style={styles.nudgeRow}>
               <Text style={styles.nudgeIcon}>⚔️</Text>
