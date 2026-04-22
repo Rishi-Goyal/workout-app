@@ -47,13 +47,13 @@ export default function ResumeSessionCard({
       <Card padding={16} style={styles.card}>
         {/* Header row */}
         <View style={styles.topRow}>
-          <Text style={styles.eyebrow}>SESSION IN PROGRESS</Text>
+          <Text style={styles.eyebrow}>DUNGEON IN PROGRESS</Text>
           <Badge label="PAUSED" variant="orange" />
         </View>
 
         {/* Session identity */}
         <View style={styles.titleBlock}>
-          <Text style={styles.sessionTitle}>Session {session.floor}</Text>
+          <Text style={styles.sessionTitle}>Floor {session.floor}</Text>
           <Text style={styles.splitName}>{routineInfo.splitName}</Text>
         </View>
 

@@ -188,14 +188,14 @@ export default function DungeonTabScreen() {
           </View>
           {activeSession && (
             <PressableButton
-              label="End Session"
+              label="Abandon Floor"
               variant="ghost"
               size="sm"
               onPress={() => {
-                Alert.alert('End Session?', 'You will lose progress on this session.', [
+                Alert.alert('Abandon the dungeon?', 'You will lose progress on this floor.', [
                   { text: 'Stay', style: 'cancel' },
                   {
-                    text: 'End Session', style: 'destructive',
+                    text: 'Abandon', style: 'destructive',
                     onPress: () => useSessionStore.getState().clearSession(),
                   },
                 ]);
