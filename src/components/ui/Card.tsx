@@ -10,9 +10,36 @@ interface CardProps {
   style?: ViewStyle;
   /** Inner padding. Defaults to SPACING.card (16). Pass SPACING.cardLg (20) for hero cards. */
   padding?: number;
+  /**
+   * Optional accent glow. Adds a soft shadow + tinted border to draw the eye:
+   * - `gold`: for hero CTAs (today's quest, primary action)
+   * - `violet`: for level-up moments / class-related content
+   */
+  glow?: 'gold' | 'violet';
 }
 
-export default function Card({ children, style, padding = SPACING.card }: CardProps) {
+export default function Card({ children, style, padding = SPACING.card, glow }: CardProps) {
+  const glowStyle =
+    glow === 'gold'
+      ? {
+          borderColor: 'rgba(245,166,35,0.35)',
+          shadowColor: COLORS.gold,
+          shadowOpacity: 0.22,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 4,
+        }
+      : glow === 'violet'
+      ? {
+          borderColor: 'rgba(99,102,241,0.35)',
+          shadowColor: COLORS.violet,
+          shadowOpacity: 0.25,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 4,
+        }
+      : null;
+
   return (
     <View
       style={[
@@ -23,6 +50,7 @@ export default function Card({ children, style, padding = SPACING.card }: CardPr
           borderColor: COLORS.border,
           padding,
         },
+        glowStyle,
         style,
       ]}
     >

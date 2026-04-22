@@ -4,8 +4,9 @@ import Animated, { FadeIn, FadeOut, Layout, FadeInDown } from 'react-native-rean
 import { router } from 'expo-router';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
+import CornerBrackets from '@/components/ui/CornerBrackets';
 import PressableButton from '@/components/ui/PressableButton';
-import { COLORS, RADIUS } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import { getSwapOptions, swapExercise } from '@/lib/questGenerator';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -19,10 +20,10 @@ interface QuestCardProps {
 }
 
 const DIFF_BADGE: Record<Quest['difficulty'], { variant: 'jade' | 'gold' | 'orange' | 'crimson'; label: string }> = {
-  easy:   { variant: 'jade',    label: '⚡ Easy' },
-  medium: { variant: 'gold',    label: '🔶 Medium' },
-  hard:   { variant: 'orange',  label: '🔴 Hard' },
-  boss:   { variant: 'crimson', label: '💀 Boss' },
+  easy:   { variant: 'jade',    label: 'C · EASY' },
+  medium: { variant: 'gold',    label: 'B · MEDIUM' },
+  hard:   { variant: 'orange',  label: 'A · HARD' },
+  boss:   { variant: 'crimson', label: 'S · BOSS' },
 };
 
 export default function QuestCard({ quest, onAction, disabled }: QuestCardProps) {
@@ -89,7 +90,10 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
       layout={Layout.springify()}
       style={{ opacity: isSkipped ? 0.4 : 1 }}
     >
-      <Card style={styles.card} padding={16}>
+      <Card style={styles.card} padding={16} glow={quest.difficulty === 'boss' ? 'gold' : undefined}>
+        {quest.difficulty === 'boss' && (
+          <CornerBrackets color={COLORS.gold} size={14} thickness={2} inset={6} />
+        )}
 
         {/* Row 1: Exercise name + difficulty badge */}
         <View style={styles.nameRow}>
@@ -244,15 +248,18 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: FONTS.displayBold,
     color: COLORS.text,
     flex: 1,
     marginRight: 8,
+    letterSpacing: 0.3,
   },
   info: {
-    fontSize: 13,
-    color: COLORS.textMuted,
-    marginTop: 6,
+    fontSize: 12,
+    fontFamily: FONTS.mono,
+    color: COLORS.textSecondary,
+    marginTop: 8,
+    letterSpacing: 0.5,
   },
   actions: {
     flexDirection: 'row',
@@ -265,30 +272,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 12,
   },
-  statusText: { fontSize: 13, fontWeight: '600' },
+  statusText: { fontSize: 13, fontFamily: FONTS.sansBold, letterSpacing: 0.5 },
 
   // Swap panel
   swapPanel: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.surfaceAccent,
     borderRadius: RADIUS.sm,
     padding: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.borderStrong,
     marginTop: 12,
   },
   swapTitle: {
     fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-    letterSpacing: 1.5,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.violetLight,
+    letterSpacing: 2,
     textAlign: 'center',
   },
   swapSection: { gap: 4 },
   swapLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sansBold,
     color: COLORS.gold,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     marginBottom: 2,
   },
   swapOption: {
@@ -302,13 +311,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  swapOptionName: { fontSize: 13, fontWeight: '600', color: COLORS.text, flex: 1 },
-  swapOptionDiff: { fontSize: 11, color: COLORS.textMuted },
-  noSwaps: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic' },
+  swapOptionName: { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.text, flex: 1 },
+  swapOptionDiff: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.5 },
+  noSwaps: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic', fontFamily: FONTS.sans },
 
   // Swap confirmation
   swapConfirm: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.surfaceAccent,
     borderRadius: RADIUS.sm,
     padding: 12,
     gap: 10,
@@ -318,9 +327,9 @@ const styles = StyleSheet.create({
   },
   swapConfirmTitle: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FONTS.sansBold,
     color: COLORS.gold,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textAlign: 'center',
   },
   swapConfirmCard: {
@@ -331,18 +340,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  swapConfirmName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  swapConfirmName: { fontSize: 14, fontFamily: FONTS.displayBold, color: COLORS.text },
   swapConfirmMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   swapConfirmChip: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(165,180,252,0.08)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  swapConfirmChipText: { fontSize: 10, color: COLORS.textMuted, textTransform: 'capitalize' },
-  swapDiffChip: { borderColor: COLORS.gold + '40', backgroundColor: 'rgba(59,130,246,0.08)' },
-  swapConfirmDiff: { fontSize: 10, color: COLORS.gold, fontWeight: '700' },
+  swapConfirmChipText: { fontSize: 10, fontFamily: FONTS.sansMed, color: COLORS.textSecondary, textTransform: 'capitalize' },
+  swapDiffChip: { borderColor: COLORS.gold + '40', backgroundColor: 'rgba(245,166,35,0.1)' },
+  swapConfirmDiff: { fontSize: 10, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
   swapConfirmActions: { flexDirection: 'row', gap: 8 },
 });

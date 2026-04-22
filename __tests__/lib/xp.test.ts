@@ -5,7 +5,7 @@ import type { Character } from '@/types';
 
 function makeCharacter(overrides: Partial<Character> = {}): Character {
   return {
-    class: 'Wanderer',
+    class: 'Awakened Novice',
     level: 1,
     currentXP: 0,
     xpToNextLevel: xpToNextLevel(1),
@@ -13,6 +13,9 @@ function makeCharacter(overrides: Partial<Character> = {}): Character {
     stats: { strength: 5, endurance: 5, agility: 5, vitality: 5 },
     title: 'Initiate',
     floorsCleared: 0,
+    cardioMinutes: 0,
+    mobilityScore: 5,
+    gripScore: 5,
     ...overrides,
   };
 }

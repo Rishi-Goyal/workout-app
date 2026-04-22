@@ -2,22 +2,22 @@
   "expo": {
     "name": "DungeonFit",
     "slug": "dungeonfit",
-    "version": "3.5.5",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0d0a0e",
+    "backgroundColor": "#07061A",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0d0a0e"
+      "backgroundColor": "#07061A"
     },
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0d0a0e",
+        "backgroundColor": "#07061A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

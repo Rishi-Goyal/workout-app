@@ -5,13 +5,16 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import XPBar from '@/components/character/XPBar';
+import ClassIcon from '@/components/character/ClassIcon';
+import { classRank } from '@/lib/character';
+import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { daysSince } from '@/lib/dateUtils';
-import { COLORS, CLASS_DEFINITIONS } from '@/lib/constants';
+import { COLORS, CLASS_DEFINITIONS, FONTS } from '@/lib/constants';
 import type { DungeonSession } from '@/types';
 
 function formatTotalTime(sessions: DungeonSession[]): string {
@@ -21,12 +24,13 @@ function formatTotalTime(sessions: DungeonSession[]): string {
 }
 
 export default function StatsScreen() {
-  const { profile, character } = useProfileStore();
+  const { profile, character, muscleXP } = useProfileStore();
   const sessions = useHistoryStore((s) => s.sessions);
 
   if (!profile || !character) return null;
 
   const classDef = CLASS_DEFINITIONS[character.class];
+  const rank = classRank(character, muscleXP);
   const daysSinceLast = sessions.length > 0 ? daysSince(sessions[0].startedAt) : null;
 
   // Performance metrics derived from character stats
@@ -65,11 +69,16 @@ export default function StatsScreen() {
         {/* Profile header */}
         <View style={styles.profileRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarIcon}>{classDef.icon}</Text>
+            <ClassIcon name={character.class} size={40} color={COLORS.gold} strokeWidth={2} />
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile.name}</Text>
-            <Text style={styles.profileSub}>Level {character.level} · {character.class}</Text>
+            <View style={styles.profileMeta}>
+              <Text style={styles.profileSub}>LV.{character.level}</Text>
+              <Text style={styles.profileSubDim}>·</Text>
+              <Text style={styles.profileSub}>{character.class.toUpperCase()}</Text>
+              <Badge label={`RANK ${rank}`} variant="gold" />
+            </View>
             {/* Inactivity pill — shown when last workout was more than 3 days ago */}
             {daysSinceLast !== null && daysSinceLast > 3 && (
               <View style={[
@@ -110,7 +119,7 @@ export default function StatsScreen() {
               </View>
             </View>
             <PressableButton
-              label="Start First Workout →"
+              label="⚔️ Begin Your First Quest"
               size="md"
               style={styles.nudgeCta}
               onPress={() => router.replace('/(tabs)')}
@@ -140,7 +149,7 @@ export default function StatsScreen() {
           <View style={styles.lifetimeGrid}>
             <View style={styles.lifetimeStat}>
               <Text style={styles.lifetimeValue}>{character.floorsCleared}</Text>
-              <Text style={styles.lifetimeLabel}>Workouts</Text>
+              <Text style={styles.lifetimeLabel}>Floors</Text>
             </View>
             <View style={styles.lifetimeStat}>
               <Text style={styles.lifetimeValue}>{formatTotalTime(sessions)}</Text>
@@ -169,19 +178,26 @@ const styles = StyleSheet.create({
   // Profile header
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: COLORS.gold,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  avatarIcon: { fontSize: 28 },
-  profileInfo: { flex: 1, gap: 4 },
-  profileName: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  profileSub:  { fontSize: 13, color: COLORS.textMuted },
+  avatarIcon: { fontSize: 32 },
+  profileInfo: { flex: 1, gap: 6 },
+  profileName: { fontSize: 22, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  profileMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  profileSub:  { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 1.5 },
+  profileSubDim: { fontSize: 11, color: COLORS.textMuted },
 
   // Inactivity pill
   inactivePill: {
@@ -197,16 +213,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239,68,68,0.1)',
     borderColor: 'rgba(239,68,68,0.25)',
   },
-  inactivePillText:    { fontSize: 11, fontWeight: '600', color: '#fb923c' },
-  inactivePillTextRed: { color: '#f87171' },
+  inactivePillText:    { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.orange, letterSpacing: 0.5 },
+  inactivePillTextRed: { color: COLORS.crimson },
 
   // First-workout nudge card
   nudgeCard: { borderColor: 'rgba(59,130,246,0.2)' },
   nudgeRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
   nudgeIcon: { fontSize: 28, marginTop: 2 },
   nudgeText: { flex: 1, gap: 4 },
-  nudgeTitle:{ fontSize: 15, fontWeight: '700', color: COLORS.text },
-  nudgeSub:  { fontSize: 12, color: COLORS.textMuted },
+  nudgeTitle:{ fontSize: 15, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.3 },
+  nudgeSub:  { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textSecondary },
   nudgeCta:  { alignSelf: 'stretch' },
 
   // XP card
@@ -216,12 +232,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  xpFooterText: { fontSize: 12, color: COLORS.textMuted },
+  xpFooterText: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
 
   // Performance card
   perfGrid: { gap: 14 },
   perfRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  perfLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.text },
+  perfLabel: { flex: 1, fontSize: 12, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
   perfBarWrap: {
     flex: 2,
     height: 4,
@@ -234,7 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gold,
     borderRadius: 2,
   },
-  perfValue: { width: 50, textAlign: 'right', fontSize: 13, color: COLORS.textMuted },
+  perfValue: { width: 50, textAlign: 'right', fontSize: 12, fontFamily: FONTS.mono, color: COLORS.textSecondary, letterSpacing: 0.3 },
 
   // Lifetime card
   lifetimeGrid: {
@@ -243,6 +259,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   lifetimeStat: { width: '48%' },
-  lifetimeValue: { fontSize: 22, fontWeight: '700', color: COLORS.text },
-  lifetimeLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  lifetimeValue: { fontSize: 24, fontFamily: FONTS.displayBold, color: COLORS.gold, letterSpacing: 0.3 },
+  lifetimeLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 1.5, marginTop: 2, textTransform: 'uppercase' },
 });

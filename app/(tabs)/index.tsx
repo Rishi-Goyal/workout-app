@@ -18,7 +18,7 @@ import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
 import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { xpToNextLevel } from '@/lib/xp';
 import { relativeDate } from '@/lib/dateUtils';
-import { COLORS, SPACING } from '@/lib/constants';
+import { COLORS, FONTS, SPACING } from '@/lib/constants';
 import { getCurrentVersion, compareVersions, getReleasesUrl } from '@/lib/versionCheck';
 import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
 
@@ -183,7 +183,7 @@ export default function DungeonTabScreen() {
               {routineInfoForSession.splitName}
             </Text>
             <Text style={styles.sessionFloorLabel}>
-              {activeSession ? `Session ${activeSession.floor}` : 'Loading…'}
+              {activeSession ? `FLOOR ${activeSession.floor}` : 'SUMMONING…'}
             </Text>
           </View>
           {activeSession && (
@@ -205,7 +205,7 @@ export default function DungeonTabScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.sessionScroll} showsVerticalScrollIndicator={false}>
-          <SectionLabel>EXERCISES</SectionLabel>
+          <SectionLabel>QUESTS</SectionLabel>
 
           <View style={styles.questList}>
             {isLoading || !activeSession ? (
@@ -227,7 +227,7 @@ export default function DungeonTabScreen() {
           )}
 
           {activeSession && !allActioned && (
-            <Text style={styles.hint}>Complete, half-complete, or skip each exercise to continue</Text>
+            <Text style={styles.hint}>Clear every quest to finalize the dungeon run</Text>
           )}
         </ScrollView>
 
@@ -284,8 +284,8 @@ export default function DungeonTabScreen() {
         )}
 
         {/* Hero card */}
-        <Card padding={SPACING.cardLg}>
-          <SectionLabel style={{ marginBottom: 8 }}>TODAY'S WORKOUT</SectionLabel>
+        <Card padding={SPACING.cardLg} glow="gold">
+          <SectionLabel style={{ marginBottom: 8 }}>TODAY'S DUNGEON</SectionLabel>
           <Text style={styles.workoutName}>{routineInfo.splitName}</Text>
           <View style={styles.detailsRow}>
             <Text style={styles.detailText}>~45 min</Text>
@@ -297,7 +297,7 @@ export default function DungeonTabScreen() {
             ))}
           </View>
           <PressableButton
-            label={entering ? 'Preparing…' : 'Start Workout'}
+            label={entering ? 'Summoning Quests…' : '⚔️ Enter the Dungeon'}
             size="lg"
             loading={entering}
             style={styles.startBtn}
@@ -312,28 +312,28 @@ export default function DungeonTabScreen() {
         <View style={styles.statsRow}>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.floorsCleared > 0 ? character.floorsCleared : 0}</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
+            <Text style={styles.statLabel}>FLOORS</Text>
           </Card>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.level}</Text>
-            <Text style={styles.statLabel}>Level</Text>
+            <Text style={styles.statLabel}>LEVEL</Text>
           </Card>
           <Card style={styles.statCard} padding={14}>
             <Text style={styles.statValue}>{character.totalXPEarned}</Text>
-            <Text style={styles.statLabel}>Total XP</Text>
+            <Text style={styles.statLabel}>TOTAL XP</Text>
           </Card>
         </View>
 
         {/* Recent section */}
         {recentSessions.length > 0 && (
           <View>
-            <SectionLabel>RECENT</SectionLabel>
+            <SectionLabel>EXPEDITION LOG</SectionLabel>
             {recentSessions.map((session, index) => (
               <View key={session.id}>
                 {index > 0 && <View style={styles.separator} />}
                 <View style={styles.recentRow}>
                   <View>
-                    <Text style={styles.recentWorkoutName}>Workout {session.floor}</Text>
+                    <Text style={styles.recentWorkoutName}>Floor {session.floor}</Text>
                     <Text style={styles.recentXP}>+{session.totalXPEarned} XP</Text>
                   </View>
                   <Text style={styles.recentDate}>{relativeDate(session.startedAt)}</Text>
@@ -371,8 +371,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLeft: { gap: 2 },
-  greeting: { fontSize: 16, color: COLORS.textMuted },
-  charName: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  greeting: { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.textMuted, letterSpacing: 0.3 },
+  charName: { fontSize: 22, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
 
   // XP bar
   xpBarTrack: {
@@ -389,32 +389,32 @@ const styles = StyleSheet.create({
   },
 
   // Hero card internals
-  workoutName: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  workoutName: { fontSize: 22, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 4,
+    marginTop: 6,
     flexWrap: 'wrap',
   },
-  detailText: { fontSize: 13, color: COLORS.textMuted },
-  detailSep: { fontSize: 13, color: COLORS.textMuted },
+  detailText: { fontSize: 12, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
+  detailSep: { fontSize: 12, color: COLORS.textMuted },
   muscleChip: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceAccent,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  muscleChipText: { fontSize: 10, color: COLORS.textSecondary, textTransform: 'capitalize' },
-  startBtn: { width: '100%', marginTop: 16 },
+  muscleChipText: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  startBtn: { width: '100%', marginTop: 18 },
 
   // Stats row
   statsRow: { flexDirection: 'row', gap: 12 },
   statCard: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 20, fontWeight: '700', color: COLORS.text },
-  statLabel: { fontSize: 11, color: COLORS.textMuted },
+  statValue: { fontSize: 22, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.3 },
+  statLabel: { fontSize: 9, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 1.5 },
 
   // Recent section
   separator: { height: 1, backgroundColor: COLORS.border },
@@ -424,9 +424,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
   },
-  recentWorkoutName: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  recentXP: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  recentDate: { fontSize: 12, color: COLORS.textMuted },
+  recentWorkoutName: { fontSize: 14, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
+  recentXP: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.gold, marginTop: 2, letterSpacing: 0.5 },
+  recentDate: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
 
   // Update banner
   updateBanner: {
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   updateBannerEmoji: { fontSize: 16 },
-  updateBannerText: { flex: 1, fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  updateBannerText: { flex: 1, fontSize: 12, color: COLORS.text, fontFamily: FONTS.sansBold, letterSpacing: 0.3 },
   updateBannerCta: {
     backgroundColor: 'rgba(99,102,241,0.25)',
     borderRadius: 8,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(99,102,241,0.4)',
   },
-  updateBannerCtaText: { fontSize: 12, color: '#a5b4fc', fontWeight: '700' },
+  updateBannerCtaText: { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 0.5 },
   updateBannerClose: { fontSize: 16, color: COLORS.textMuted, paddingHorizontal: 4 },
 
   // Active session
@@ -463,10 +463,10 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   sessionHeaderLeft: { flex: 1, paddingRight: 12 },
-  sessionRoutineName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  sessionFloorLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  sessionRoutineName: { fontSize: 16, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  sessionFloorLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.gold, marginTop: 4, letterSpacing: 2, textTransform: 'uppercase' },
   sessionScroll: { padding: 16, gap: 16, paddingBottom: 36 },
   questList: { gap: 12 },
   finalizeBtn: { marginTop: 8 },
-  hint: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', paddingHorizontal: 20 },
+  hint: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textMuted, textAlign: 'center', paddingHorizontal: 20, fontStyle: 'italic' },
 });

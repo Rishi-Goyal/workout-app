@@ -27,16 +27,27 @@ export type MuscleGroup =
   | 'glutes'
   | 'calves';
 
+/**
+ * v4 class system — 16 archetypes. Class is re-derived from muscleXP +
+ * cardio/mobility/grip on the character every session. See deriveClass().
+ */
 export type CharacterClass =
-  | 'Wanderer'       // Beginner — all balanced low
-  | 'Mirror Knight'  // Push dominant (chest/shoulders/triceps)
-  | 'Phantom'        // Pull dominant (back/biceps)
-  | 'Earthshaker'    // Legs dominant
-  | 'Iron Monk'      // Core specialist
-  | 'Iron Knight'    // Upper body balanced, legs neglected
-  | 'Colossus'       // Legs + Core, upper neglected
-  | 'Berserker'      // High overall, chaotic imbalance
-  | 'Paragon';       // All zones balanced and high
+  | 'Awakened Novice'   // C — entry, dimensions below threshold
+  | 'Iron Bulwark'      // push + core, defensive upper
+  | 'Atlas Titan'       // legs dominant, heavy
+  | 'Gauntlet Duelist'  // balanced upper (push + pull), moderate
+  | 'Ironhand Crusher'  // grip dominant, brute strength
+  | 'Shadow Archer'     // pull + agility, explosive
+  | 'Dragonspine'       // back specialist, posterior chain
+  | 'Raven Stalker'     // pull + mobility, cat-like
+  | 'Juggernaut'        // overall mass, high STR across the board
+  | 'Storm Rider'       // cardio + explosive, high-output
+  | 'Windrunner'        // pure cardio, long-distance
+  | 'Void Monk'         // core + mobility, zen specialist
+  | 'Serpent Dancer'    // mobility + agility, fluid
+  | 'Flame Herald'      // explosive power + upper
+  | 'Paragon'           // A — balanced high across all dimensions
+  | 'Ascendant';        // SS — all dimensions ≥ 12
 export type QuestDifficulty = 'easy' | 'medium' | 'hard' | 'boss';
 export type QuestStatus = 'pending' | 'complete' | 'half_complete' | 'skipped';
 export type SessionStatus = 'active' | 'completed' | 'abandoned';
@@ -51,6 +62,10 @@ export interface UserProfile {
   createdAt: string;
   bodyWeight?: number;       // kg (defaults to 70 if not set)
   weightUnit?: 'kg' | 'lbs'; // display preference (default 'kg')
+  // v4 onboarding dimensions — feed into class derivation
+  cardioMinutes?: number;    // minutes/week of cardio (0–300)
+  mobilityScore?: number;    // 1–10 flexibility/ROM
+  gripScore?: number;        // 1–10 grip strength
 }
 
 export interface CharacterStats {
@@ -69,6 +84,13 @@ export interface Character {
   stats: CharacterStats;
   title: string;
   floorsCleared: number;
+  // v4 dimensions — grow with training, feed into class derivation
+  cardioMinutes: number;     // mirrors profile but can grow via cardio workouts
+  mobilityScore: number;     // 1–20
+  gripScore: number;         // 1–20
+  // v4 streak mechanics (Phase 9 wires earning/consumption)
+  freezeTokens?: number;     // 0–3, consumed to preserve streak on off weeks
+  consistencyPenalty?: number; // 0–20, % subtracted from class rank score
 }
 
 export interface SetLog {

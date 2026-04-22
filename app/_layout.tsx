@@ -4,6 +4,10 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Unbounded_500Medium, Unbounded_700Bold } from '@expo-google-fonts/unbounded';
+import { Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
+import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import {
@@ -12,6 +16,11 @@ import {
   setupRestCompleteCategory,
   requestNotificationPermission,
 } from '@/lib/workoutNotification';
+import { COLORS, FONTS } from '@/lib/constants';
+
+// Hold the native splash until our custom fonts are loaded, otherwise we get a
+// flash-of-unstyled-text as Unbounded swaps in.
+SplashScreen.preventAutoHideAsync().catch(() => {/* already hidden, ignore */});
 
 // Top-level error boundary — shows a readable message instead of blank screen on crash
 interface EBState { error: Error | null }
@@ -21,9 +30,9 @@ class RootErrorBoundary extends Component<{ children: React.ReactNode }, EBState
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#080610', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ color: '#f5a623', fontSize: 18, fontWeight: '800', marginBottom: 12 }}>Something went wrong</Text>
-          <Text style={{ color: '#7a6d8a', fontSize: 12, textAlign: 'center' }}>{this.state.error.message}</Text>
+        <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ color: COLORS.gold, fontSize: 18, fontWeight: '800', marginBottom: 12, fontFamily: FONTS.displayBold }}>Something went wrong</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', fontFamily: FONTS.sans }}>{this.state.error.message}</Text>
         </View>
       );
     }
@@ -102,12 +111,12 @@ function AppNavigator() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#080610' }}>
-      <StatusBar style="light" backgroundColor="#080610" />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <StatusBar style="light" backgroundColor={COLORS.bg} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#080610' },
+          contentStyle: { backgroundColor: COLORS.bg },
           animation: 'slide_from_right',
         }}
       >
@@ -123,6 +132,27 @@ function AppNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Unbounded_500Medium,
+    Unbounded_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+    DMMono_400Regular,
+    DMMono_500Medium,
+  });
+
+  // Hide the splash once fonts are ready. If loading fails (offline first launch
+  // before cache populates), we still hide and let system fallbacks render — better
+  // than an indefinitely-stuck splash.
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {/* ignore */});
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null; // splash stays up
+
   return (
     <RootErrorBoundary>
       <AppNavigator />

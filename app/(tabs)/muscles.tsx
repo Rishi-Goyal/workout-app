@@ -4,7 +4,7 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfileStore } from '@/stores/useProfileStore';
-import { COLORS, CLASS_DEFINITIONS, RADIUS, SPACING } from '@/lib/constants';
+import { COLORS, CLASS_DEFINITIONS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 import type { MuscleGroup } from '@/types';
 import type { MuscleXP } from '@/lib/muscleXP';
 import Card from '@/components/ui/Card';
@@ -69,6 +69,7 @@ export default function MusclesScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <Text style={styles.title}>Muscles</Text>
+        <Text style={styles.subtitle}>RECOVERY · ZONES · RANK</Text>
 
         {/* Recovery status card */}
         <Card padding={16}>
@@ -140,7 +141,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { padding: SPACING.screen, gap: SPACING.gap, paddingBottom: 36 },
 
-  title: { fontSize: 24, fontWeight: '700', color: COLORS.text },
+  title: { fontSize: 28, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  subtitle: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 2.5, marginTop: -6 },
 
   // Recovery card rows
   recoveryRow: {
@@ -152,13 +154,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  muscleName: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
+  muscleName: { flex: 1, fontSize: 13, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
   timeAgo: {
-    fontSize: 11,
+    fontSize: 10,
+    fontFamily: FONTS.mono,
     color: COLORS.textMuted,
     textAlign: 'right',
     marginLeft: 8,
     minWidth: 72,
+    letterSpacing: 0.3,
   },
 
   // Zone section
@@ -173,8 +177,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 0,
   },
-  zoneLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  zoneAvg: { fontSize: 14, color: COLORS.gold },
+  zoneLabel: { fontSize: 15, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.5 },
+  zoneAvg: { fontSize: 14, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 
   progressBg: {
     height: 3,
@@ -195,6 +199,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  muscleLevelName: { fontSize: 12, color: COLORS.textSecondary },
-  muscleLevelValue: { fontSize: 12, color: COLORS.gold },
+  muscleLevelName: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textSecondary },
+  muscleLevelValue: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 });

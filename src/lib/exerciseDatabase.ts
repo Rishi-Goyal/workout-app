@@ -46,6 +46,16 @@ export interface ExerciseProgression {
   harderExerciseId: string | null;
 }
 
+/**
+ * v4 classification tags — feed into class derivation via Storm Rider / Void
+ * Monk / Ironhand Crusher / Flame Herald detection. An exercise can wear
+ * multiple tags (e.g. burpees are cardio + explosive).
+ *
+ * See docs/exercise-classification-prompt.md for the LLM tagging prompt used
+ * to retag the entire database.
+ */
+export type V4Tag = 'cardio' | 'mobility' | 'grip' | 'explosive';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -61,6 +71,8 @@ export interface Exercise {
   strengthStandards?: StrengthStandard;
   /** Tags for filtering (e.g. "compound", "isolation", "powerlifting", "bodyweight") */
   tags: string[];
+  /** v4 classification tags — drive class derivation (see V4Tag). */
+  v4Tags?: V4Tag[];
   /** True for isometric/static holds — use holdSeconds instead of reps */
   isStatic?: boolean;
   /** Default hold duration in seconds for static exercises */
@@ -329,6 +341,7 @@ const backExercises: Exercise[] = [
     formCues: ['Full arm extension', 'Depress shoulder blades', 'Breathe steadily', 'Build hang time gradually'],
     progression: { easierExerciseId: null, harderExerciseId: 'australian-pull-up' },
     tags: ['bodyweight', 'beginner', 'grip', 'prehab', 'isometric'],
+    v4Tags: ['grip'],
     isStatic: true,
     defaultHoldSeconds: 30,
   },
@@ -1345,6 +1358,7 @@ const posteriorChainExercises: Exercise[] = [
     progression: { easierExerciseId: 'hip-thrust', harderExerciseId: 'deadlift' },
     muscleFatigue: { glutes: 8, hamstrings: 7, back: 6, core: 5 },
     tags: ['kettlebell', 'compound', 'intermediate', 'explosive', 'conditioning'],
+    v4Tags: ['cardio', 'explosive'],
   },
   {
     id: 'lying-leg-curl',

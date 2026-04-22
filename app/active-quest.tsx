@@ -23,15 +23,15 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getSuggestedWeight } from '@/lib/weights';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
-import { COLORS, RADIUS, SPACING } from '@/lib/constants';
+import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 import { showWorkoutNotification, dismissWorkoutNotification } from '@/lib/workoutNotification';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
 
 const DIFF_BADGE = {
-  easy:   { variant: 'jade'    as const, label: '⚡ Easy' },
-  medium: { variant: 'gold'    as const, label: '🔶 Medium' },
-  hard:   { variant: 'orange'  as const, label: '🔴 Hard' },
-  boss:   { variant: 'crimson' as const, label: '💀 Boss' },
+  easy:   { variant: 'jade'    as const, label: 'C · EASY' },
+  medium: { variant: 'gold'    as const, label: 'B · MEDIUM' },
+  hard:   { variant: 'orange'  as const, label: 'A · HARD' },
+  boss:   { variant: 'crimson' as const, label: 'S · BOSS' },
 };
 
 const SECONDARY: Partial<Record<MuscleGroup, MuscleGroup[]>> = {
@@ -121,9 +121,10 @@ export default function ActiveQuestScreen() {
         </View>
 
         <View style={styles.titleRow}>
+          <Text style={styles.questEyebrow}>CURRENT QUEST</Text>
           <Text style={styles.questName}>{quest.exerciseName}</Text>
-          <Text style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>
-            {quest.targetMuscles.join(' · ')}
+          <Text style={styles.questMuscles}>
+            {quest.targetMuscles.join(' · ').toUpperCase()}
           </Text>
         </View>
 
@@ -156,8 +157,8 @@ export default function ActiveQuestScreen() {
         </View>
 
         <View style={styles.xpRow}>
-          <Text style={styles.xpLabel}>XP per set · scales with reps</Text>
-          <Text style={styles.xpValue}>up to +{quest.xpReward} XP</Text>
+          <Text style={styles.xpLabel}>XP PER SET · SCALES WITH REPS</Text>
+          <Text style={styles.xpValue}>UP TO +{quest.xpReward} XP</Text>
         </View>
 
         <View style={styles.divider} />
@@ -227,10 +228,12 @@ const styles = StyleSheet.create({
   safe:         { flex: 1, backgroundColor: COLORS.bg },
   scroll:       { padding: 20, paddingBottom: 40, gap: 18 },
   center:       { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  errorText:    { color: COLORS.textMuted, fontSize: 15 },
+  errorText:    { color: COLORS.textMuted, fontSize: 15, fontFamily: FONTS.sansMed },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  titleRow:     { gap: 6 },
-  questName:    { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  titleRow:     { gap: 4 },
+  questEyebrow: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 2.5 },
+  questName:    { fontSize: 24, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.4 },
+  questMuscles: { fontSize: 11, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 1.5, marginTop: 2 },
   tabs:         { flexDirection: 'row', gap: 6 },
   tab:          { flex: 1 },
   tabContent: {
@@ -266,6 +269,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(59,130,246,0.15)',
   },
-  xpLabel: { fontSize: 13, color: COLORS.textMuted },
-  xpValue: { fontSize: 18, fontWeight: '700', color: COLORS.gold },
+  xpLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 1.5 },
+  xpValue: { fontSize: 14, fontFamily: FONTS.mono, color: COLORS.gold, letterSpacing: 0.5 },
 });

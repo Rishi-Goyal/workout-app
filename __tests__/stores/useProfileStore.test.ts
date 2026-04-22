@@ -30,16 +30,16 @@ describe('useProfileStore.setProfile', () => {
     expect(useProfileStore.getState().profile).toEqual(sampleProfile);
   });
 
-  it('always creates a Wanderer character regardless of goal (class is derived from muscle XP)', () => {
+  it('always creates a Awakened Novice character regardless of goal (class is derived from muscle XP)', () => {
     act(() => { useProfileStore.getState().setProfile(sampleProfile); });
-    expect(useProfileStore.getState().character?.class).toBe('Wanderer');
+    expect(useProfileStore.getState().character?.class).toBe('Awakened Novice');
   });
 
-  it('creates Wanderer for calisthenics goal too (class is not goal-based)', () => {
+  it('creates Awakened Novice for calisthenics goal too (class is not goal-based)', () => {
     act(() => {
       useProfileStore.getState().setProfile({ ...sampleProfile, goal: 'calisthenics' });
     });
-    expect(useProfileStore.getState().character?.class).toBe('Wanderer');
+    expect(useProfileStore.getState().character?.class).toBe('Awakened Novice');
   });
 
   it('initialises character at level 1', () => {
@@ -102,11 +102,11 @@ describe('useProfileStore.awardXP', () => {
     expect(result!.leveledUp).toBe(false);
   });
 
-  it('boosts primary stat on level-up (Wanderer gets +1 vitality, +0.5 to all others)', () => {
+  it('boosts primary stat on level-up (Awakened Novice gets +1 vitality, +0.5 to all others)', () => {
     const charBefore = useProfileStore.getState().character!;
     act(() => { useProfileStore.getState().awardXP(xpToNextLevel(1)); });
     const charAfter = useProfileStore.getState().character!;
-    // Wanderer primaryStat = vitality (+1), others get +0.5
+    // Awakened Novice primaryStat = vitality (+1), others get +0.5
     expect(charAfter.stats.vitality).toBeGreaterThan(charBefore.stats.vitality);
     expect(charAfter.stats.strength).toBeGreaterThan(charBefore.stats.strength);
   });
@@ -218,8 +218,8 @@ describe('useProfileStore.awardMuscleXP', () => {
       }
     });
     const cls = useProfileStore.getState().character?.class;
-    // Push zone will dominate, so class should no longer be Wanderer
-    expect(cls).not.toBe('Wanderer');
+    // Push zone will dominate, so class should no longer be Awakened Novice
+    expect(cls).not.toBe('Awakened Novice');
   });
 
   // Negative: no-op when no character

@@ -11,7 +11,7 @@ import Card from '@/components/ui/Card';
 import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getDaysTrainedThisWeek, countSessionsInWeek, getISOWeekKey } from '@/lib/weeklyGoalUtils';
-import { COLORS } from '@/lib/constants';
+import { COLORS, FONTS } from '@/lib/constants';
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -82,9 +82,7 @@ export default function WeeklyGoalWidget() {
         <View style={styles.headerRow}>
           <View style={styles.streakBlock}>
             <Text style={styles.streakNum}>{currentStreak}</Text>
-            <Text style={styles.streakLabel}>
-              {currentStreak === 1 ? 'week streak 🔥' : 'week streak 🔥'}
-            </Text>
+            <Text style={styles.streakLabel}>WEEK STREAK</Text>
           </View>
           <View style={styles.rightMeta}>
             {longestStreak > 1 && currentStreak < longestStreak && (
@@ -169,26 +167,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  streakBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  streakNum:   { fontSize: 24, fontWeight: '800', color: COLORS.gold },
-  streakLabel: { fontSize: 12, color: COLORS.textMuted },
+  streakBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  streakNum:   { fontSize: 26, fontFamily: FONTS.displayBold, color: COLORS.gold, letterSpacing: 0.5 },
+  streakLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 1.8 },
   rightMeta:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bestText:    { fontSize: 11, color: COLORS.textMuted },
+  bestText:    { fontSize: 10, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.5 },
 
   // Freeze pill
   freezePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(6,182,212,0.1)',
+    backgroundColor: 'rgba(56,189,248,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(6,182,212,0.25)',
+    borderColor: 'rgba(56,189,248,0.3)',
     borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   freezeIcon:  { fontSize: 12 },
-  freezeCount: { fontSize: 12, fontWeight: '700', color: '#22d3ee' },
+  freezeCount: { fontSize: 12, fontFamily: FONTS.sansBold, color: COLORS.cyan, letterSpacing: 0.5 },
 
   // Day dots
   dotRow: {
@@ -212,8 +210,9 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     fontSize: 9,
-    fontWeight: '600',
+    fontFamily: FONTS.sansBold,
     color: COLORS.textMuted,
+    letterSpacing: 0.8,
   },
   dayLabelToday: { color: COLORS.gold },
 
@@ -236,6 +235,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gold,
   },
   progressFillGoalMet: { backgroundColor: COLORS.jade },
-  progressLabel:       { fontSize: 11, color: COLORS.textMuted, fontWeight: '600', minWidth: 100, textAlign: 'right' },
-  progressLabelGoalMet:{ color: COLORS.jade },
+  progressLabel:       { fontSize: 11, color: COLORS.textMuted, fontFamily: FONTS.sansMed, letterSpacing: 0.3, minWidth: 100, textAlign: 'right' },
+  progressLabelGoalMet:{ color: COLORS.jade, fontFamily: FONTS.sansBold, letterSpacing: 0.5 },
 });

@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, Character, MuscleGroup } from '../types';
 import type { WorkoutSplitType } from '../lib/exerciseDatabase';
-import { createCharacter, applyLevelUpStats, deriveClassFromMuscles } from '../lib/character';
+import { createCharacter, applyLevelUpStats, deriveClass } from '../lib/character';
 import { applyXP } from '../lib/xp';
 import {
   type MuscleXP,
@@ -67,9 +67,16 @@ export const useProfileStore = create<ProfileStore>()(
       setProfile: (profile) => {
         const isNew = get().profile === null;
         const existing = get().character;
+        const dims = {
+          cardioMinutes: profile.cardioMinutes ?? 0,
+          mobilityScore: profile.mobilityScore ?? 5,
+          gripScore: profile.gripScore ?? 5,
+        };
         set({
           profile,
-          character: existing ?? createCharacter(profile.goal),
+          character: existing
+            ? { ...existing, ...dims }
+            : createCharacter(profile.goal, dims),
           ...(isNew && { muscleXP: seedMuscleXPFromStrengths(profile.muscleStrengths) }),
         });
       },
@@ -101,7 +108,13 @@ export const useProfileStore = create<ProfileStore>()(
 
         // Re-derive class from the updated muscle distribution after every session
         const character = get().character;
-        const newClass = deriveClassFromMuscles(updated);
+        const newClass = character
+          ? deriveClass(updated, {
+              cardioMinutes: character.cardioMinutes ?? 0,
+              mobilityScore: character.mobilityScore ?? 5,
+              gripScore: character.gripScore ?? 5,
+            })
+          : 'Awakened Novice' as const;
         const updatedCharacter = character
           ? { ...character, class: newClass }
           : character;
@@ -126,13 +139,24 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 5,
+      version: 6,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
         if (s.character && typeof s.character === 'object') {
           const c = s.character as Record<string, unknown>;
           if (c.floorsCleared === undefined) c.floorsCleared = 0;
+          // v5 → v6: add new v4 dimensions + streak fields
+          if (c.cardioMinutes === undefined) c.cardioMinutes = 0;
+          if (c.mobilityScore === undefined) c.mobilityScore = 5;
+          if (c.gripScore === undefined) c.gripScore = 5;
+          if (c.freezeTokens === undefined) c.freezeTokens = 0;
+          if (c.consistencyPenalty === undefined) c.consistencyPenalty = 0;
+          // Reset any v3 class name — merge() will re-derive
+          const legacyClasses = ['Wanderer','Mirror Knight','Phantom','Earthshaker','Iron Monk','Iron Knight','Colossus','Berserker'];
+          if (typeof c.class === 'string' && legacyClasses.includes(c.class)) {
+            c.class = 'Awakened Novice';
+          }
         }
         // v2 → v3: ensure profile has weightUnit (default 'kg')
         if (s.profile && typeof s.profile === 'object') {
@@ -163,8 +187,14 @@ export const useProfileStore = create<ProfileStore>()(
         const s = (persistedState ?? {}) as Partial<ProfileStore>;
         const mergedMuscleXP = { ...currentState.muscleXP, ...(s.muscleXP ?? {}) };
 
-        // Always re-derive class so old stored values ('Warrior', 'Paladin', etc.) are corrected
-        const derivedClass = deriveClassFromMuscles(mergedMuscleXP);
+        // Always re-derive class so old stored values are corrected
+        const ch = (s.character ?? currentState.character) as Character | null;
+        const dims = {
+          cardioMinutes: ch?.cardioMinutes ?? 0,
+          mobilityScore: ch?.mobilityScore ?? 5,
+          gripScore: ch?.gripScore ?? 5,
+        };
+        const derivedClass = deriveClass(mergedMuscleXP, dims);
         const mergedCharacter = s.character
           ? { ...s.character, class: derivedClass }
           : currentState.character;

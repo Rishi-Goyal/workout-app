@@ -1,6 +1,6 @@
 {
   "name": "dungeonfit",
-  "version": "3.5.5",
+  "version": "4.0.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -12,6 +12,9 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@expo-google-fonts/dm-mono": "^0.4.2",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/unbounded": "^0.4.1",
     "@expo/metro-runtime": "^55.0.6",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/slider": "^5.1.2",
@@ -21,6 +24,7 @@
     "expo-linking": "^55.0.8",
     "expo-notifications": "~55.0.13",
     "expo-router": "^55.0.7",
+    "expo-splash-screen": "~55.0.18",
     "expo-status-bar": "~55.0.4",
     "expo-web-browser": "~55.0.10",
     "react": "19.2.0",
