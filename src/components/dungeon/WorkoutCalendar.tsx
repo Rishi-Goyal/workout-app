@@ -212,7 +212,7 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
           { n: streak, l: 'Day Streak' },
           { n: thisWeekCount, l: 'This Week' },
           { n: totalActiveDays, l: 'Active Days' },
-          { n: totalWorkouts, l: 'Workouts' },
+          { n: totalWorkouts, l: 'Floors' },
         ].map(s => (
           <View key={s.l} style={styles.statBox}>
             <Text style={styles.statNum}>{s.n}</Text>

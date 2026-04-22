@@ -80,6 +80,11 @@ export default function StatsScreen() {
               <Text style={styles.profileSubDim}>·</Text>
               <Text style={styles.profileSub}>{character.class.toUpperCase()}</Text>
               <Badge label={`RANK ${rank}`} variant="gold" />
+              {(character.consistencyPenalty ?? 0) > 0 && (
+                <View style={styles.decayPill}>
+                  <Text style={styles.decayPillText}>-{character.consistencyPenalty}%</Text>
+                </View>
+              )}
             </View>
             {/* Inactivity pill — shown when last workout was more than 3 days ago */}
             {daysSinceLast !== null && daysSinceLast > 3 && (
@@ -217,6 +222,22 @@ const styles = StyleSheet.create({
   },
   inactivePillText:    { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.orange, letterSpacing: 0.5 },
   inactivePillTextRed: { color: COLORS.crimson },
+
+  // Consistency decay pill — surfaces the rank penalty from inactivity
+  decayPill: {
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  decayPillText: {
+    fontSize: 10,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.crimson,
+    letterSpacing: 0.5,
+  },
 
   // First-workout nudge card
   nudgeCard: { borderColor: 'rgba(59,130,246,0.2)' },
