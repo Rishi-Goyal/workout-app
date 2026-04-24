@@ -172,6 +172,8 @@ export default function ActiveQuestScreen() {
             exerciseName={quest.exerciseName}
             questId={quest.id}
             completeLabel={completeLabel}
+            kind={quest.kind}
+            cue={quest.cue}
             onBackToList={() => router.back()}
             onComplete={logs => handleMark('complete', logs)}
             onSkip={() =>

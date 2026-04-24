@@ -464,10 +464,11 @@ export default function DungeonTabScreen() {
             onPress={handleEnter}
           />
           {/* v4.1.0 C3 — rest-day mobility option. Shown only after a day of
-              inactivity so it doesn't clutter the hero on active days. */}
+              inactivity so it doesn't clutter the hero on active days.
+              Fresh-install guard: no sessions → gap = 0 (not inactive). */}
           {(() => {
             const lastIso = sessions[0]?.startedAt ?? null;
-            const gap = lastIso ? daysSince(lastIso) : 99;
+            const gap = lastIso ? daysSince(lastIso) : 0;
             if (gap < 1) return null;
             return (
               <PressableButton
@@ -528,6 +529,8 @@ export default function DungeonTabScreen() {
           didLevelUp={summary.didLevelUp}
           newLevel={summary.newLevel}
           muscleLevelUps={summary.muscleLevelUps}
+          adaptationChanges={summary.adaptationChanges}
+          previewQuests={summary.previewQuests}
           goal={profile.goal}
           onClose={handleSummaryClose}
         />
