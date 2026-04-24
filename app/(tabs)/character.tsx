@@ -63,6 +63,13 @@ export default function CharacterScreen() {
               <Text style={styles.statValue}>{sessions.length}</Text>
               <Text style={styles.statLabel}>Sessions</Text>
             </View>
+            {/* v4.1.0 C4 — mobilityScore surfaced as a first-class dimension */}
+            <View style={styles.statBlock}>
+              <Text style={styles.statValue}>
+                {Math.round((character.mobilityScore ?? 5) * 10) / 10}
+              </Text>
+              <Text style={styles.statLabel}>Mobility</Text>
+            </View>
           </View>
         </Card>
 

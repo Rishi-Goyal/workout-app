@@ -18,6 +18,7 @@ const REST_CHANNEL     = 'dungeon-rest-alert';
 // ── Module-level IDs ─────────────────────────────────────────────────────────
 let _sessionNotifId: string | null = null;
 let _scheduledRestId: string | null = null;
+let _scheduledTomorrowId: string | null = null;
 let _permissionGranted = false;
 
 // ── Permission ────────────────────────────────────────────────────────────────
@@ -231,5 +232,60 @@ export async function cancelRestNotification(): Promise<void> {
     await Notifications.cancelScheduledNotificationAsync(_scheduledRestId);
   } catch {} finally {
     _scheduledRestId = null;
+  }
+}
+
+// ── Tomorrow-morning reminder (v4.1.0 B5) ────────────────────────────────────
+
+/**
+ * Schedule a one-shot reminder to open the app tomorrow. Fires at the given
+ * local time (default 07:00). Replaces any previous tomorrow reminder so the
+ * SessionSummary toggle can safely be tapped twice.
+ *
+ * @returns true if the notification was scheduled (permission granted, in the
+ *          future); false otherwise.
+ */
+export async function scheduleTomorrowReminder(
+  hour: number = 7,
+  minute: number = 0,
+): Promise<boolean> {
+  if (!_permissionGranted) return false;
+  await cancelTomorrowReminder();
+  try {
+    const now = new Date();
+    const fire = new Date(now);
+    fire.setDate(now.getDate() + 1);
+    fire.setHours(hour, minute, 0, 0);
+    const seconds = Math.floor((fire.getTime() - now.getTime()) / 1000);
+    if (seconds <= 60) return false;
+    _scheduledTomorrowId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⚔️ Your next dungeon awaits',
+        body: 'A new floor is ready — open DungeonFit to enter.',
+        data: { type: 'tomorrow-reminder' },
+        ...(Platform.OS === 'android' && {
+          android: {
+            channelId: REST_CHANNEL,
+            color: '#6366f1',
+            smallIcon: 'ic_notification',
+            priority: Notifications.AndroidNotificationPriority.DEFAULT,
+          },
+        }),
+      } as Notifications.NotificationContentInput,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Cancel any previously scheduled tomorrow-morning reminder. */
+export async function cancelTomorrowReminder(): Promise<void> {
+  if (!_scheduledTomorrowId) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(_scheduledTomorrowId);
+  } catch {} finally {
+    _scheduledTomorrowId = null;
   }
 }

@@ -12,8 +12,10 @@ import { useProfileStore } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
 import { COLORS } from '@/lib/constants';
+import { computeGrowth } from '@/lib/growthTracker';
+import { generateQuests } from '@/lib/questGenerator';
 import type { AdaptationChange } from '@/lib/adaptationEngine';
-import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
+import type { QuestStatus, DungeonSession, MuscleGroup, RawQuest } from '@/types';
 
 export default function DungeonScreen() {
   const { activeSession, isLoading, markQuest, finalizeSession } = useSessionStore();
@@ -28,6 +30,7 @@ export default function DungeonScreen() {
     newLevel?: number;
     muscleLevelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
     adaptationChanges: AdaptationChange[];
+    previewQuests: RawQuest[];
   } | null>(null);
 
   const handleQuestAction = useCallback((questId: string, status: QuestStatus) => {
@@ -60,18 +63,49 @@ export default function DungeonScreen() {
       }
     }
 
+    // v4.1.0 B1 — growth record attached before persistence (see Home)
+    const priorSessions = useHistoryStore.getState().sessions;
+    const growthRecord = computeGrowth(finalized, priorSessions, muscleXP);
+    const finalizedWithGrowth = { ...finalized, growthRecord };
+
     // Compute and persist progressive overload for next session
-    const adaptationChanges = applyAdaptation(finalized, muscleXP);
+    const adaptationChanges = applyAdaptation(finalizedWithGrowth, muscleXP);
 
     incrementFloorsCleared();
-    addSession(finalized);
+    addSession(finalizedWithGrowth);
+
+    // v4.1.0 B5 — compute next-dungeon preview after stores settle.
+    let previewQuests: RawQuest[] = [];
+    try {
+      const postCharacter = useProfileStore.getState().character;
+      const postProfile   = useProfileStore.getState().profile;
+      const postMuscleXP  = useProfileStore.getState().muscleXP;
+      const postFloor     = (postCharacter?.floorsCleared ?? 0) + 1;
+      if (postProfile) {
+        previewQuests = generateQuests({
+          equipment: postProfile.equipment,
+          goal: postProfile.goal,
+          muscleXP: postMuscleXP,
+          muscleStrengths: postProfile.muscleStrengths,
+          currentFloor: postFloor,
+          recentSessions: useHistoryStore.getState().getRecentSessions(3),
+          adaptations: useAdaptationStore.getState().adaptations,
+          preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
+          getPreferredSwap: (id) => useAdaptationStore.getState().getPreferredSwap(id),
+        });
+      }
+    } catch {
+      previewQuests = [];
+    }
+
     setSummary({
-      session: finalized,
+      session: finalizedWithGrowth,
       xpGained,
       didLevelUp: leveledUp,
       newLevel,
       muscleLevelUps: allMuscleLevelUps,
       adaptationChanges,
+      previewQuests,
     });
   };
 
@@ -163,6 +197,7 @@ export default function DungeonScreen() {
           newLevel={summary.newLevel}
           muscleLevelUps={summary.muscleLevelUps}
           adaptationChanges={summary.adaptationChanges}
+          previewQuests={summary.previewQuests}
           goal={profile?.goal ?? 'balanced'}
           onClose={handleSummaryClose}
         />

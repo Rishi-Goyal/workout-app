@@ -51,6 +51,18 @@ interface WorkoutTimerProps {
   questId: string;
   onComplete: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
+  /**
+   * v4.1.0 A1 — label on the primary done-phase button. Active-quest passes
+   * "✓ Save & Next Quest →" mid-session and "✓ Save & Finish Dungeon →" on
+   * the last quest; falls back to "✓ Accept & Save" if omitted.
+   */
+  completeLabel?: string;
+  /**
+   * v4.1.0 A1 — optional secondary button in the done phase. Renders as a
+   * quiet ghost link under the primary for the "I want to pick a different
+   * order" escape hatch. Omitted → no button rendered.
+   */
+  onBackToList?: () => void;
 }
 
 const RING_RADIUS = 44;
@@ -156,6 +168,8 @@ export default function WorkoutTimer({
   exerciseName,
   questId,
   onComplete, onSkip,
+  completeLabel,
+  onBackToList,
 }: WorkoutTimerProps) {
   const recommendedReps              = parseInt(reps, 10) || 0;
   const [phase, setPhase]            = useState<Phase>('idle');
@@ -714,11 +728,12 @@ export default function WorkoutTimer({
         </View>
 
         <Text style={styles.subtitle}>Next: Set {currentSet + 1} of {sets}</Text>
-        <PressableButton
-          label="Skip rest →"
-          variant="ghost"
-          size="sm"
-          onPress={() => {
+
+        {/* v4.1.0 A5 — once the user is rested enough (≥ 50% of prescribed rest
+            elapsed), promote "next set" to a full-width primary. Early skip
+            stays available as a quiet ghost link. */}
+        {(() => {
+          const advance = () => {
             clearTimer();
             cancelRestNotification();
             setCurrentSet(s => s + 1);
@@ -727,8 +742,39 @@ export default function WorkoutTimer({
             setPhase('active');
             showActiveSetNotif(exerciseName, `Set ${currentSet + 1} of ${sets}`, questId, currentSet + 1);
             WidgetBridge?.updateWidgetTimer(0, false);
-          }}
-        />
+          };
+          const halfElapsed = restLeft <= restSeconds / 2;
+          if (halfElapsed) {
+            return (
+              <>
+                <PressableButton
+                  label="Next set →"
+                  variant="success"
+                  size="lg"
+                  onPress={advance}
+                  style={styles.mainBtn}
+                />
+                <TouchableOpacity
+                  style={styles.skipSetLink}
+                  onPress={advance}
+                  activeOpacity={0.6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Skip remaining rest"
+                >
+                  <Text style={styles.skipSetText}>— Skip rest early</Text>
+                </TouchableOpacity>
+              </>
+            );
+          }
+          return (
+            <PressableButton
+              label="Skip rest →"
+              variant="ghost"
+              size="sm"
+              onPress={advance}
+            />
+          );
+        })()}
       </View>
     );
   }
@@ -864,12 +910,25 @@ export default function WorkoutTimer({
       )}
 
       <PressableButton
-        label="✓ Accept & Save"
+        label={completeLabel ?? '✓ Accept & Save'}
         variant="success"
         size="lg"
         onPress={() => onComplete(displaySets)}
         style={styles.mainBtn}
       />
+
+      {/* v4.1.0 A1 — quiet escape hatch back to the quest list */}
+      {onBackToList && (
+        <TouchableOpacity
+          style={styles.backToListLink}
+          onPress={onBackToList}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Back to quest list"
+        >
+          <Text style={styles.backToListText}>← Back to list</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -915,6 +974,10 @@ const styles = StyleSheet.create({
   // Skip set link
   skipSetLink:   { marginTop: 2, paddingVertical: 4 },
   skipSetText:   { fontSize: 12, color: COLORS.textMuted, textDecorationLine: 'underline', textAlign: 'center' },
+
+  // A1 — "Back to list" escape hatch under the done-phase primary
+  backToListLink:  { marginTop: 8, paddingVertical: 6 },
+  backToListText:  { fontSize: 12, color: COLORS.textMuted, textDecorationLine: 'underline', textAlign: 'center' },
 
   // Rest phase
   ringWrapper:  { position: 'relative', width: 110, height: 110, alignItems: 'center', justifyContent: 'center' },

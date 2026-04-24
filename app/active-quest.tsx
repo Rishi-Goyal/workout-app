@@ -107,8 +107,33 @@ export default function ActiveQuestScreen() {
     return () => { dismissWorkoutNotification(); };
   }, [quest.exerciseName, quest.sets]);
 
+  // v4.1.0 A1 — auto-advance to the next pending quest after the current one.
+  // We deliberately look only at quests *after* the current in session order,
+  // so users running a manual re-order from the list don't get bounced to a
+  // quest they already saw. If nothing pending is left → fall back to the
+  // list (Home shows the Finish button).
+  const nextPendingQuestId: string | null = (() => {
+    if (!activeSession) return null;
+    const idx = activeSession.quests.findIndex((q) => q.id === quest!.id);
+    if (idx < 0) return null;
+    const next = activeSession.quests.slice(idx + 1).find((q) => q.status === 'pending');
+    return next?.id ?? null;
+  })();
+
+  // Label on the done-phase primary depends on what's next.
+  const completeLabel = nextPendingQuestId
+    ? '✓ Save & Next Quest →'
+    : '✓ Save & Finish Dungeon →';
+
   function handleMark(status: QuestStatus, logs: SetLog[] = []) {
     markQuest(quest!.id, status, logs.length > 0 ? logs : undefined);
+    // v4.1.0 A1 — on complete, jump straight to the next pending quest via
+    // router.replace so state rehydrates cleanly. On the last quest (or a
+    // skip), fall back to the list where Home shows the finalize button.
+    if (status === 'complete' && nextPendingQuestId) {
+      router.replace({ pathname: '/active-quest', params: { questId: nextPendingQuestId } });
+      return;
+    }
     router.back();
   }
 
@@ -146,6 +171,8 @@ export default function ActiveQuestScreen() {
             baseXP={quest.xpReward}
             exerciseName={quest.exerciseName}
             questId={quest.id}
+            completeLabel={completeLabel}
+            onBackToList={() => router.back()}
             onComplete={logs => handleMark('complete', logs)}
             onSkip={() =>
               Alert.alert(

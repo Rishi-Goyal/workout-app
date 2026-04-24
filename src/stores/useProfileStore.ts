@@ -1,10 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { UserProfile, Character, MuscleGroup } from '../types';
+import type { UserProfile, Character, MuscleGroup, Equipment } from '../types';
 import type { WorkoutSplitType } from '../lib/exerciseDatabase';
 import { createCharacter, applyLevelUpStats, deriveClass } from '../lib/character';
-import { applyXP } from '../lib/xp';
+import {
+  applyXP,
+  computeConsistencyPenaltyForGap,
+  recoverConsistency,
+} from '../lib/xp';
 import {
   type MuscleXP,
   DEFAULT_MUSCLE_XP,
@@ -42,6 +46,35 @@ interface ProfileStore {
     exerciseId?: string,
   ) => MuscleXPResult;
   incrementFloorsCleared: () => void;
+  /**
+   * Idempotent — raise character.consistencyPenalty if the gap since the last
+   * session implies a higher value. Call on Home mount with the most recent
+   * session's ISO timestamp (or null for a fresh user). Never lowers.
+   */
+  syncConsistencyPenalty: (lastSessionIso: string | null) => void;
+  /**
+   * Call after a session finalizes — pulls consistencyPenalty back toward zero
+   * by CONSISTENCY_RECOVER_RATE. Floor of 0.
+   */
+  recoverConsistencyOnSession: () => void;
+  /**
+   * v4.1.0 A6 — prune equipment the user claims they don't have. Used by the
+   * "I don't have this kit" swap action so the generator stops re-suggesting
+   * exercises for kit the user has off-loaded. Reversible from Settings by
+   * setting the profile again.
+   */
+  removeEquipment: (items: Equipment[]) => void;
+  /**
+   * v4.1.0 C4 — bump character.mobilityScore by `delta`. Warmup/cooldown
+   * drills pass 0.5 per completion; rest-day flows pass 2. Clamped to [0, 100].
+   */
+  awardMobilityScore: (delta: number) => void;
+  /**
+   * v4.1.0 C4 — decay mobilityScore based on days since last mobility
+   * activity. Lighter curve than consistency decay; -0.25 per 7 days. Call
+   * this idempotently on Home mount alongside syncConsistencyPenalty.
+   */
+  syncMobilityDecay: (lastMobilityIso: string | null) => void;
   resetProfile: () => void;
 }
 
@@ -129,6 +162,66 @@ export const useProfileStore = create<ProfileStore>()(
         set({ character: { ...c, floorsCleared: c.floorsCleared + 1 } });
       },
 
+      syncConsistencyPenalty: (lastSessionIso) => {
+        const c = get().character;
+        if (!c) return;
+        const current = c.consistencyPenalty ?? 0;
+        const next = computeConsistencyPenaltyForGap(current, lastSessionIso);
+        if (next !== current) {
+          set({ character: { ...c, consistencyPenalty: next } });
+        }
+      },
+
+      recoverConsistencyOnSession: () => {
+        const c = get().character;
+        if (!c) return;
+        const current = c.consistencyPenalty ?? 0;
+        const next = recoverConsistency(current);
+        if (next !== current) {
+          set({ character: { ...c, consistencyPenalty: next } });
+        }
+      },
+
+      removeEquipment: (items) => {
+        const p = get().profile;
+        if (!p) return;
+        const remove = new Set(items);
+        const next = p.equipment.filter((e) => !remove.has(e));
+        // Leave bodyweight_only in the set even if nothing else remains —
+        // generator always needs at least one option to iterate over.
+        const hasAny = next.length > 0;
+        set({
+          profile: {
+            ...p,
+            equipment: hasAny ? next : ['bodyweight_only'],
+          },
+        });
+      },
+
+      // v4.1.0 C4 — mobilityScore award/decay.
+      awardMobilityScore: (delta) => {
+        const c = get().character;
+        if (!c) return;
+        const cur = c.mobilityScore ?? 5;
+        const next = Math.max(0, Math.min(100, cur + delta));
+        if (next === cur) return;
+        set({ character: { ...c, mobilityScore: next } });
+      },
+      syncMobilityDecay: (lastMobilityIso) => {
+        if (!lastMobilityIso) return;
+        const c = get().character;
+        if (!c) return;
+        const days = Math.floor(
+          (Date.now() - new Date(lastMobilityIso).getTime()) / (86_400_000),
+        );
+        if (days < 7) return;
+        const steps = Math.floor(days / 7);
+        const cur = c.mobilityScore ?? 5;
+        const decayed = Math.max(0, cur - steps * 0.25);
+        if (decayed === cur) return;
+        set({ character: { ...c, mobilityScore: decayed } });
+      },
+
       resetProfile: () => {
         set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP, preferredSplit: null });
         // Clear all dependent stores so no stale data persists after a profile wipe
@@ -150,7 +243,9 @@ export const useProfileStore = create<ProfileStore>()(
           if (c.cardioMinutes === undefined) c.cardioMinutes = 0;
           if (c.mobilityScore === undefined) c.mobilityScore = 5;
           if (c.gripScore === undefined) c.gripScore = 5;
-          if (c.freezeTokens === undefined) c.freezeTokens = 0;
+          // v4.1.0: character.freezeTokens removed — source of truth is
+          // useWeeklyGoalStore.freezesAvailable. Migration-era values are dropped.
+          if ('freezeTokens' in c) delete c.freezeTokens;
           if (c.consistencyPenalty === undefined) c.consistencyPenalty = 0;
           // Reset any v3 class name — merge() will re-derive
           const legacyClasses = ['Wanderer','Mirror Knight','Phantom','Earthshaker','Iron Monk','Iron Knight','Colossus','Berserker'];

@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Modal, ScrollView } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInRight, ZoomIn } from 'react-native-reanimated';
 import PressableButton from '@/components/ui/PressableButton';
 import CornerBrackets from '@/components/ui/CornerBrackets';
@@ -6,20 +7,28 @@ import { getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { STATUS_ICON, exerciseSummaryLine } from '@/lib/questUtils';
 import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import { muscleLevelTitle } from '@/lib/muscleXP';
+import { scheduleTomorrowReminder, cancelTomorrowReminder } from '@/lib/workoutNotification';
 import type { AdaptationChange } from '@/lib/adaptationEngine';
-import type { DungeonSession, FitnessGoal, MuscleGroup } from '@/types';
+import type {
+  DungeonSession,
+  FitnessGoal,
+  MuscleGroup,
+  RawQuest,
+} from '@/types';
 
 const REASON_ICON: Record<AdaptationChange['reason'], string> = {
-  overachieved:  '🔺',
-  met_target:    '📈',
-  underachieved: '🔻',
-  reset:         '🔄',
+  overachieved:     '🔺',
+  stabilise:        '📈',
+  underachieved:    '🔻',
+  cold_start:       '🌱',
+  deload_after_gap: '🔄',
 };
 const REASON_COLOR: Record<AdaptationChange['reason'], string> = {
-  overachieved:  COLORS.jade,
-  met_target:    COLORS.violetLight,
-  underachieved: COLORS.orange,
-  reset:         COLORS.textMuted,
+  overachieved:     COLORS.jade,
+  stabilise:        COLORS.violetLight,
+  underachieved:    COLORS.orange,
+  cold_start:       COLORS.gold,
+  deload_after_gap: COLORS.textMuted,
 };
 
 interface Props {
@@ -31,18 +40,64 @@ interface Props {
   adaptationChanges?: AdaptationChange[];
   /** Used to look up the next floor's split/routine for the "what's next" section. */
   goal: FitnessGoal;
+  /**
+   * v4.1.0 B5 — preview of 2–3 quests the generator would hand out next session,
+   * pre-computed by the caller after stores are updated. Undefined disables the
+   * NEXT DUNGEON block entirely (used in tests / legacy callsites).
+   */
+  previewQuests?: RawQuest[];
   onClose: () => void;
+}
+
+/** Format seconds → "mm:ss". Clamped to >= 0. */
+function formatTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/** Compact per-quest hit rate line for the RESULTS block. */
+function questHitRate(q: DungeonSession['quests'][number]): number | null {
+  if (!q.loggedSets || q.loggedSets.length === 0) return null;
+  const targetReps = parseInt(q.reps, 10);
+  if (isNaN(targetReps) || targetReps <= 0) return null;
+  const actual = q.loggedSets.reduce((s, l) => s + l.repsCompleted, 0);
+  const target = q.sets * targetReps;
+  if (target === 0) return null;
+  return actual / target;
 }
 
 export default function SessionSummary({
   session, xpGained, didLevelUp, newLevel, muscleLevelUps = [],
-  adaptationChanges = [], goal, onClose,
+  adaptationChanges = [], goal, previewQuests, onClose,
 }: Props) {
   const completed = session.quests.filter((q) => q.status === 'complete').length;
   const half      = session.quests.filter((q) => q.status === 'half_complete').length;
   const skipped   = session.quests.filter((q) => q.status === 'skipped').length;
 
   const nextRoutine = getDungeonRoutineInfo(goal, session.floor + 1);
+  const growth      = session.growthRecord;
+
+  // ── Reminder toggle state (optimistic; scheduleTomorrowReminder returns a
+  //    boolean we can fall back on if permission was denied). ────────────────
+  const [reminderOn, setReminderOn] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const toggleReminder = async () => {
+    if (reminderBusy) return;
+    setReminderBusy(true);
+    try {
+      if (reminderOn) {
+        await cancelTomorrowReminder();
+        setReminderOn(false);
+      } else {
+        const ok = await scheduleTomorrowReminder(7, 0);
+        setReminderOn(ok);
+      }
+    } finally {
+      setReminderBusy(false);
+    }
+  };
 
   return (
     <Modal transparent animationType="fade" visible>
@@ -91,6 +146,97 @@ export default function SessionSummary({
               </Animated.Text>
             </View>
 
+            {/* ── v4.1.0 B5 — RESULTS: time + hit rate ── */}
+            {growth && (
+              <Animated.View entering={FadeInDown.duration(400).delay(250)} style={styles.resultsBox}>
+                <Text style={styles.sectionEyebrow}>RESULTS</Text>
+                <View style={styles.resultsMainRow}>
+                  <View style={styles.resultsStat}>
+                    <Text style={styles.resultsStatNum}>{formatTime(growth.totalTimeSec)}</Text>
+                    <Text style={styles.resultsStatLbl}>TIME</Text>
+                  </View>
+                  <View style={styles.resultsStat}>
+                    <Text
+                      style={[
+                        styles.resultsStatNum,
+                        {
+                          color:
+                            growth.hitRate >= 0.9 ? COLORS.jade :
+                            growth.hitRate >= 0.6 ? COLORS.gold  :
+                            COLORS.orange,
+                        },
+                      ]}
+                    >
+                      {Math.round(growth.hitRate * 100)}%
+                    </Text>
+                    <Text style={styles.resultsStatLbl}>HIT RATE</Text>
+                  </View>
+                </View>
+                {session.quests.map((q) => {
+                  const hr = questHitRate(q);
+                  if (hr === null) return null;
+                  return (
+                    <View key={q.id} style={styles.questHitRow}>
+                      <Text style={styles.questHitName} numberOfLines={1}>{q.exerciseName}</Text>
+                      <Text
+                        style={[
+                          styles.questHitPct,
+                          {
+                            color:
+                              hr >= 0.9 ? COLORS.jade :
+                              hr >= 0.6 ? COLORS.gold  :
+                              COLORS.orange,
+                          },
+                        ]}
+                      >
+                        {Math.round(hr * 100)}%
+                      </Text>
+                    </View>
+                  );
+                })}
+              </Animated.View>
+            )}
+
+            {/* ── v4.1.0 B5 — GROWTH: PR cards ── */}
+            {growth && (
+              <Animated.View entering={FadeInDown.duration(400).delay(300)} style={styles.growthBox}>
+                <Text style={styles.growthEyebrow}>🏆 GROWTH</Text>
+                {growth.prs.length === 0 ? (
+                  <Text style={styles.growthEmpty}>No PRs this session — keep stacking reps.</Text>
+                ) : (
+                  growth.prs.map((pr, i) => (
+                    <Animated.View
+                      key={`${pr.exerciseId}-${i}`}
+                      entering={FadeInRight.duration(280).delay(350 + i * 70)}
+                      style={styles.prRow}
+                    >
+                      <Text style={styles.prIcon}>🔺</Text>
+                      <View style={styles.prInfo}>
+                        <Text style={styles.prName} numberOfLines={1}>{pr.exerciseName}</Text>
+                        <Text style={styles.prDetail}>
+                          {pr.metric === 'weight' ? 'New top weight' : 'New top reps'}
+                          {'  ·  '}
+                          <Text style={styles.prBefore}>{pr.previous}</Text>
+                          {' → '}
+                          <Text style={styles.prAfter}>{pr.now}</Text>
+                          {pr.metric === 'weight' ? ' kg' : ' reps'}
+                        </Text>
+                      </View>
+                    </Animated.View>
+                  ))
+                )}
+              </Animated.View>
+            )}
+
+            {/* ── v4.1.0 B5 — LAGGARDS (optional) ── */}
+            {growth && growth.laggards.length > 0 && (
+              <Animated.View entering={FadeInDown.duration(400).delay(340)} style={styles.laggardsBox}>
+                <Text style={styles.laggardsText}>
+                  ⚠ {growth.laggards.map((m) => (m as string)).join(', ')} lagged this session — scheduled for next dungeon.
+                </Text>
+              </Animated.View>
+            )}
+
             {/* ── Per-exercise outcomes ── */}
             <View style={styles.exerciseSection}>
               <Text style={styles.sectionEyebrow}>EXERCISES</Text>
@@ -133,8 +279,74 @@ export default function SessionSummary({
               </Animated.View>
             )}
 
-            {/* ── Next session goals (adaptation changes) ── */}
-            {adaptationChanges.length > 0 && (
+            {/* ── v4.1.0 B5 — NEXT DUNGEON preview (supersedes old "next expedition") ── */}
+            <Animated.View
+              entering={FadeInDown.duration(350).delay(400)}
+              style={styles.nextSection}
+            >
+              <Text style={styles.nextEyebrow}>⚔️ NEXT DUNGEON</Text>
+              <View style={styles.nextRoutineRow}>
+                <View style={styles.nextRoutineInfo}>
+                  <Text style={styles.nextRoutineName}>{nextRoutine.splitName}</Text>
+                  <Text style={styles.nextRoutineDay}>{nextRoutine.dayName}</Text>
+                </View>
+              </View>
+
+              {previewQuests && previewQuests.length > 0 ? (
+                <View style={styles.previewList}>
+                  {previewQuests.slice(0, 3).map((pq, i) => (
+                    <Animated.View
+                      key={`${pq.exerciseId ?? pq.exerciseName}-${i}`}
+                      entering={FadeInRight.duration(260).delay(440 + i * 60)}
+                      style={styles.previewRow}
+                    >
+                      <Text style={styles.previewDot}>•</Text>
+                      <View style={styles.previewInfo}>
+                        <Text style={styles.previewName} numberOfLines={1}>
+                          {pq.exerciseName}
+                        </Text>
+                        <Text style={styles.previewDetail}>
+                          {pq.sets}×{pq.reps}
+                          {typeof pq.suggestedWeight === 'number' ? `  @ ${pq.suggestedWeight}kg` : ''}
+                        </Text>
+                        {pq.adaptationCopy ? (
+                          <Text style={styles.previewCopy}>{pq.adaptationCopy}</Text>
+                        ) : null}
+                      </View>
+                    </Animated.View>
+                  ))}
+                </View>
+              ) : (
+                nextRoutine.targetMuscles.length > 0 && (
+                  <View style={styles.nextMuscleChips}>
+                    {nextRoutine.targetMuscles.slice(0, 4).map((m) => (
+                      <View key={m} style={styles.nextMuscleChip}>
+                        <Text style={styles.nextMuscleChipText}>
+                          {(m as string).charAt(0).toUpperCase() + (m as string).slice(1)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )
+              )}
+
+              <Pressable
+                onPress={toggleReminder}
+                disabled={reminderBusy}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[
+                  styles.reminderToggle,
+                  reminderOn && styles.reminderToggleOn,
+                ]}
+              >
+                <Text style={[styles.reminderText, reminderOn && styles.reminderTextOn]}>
+                  {reminderOn ? '🔔 Reminder set — tomorrow at 7:00am' : '🔔 Remind me tomorrow at 7am'}
+                </Text>
+              </Pressable>
+            </Animated.View>
+
+            {/* ── Next session goals (adaptation changes — legacy fallback when no preview) ── */}
+            {!previewQuests && adaptationChanges.length > 0 && (
               <Animated.View entering={FadeInDown.duration(400).delay(350)} style={styles.adaptSection}>
                 <Text style={styles.adaptEyebrow}>⚡ NEXT SESSION GOALS</Text>
                 {adaptationChanges.map((ac, i) => {
@@ -158,33 +370,6 @@ export default function SessionSummary({
                 })}
               </Animated.View>
             )}
-
-            {/* ── What's next ── */}
-            <Animated.View
-              entering={FadeInDown.duration(350).delay(400)}
-              style={styles.nextSection}
-            >
-              <Text style={styles.nextEyebrow}>NEXT EXPEDITION</Text>
-              <Text style={styles.nextRest}>Rest between dungeon runs. Your muscles rebuild stronger in recovery.</Text>
-              <View style={styles.nextRoutineRow}>
-                <Text style={styles.nextRoutineLabel}>NEXT UP</Text>
-                <View style={styles.nextRoutineInfo}>
-                  <Text style={styles.nextRoutineName}>{nextRoutine.splitName}</Text>
-                  <Text style={styles.nextRoutineDay}>{nextRoutine.dayName}</Text>
-                </View>
-              </View>
-              {nextRoutine.targetMuscles.length > 0 && (
-                <View style={styles.nextMuscleChips}>
-                  {nextRoutine.targetMuscles.slice(0, 4).map((m) => (
-                    <View key={m} style={styles.nextMuscleChip}>
-                      <Text style={styles.nextMuscleChipText}>
-                        {(m as string).charAt(0).toUpperCase() + (m as string).slice(1)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </Animated.View>
 
             <PressableButton label="Continue" size="lg" onPress={onClose} style={styles.btn} variant="primary" />
           </ScrollView>
@@ -240,6 +425,68 @@ const styles = StyleSheet.create({
   },
   xpNum: { fontSize: 34, fontFamily: FONTS.displayBold, color: COLORS.gold, letterSpacing: 1 },
   xpLbl: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, marginTop: 4, letterSpacing: 2 },
+
+  // RESULTS (B5)
+  resultsBox: {
+    width: '100%',
+    backgroundColor: 'rgba(165,180,252,0.04)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  resultsMainRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 4 },
+  resultsStat: { alignItems: 'center', gap: 2 },
+  resultsStatNum: { fontSize: 28, fontFamily: FONTS.displayBold, letterSpacing: 0.5, color: COLORS.text },
+  resultsStatLbl: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, letterSpacing: 2 },
+  questHitRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 2 },
+  questHitName: { flex: 1, fontSize: 12, fontFamily: FONTS.sansMed, color: COLORS.text, paddingRight: 10 },
+  questHitPct:  { fontSize: 12, fontFamily: FONTS.mono, letterSpacing: 0.3 },
+
+  // GROWTH (B5)
+  growthBox: {
+    width: '100%',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.2)',
+  },
+  growthEyebrow: {
+    fontSize: 10,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.jade,
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  growthEmpty: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textMuted, fontStyle: 'italic' },
+  prRow:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  prIcon:   { fontSize: 16, width: 22, textAlign: 'center' },
+  prInfo:   { flex: 1, gap: 2 },
+  prName:   { fontSize: 13, fontFamily: FONTS.sansMed, color: COLORS.text },
+  prDetail: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
+  prBefore: { color: COLORS.textMuted },
+  prAfter:  { color: COLORS.jade, fontFamily: FONTS.mono },
+
+  // LAGGARDS (B5)
+  laggardsBox: {
+    width: '100%',
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+  },
+  laggardsText: {
+    fontSize: 11,
+    fontFamily: FONTS.sansMed,
+    color: COLORS.orange,
+    textTransform: 'capitalize',
+    lineHeight: 16,
+  },
 
   // Per-exercise outcomes
   exerciseSection: {
@@ -303,7 +550,7 @@ const styles = StyleSheet.create({
   },
   muscleLevelText: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.jade, letterSpacing: 0.5 },
 
-  // Adaptation changes — next session goals
+  // Adaptation changes — legacy fallback
   adaptSection: {
     width: '100%',
     backgroundColor: 'rgba(99,102,241,0.06)',
@@ -326,13 +573,13 @@ const styles = StyleSheet.create({
   adaptName: { fontSize: 12, fontFamily: FONTS.sansMed, color: COLORS.text },
   adaptLine: { fontSize: 11, fontFamily: FONTS.sans },
 
-  // What's next
+  // NEXT DUNGEON (B5)
   nextSection: {
     width: '100%',
     backgroundColor: 'rgba(99,102,241,0.06)',
     borderRadius: 14,
     padding: 14,
-    gap: 8,
+    gap: 10,
     borderWidth: 1,
     borderColor: 'rgba(99,102,241,0.18)',
   },
@@ -342,13 +589,11 @@ const styles = StyleSheet.create({
     color: COLORS.violetLight,
     letterSpacing: 2,
   },
-  nextRest: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textSecondary },
   nextRoutineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  nextRoutineLabel: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textMuted, width: 52, letterSpacing: 1.2 },
   nextRoutineInfo: { flex: 1 },
   nextRoutineName: { fontSize: 14, fontFamily: FONTS.displayBold, color: COLORS.text, letterSpacing: 0.3 },
   nextRoutineDay:  { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.5 },
@@ -362,6 +607,32 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(99,102,241,0.25)',
   },
   nextMuscleChipText: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.violetLight, textTransform: 'uppercase', letterSpacing: 0.8 },
+
+  previewList: { gap: 8 },
+  previewRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  previewDot:  { fontSize: 14, color: COLORS.violetLight, width: 12, textAlign: 'center', marginTop: 1 },
+  previewInfo: { flex: 1, gap: 1 },
+  previewName: { fontSize: 12, fontFamily: FONTS.sansMed, color: COLORS.text },
+  previewDetail: { fontSize: 11, fontFamily: FONTS.mono, color: COLORS.textMuted, letterSpacing: 0.3 },
+  previewCopy: { fontSize: 11, fontFamily: FONTS.sans, color: COLORS.violetLight, fontStyle: 'italic' },
+
+  // Reminder toggle
+  reminderToggle: {
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.35)',
+    backgroundColor: 'rgba(99,102,241,0.06)',
+    alignItems: 'center',
+  },
+  reminderToggleOn: {
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderColor: 'rgba(16,185,129,0.4)',
+  },
+  reminderText:   { fontSize: 12, fontFamily: FONTS.sansBold, color: COLORS.violetLight, letterSpacing: 0.4 },
+  reminderTextOn: { color: COLORS.jade },
 
   btn: { width: '100%', marginTop: 4 },
 });
