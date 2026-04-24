@@ -190,7 +190,11 @@ export default function ActiveQuestScreen() {
         </View>
 
         <View style={styles.xpRow}>
-          <Text style={styles.xpLabel}>XP PER SET · SCALES WITH REPS</Text>
+          <Text style={styles.xpLabel}>
+            {quest.kind && quest.kind !== 'lift'
+              ? 'XP PER SET · SCALES WITH HOLD TIME'
+              : 'XP PER SET · SCALES WITH REPS'}
+          </Text>
           <Text style={styles.xpValue}>UP TO +{quest.xpReward} XP</Text>
         </View>
 

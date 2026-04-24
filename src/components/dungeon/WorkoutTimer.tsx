@@ -851,7 +851,9 @@ export default function WorkoutTimer({
     <View style={styles.container}>
       <Text style={styles.doneIcon}>🏆</Text>
       <Text style={styles.doneText}>Quest Complete!</Text>
-      <Text style={styles.doneSubtitle}>Review & adjust before accepting</Text>
+      <Text style={styles.doneSubtitle}>
+        {isNonLift ? 'Review your hold before saving' : 'Review & adjust before accepting'}
+      </Text>
 
       {/* ── XP breakdown table ─────────────────────────────────────────── */}
       <View style={styles.xpSectionBox}>
