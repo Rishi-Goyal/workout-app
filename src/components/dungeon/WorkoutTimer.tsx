@@ -192,7 +192,9 @@ export default function WorkoutTimer({
   const isNonLift = kind === 'warmup' || kind === 'cooldown' || kind === 'mobility';
 
   const recommendedReps              = parseInt(reps, 10) || 0;
-  const [phase, setPhase]            = useState<Phase>('idle');
+  // Non-lift quests (warmup/cooldown/mobility) skip the idle QUEST BRIEFING gate
+  // and enter directly into 'active' so the hold ring starts at mount.
+  const [phase, setPhase]            = useState<Phase>(isNonLift ? 'active' : 'idle');
   const [currentSet, setCurrentSet]  = useState(1);
   const [restLeft, setRestLeft]      = useState(restSeconds);
   const [holdLeft, setHoldLeft]      = useState(holdSeconds ?? 0);
@@ -883,8 +885,8 @@ export default function WorkoutTimer({
         </View>
       </View>
 
-      {/* ── Editable per-set summary ───────────────────────────────────── */}
-      {displaySets.length > 0 && (
+      {/* ── Editable per-set summary (lift quests only — hold drills have no load to adjust) ── */}
+      {!isNonLift && displaySets.length > 0 && (
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>ADJUST IF NEEDED</Text>
 
