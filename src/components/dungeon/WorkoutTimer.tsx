@@ -15,6 +15,7 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '@/lib/constants';
 import PressableButton from '@/components/ui/PressableButton';
+import HoldDrillTimer from '@/components/dungeon/HoldDrillTimer';
 import { formatWeight } from '@/lib/weights';
 import { calculateSetBonus, calculateIsometricBonus, calculateSetXP } from '@/lib/muscleXP';
 import {
@@ -186,9 +187,10 @@ export default function WorkoutTimer({
   kind,
   cue,
 }: WorkoutTimerProps) {
-  // Warmup / cooldown / mobility quests are load-free and timer-enforced.
-  // They skip the "Start Hold" gate, hide the weight selector, and lock the
-  // completion button until the countdown fires.
+  // v4.2.0 Theme A — non-lift quests are routed to <HoldDrillTimer/> via the
+  // early branch below (after all hooks have run). The remaining `isNonLift`
+  // checks in this file are now defensive only: they never fire because the
+  // early branch catches every warmup / cooldown / mobility quest first.
   const isNonLift = kind === 'warmup' || kind === 'cooldown' || kind === 'mobility';
 
   const recommendedReps              = parseInt(reps, 10) || 0;
@@ -404,6 +406,28 @@ export default function WorkoutTimer({
   }, [pendingSetReps, phase, currentSet, questId, clearPendingSetReps]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  // ── v4.2.0 Theme A — non-lift quests get a dedicated hold-only UI ────────
+  // Warmup / cooldown / mobility drills are timer-enforced, no-load, no-rep.
+  // The lift UI below has too many controls for that model; HoldDrillTimer
+  // owns the simpler lifecycle (hold → rest → done, repeat across sets).
+  if (isNonLift && holdSeconds && holdSeconds > 0) {
+    return (
+      <HoldDrillTimer
+        sets={sets}
+        holdSeconds={holdSeconds}
+        restSeconds={restSeconds}
+        baseXP={baseXP}
+        exerciseName={exerciseName}
+        questId={questId}
+        cue={cue}
+        onComplete={onComplete}
+        onSkip={onSkip}
+        completeLabel={completeLabel}
+        onBackToList={onBackToList}
+      />
+    );
+  }
 
   // ── Set slots helper ──────────────────────────────────────────────────────
   function SetSlots({ phase: slotPhase }: { phase?: string }) {

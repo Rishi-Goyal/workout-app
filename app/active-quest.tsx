@@ -34,6 +34,13 @@ const DIFF_BADGE = {
   boss:   { variant: 'crimson' as const, label: 'S · BOSS' },
 };
 
+// v4.2.0 Theme A — non-lift quests don't have a rank; show their phase instead.
+const PHASE_BADGE = {
+  warmup:   { variant: 'jade'   as const, label: '⚔️ MOB · WARMUP' },
+  cooldown: { variant: 'violet' as const, label: '🏕️ RECOVERY · STRETCH' },
+  mobility: { variant: 'violet' as const, label: '🏕️ RECOVERY · MOBILITY' },
+} as const;
+
 const SECONDARY: Partial<Record<MuscleGroup, MuscleGroup[]>> = {
   chest:      ['triceps', 'shoulders'],
   shoulders:  ['triceps', 'chest'],
@@ -99,7 +106,13 @@ export default function ActiveQuestScreen() {
   const weightUnit = profile?.weightUnit ?? 'kg';
   const lastSessionLog = getLastExerciseLog(quest.exerciseName);
   const secondary = inferSecondary(quest.targetMuscles as MuscleGroup[]);
-  const diff = DIFF_BADGE[quest.difficulty];
+  // v4.2.0 Theme A — non-lift quests show a phase pill instead of a rank badge,
+  // and skip the muscle-map tab (mobility drills don't drive muscle XP).
+  const isNonLift =
+    quest.kind === 'warmup' || quest.kind === 'cooldown' || quest.kind === 'mobility';
+  const headerBadge = isNonLift
+    ? PHASE_BADGE[quest.kind as 'warmup' | 'cooldown' | 'mobility']
+    : DIFF_BADGE[quest.difficulty];
 
   // ── Persistent workout notification ────────────────────────────────────────
   useEffect(() => {
@@ -146,7 +159,7 @@ export default function ActiveQuestScreen() {
 
         <View style={styles.header}>
           <PressableButton label="← Back" variant="ghost" size="sm" onPress={() => router.back()} />
-          <Badge label={diff.label} variant={diff.variant} />
+          <Badge label={headerBadge.label} variant={headerBadge.variant} />
         </View>
 
         <View style={styles.titleRow}>
@@ -203,22 +216,26 @@ export default function ActiveQuestScreen() {
         {/* ── Reference material — guide + muscle map below the fold ── */}
         <SectionLabel>EXERCISE GUIDE</SectionLabel>
 
-        <View style={styles.tabs}>
-          <PressableButton
-            label="📖 Guide"
-            variant={tab === 'guide' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('guide')}
-          />
-          <PressableButton
-            label="💪 Muscles"
-            variant={tab === 'muscles' ? 'primary' : 'ghost'}
-            size="sm"
-            style={styles.tab}
-            onPress={() => setTab('muscles')}
-          />
-        </View>
+        {/* v4.2.0 Theme A — mobility drills don't drive muscle XP and don't
+            warrant a separate muscle-map tab. Show only the guide tab. */}
+        {!isNonLift && (
+          <View style={styles.tabs}>
+            <PressableButton
+              label="📖 Guide"
+              variant={tab === 'guide' ? 'primary' : 'ghost'}
+              size="sm"
+              style={styles.tab}
+              onPress={() => setTab('guide')}
+            />
+            <PressableButton
+              label="💪 Muscles"
+              variant={tab === 'muscles' ? 'primary' : 'ghost'}
+              size="sm"
+              style={styles.tab}
+              onPress={() => setTab('muscles')}
+            />
+          </View>
+        )}
 
         <Animated.View
           entering={FadeIn.duration(220)}
@@ -229,7 +246,7 @@ export default function ActiveQuestScreen() {
             tab === 'muscles' && styles.tabContentCentered,
           ]}
         >
-          {tab === 'guide' && (
+          {(tab === 'guide' || isNonLift) && (
             <View style={styles.guideTabContent}>
               <ExerciseGif
                 animationUrl={exerciseEntry?.animationUrl}
@@ -248,7 +265,7 @@ export default function ActiveQuestScreen() {
             </View>
           )}
 
-          {tab === 'muscles' && (
+          {!isNonLift && tab === 'muscles' && (
             <MuscleMap
               targets={quest.targetMuscles as MuscleGroup[]}
               secondary={secondary}
