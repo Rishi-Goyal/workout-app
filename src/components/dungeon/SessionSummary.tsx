@@ -76,7 +76,10 @@ export default function SessionSummary({
   const half      = session.quests.filter((q) => q.status === 'half_complete').length;
   const skipped   = session.quests.filter((q) => q.status === 'skipped').length;
 
-  const nextRoutine = getDungeonRoutineInfo(goal, session.floor + 1);
+  // Rest-day flows have no lift quests and do not increment floorsCleared,
+  // so the next playable floor is still session.floor (not + 1).
+  const hasLiftQuests = session.quests.some(q => !q.kind || q.kind === 'lift');
+  const nextRoutine = getDungeonRoutineInfo(goal, hasLiftQuests ? session.floor + 1 : session.floor);
   const growth      = session.growthRecord;
 
   // ── Reminder toggle state (optimistic; scheduleTomorrowReminder returns a
@@ -294,7 +297,9 @@ export default function SessionSummary({
 
               {previewQuests && previewQuests.length > 0 ? (
                 <View style={styles.previewList}>
-                  {previewQuests.slice(0, 3).map((pq, i) => (
+                  {/* Filter to lift quests only — warmup/cooldown are bookends,
+                      not meaningful "next dungeon" preview content. */}
+                  {previewQuests.filter(pq => !pq.kind || pq.kind === 'lift').slice(0, 3).map((pq, i) => (
                     <Animated.View
                       key={`${pq.exerciseId ?? pq.exerciseName}-${i}`}
                       entering={FadeInRight.duration(260).delay(440 + i * 60)}
