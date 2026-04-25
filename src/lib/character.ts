@@ -128,7 +128,6 @@ export function createCharacter(
     cardioMinutes: dims?.cardioMinutes ?? 0,
     mobilityScore: dims?.mobilityScore ?? 5,
     gripScore: dims?.gripScore ?? 5,
-    freezeTokens: 0,
     consistencyPenalty: 0,
   };
 }

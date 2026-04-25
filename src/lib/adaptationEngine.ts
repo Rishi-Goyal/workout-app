@@ -27,6 +27,25 @@
  */
 import type { Quest, SetLog } from '@/types';
 
+/**
+ * v4.1.0 B4 — structured rationale codes. The generator (questGenerator) and
+ * the engine (computeAdaptation) both emit one of these values; the copy the
+ * user sees lives next to the code in `copyFor()` so wording can't drift from
+ * the data.
+ *
+ *  overachieved      — user hit the target cleanly, bump reps/weight
+ *  underachieved     — user came in short, drop a step
+ *  stabilise         — hold current load, need more clean reps before bumping
+ *  cold_start        — first exposure to this exercise, start conservative
+ *  deload_after_gap  — long inactivity, rebuild before progressing
+ */
+export type AdaptationReason =
+  | 'overachieved'
+  | 'underachieved'
+  | 'stabilise'
+  | 'cold_start'
+  | 'deload_after_gap';
+
 export interface ExerciseAdaptation {
   exerciseId: string;
   exerciseName: string;
@@ -35,7 +54,9 @@ export interface ExerciseAdaptation {
   overrideSets?: number;
   consecutiveMet: number;
   lastAdaptedAt: string;
-  adaptationReason: 'overachieved' | 'met_target' | 'underachieved' | 'reset';
+  adaptationReason: AdaptationReason;
+  /** One-line rationale for quest cards. Derived at adaptation time. */
+  copy?: string;
 }
 
 /** Keyed by exerciseId */
@@ -47,9 +68,44 @@ export type AdaptationMap = Record<string, ExerciseAdaptation>;
  */
 export interface AdaptationChange {
   exerciseName: string;
-  reason: ExerciseAdaptation['adaptationReason'];
-  /** Non-empty only when something actually changed. */
+  reason: AdaptationReason;
+  /** One-liner suitable for quest cards — always present. */
+  copy: string;
+  /** Non-empty only when something actually changed (multi-line detail). */
   lines: string[];
+}
+
+/**
+ * One-liner rationale per reason, used on quest cards and the session summary.
+ * Callers can pass structural values (`delta`, `target`, `load`) to get a
+ * more specific variant. Kept next to the enum so copy can't drift.
+ */
+export function copyFor(
+  reason: AdaptationReason,
+  opts: { delta?: string; target?: string; load?: string; ratio?: number } = {},
+): string {
+  switch (reason) {
+    case 'overachieved': {
+      const d = opts.delta ? `${opts.delta} — ` : '';
+      const t = opts.target ? `you hit ${opts.target} cleanly last session` : 'you hit your target cleanly last session';
+      return `${d}${t}`;
+    }
+    case 'underachieved': {
+      const d = opts.delta ? `${opts.delta} — ` : '';
+      const r = opts.ratio !== undefined
+        ? `last session came in at ${Math.round(opts.ratio * 100)}%`
+        : 'last session came in short';
+      return `${d}${r}`;
+    }
+    case 'stabilise':
+      return 'Same load — one more clean session first';
+    case 'cold_start':
+      return opts.load
+        ? `Starting conservative at ~${opts.load}`
+        : 'Starting conservative at ~70% of estimated 1RM';
+    case 'deload_after_gap':
+      return 'Long gap — dropped back a step to rebuild';
+  }
 }
 
 // ─── Progression parameters keyed to muscle level ────────────────────────────
@@ -135,7 +191,7 @@ export function computeAdaptation(
   let nextSets   = baseSets;
   let nextWeight = baseWeight;
   let nextConsec = prevConsec;
-  let reason: ExerciseAdaptation['adaptationReason'] = 'met_target';
+  let reason: AdaptationReason = 'stabilise';
 
   if (ratio >= params.overachieveThreshold) {
     // ── Overachieved ──────────────────────────────────────────────────────────
@@ -154,8 +210,8 @@ export function computeAdaptation(
       // We track this via consecutiveMet going negative for "overachieve streak"
     }
   } else if (ratio >= 0.85) {
-    // ── Met target ────────────────────────────────────────────────────────────
-    reason = 'met_target';
+    // ── Met target — stabilise or bump after a streak ─────────────────────────
+    reason = 'stabilise';
     nextConsec = prevConsec + 1;
 
     const bumpRep  = nextConsec >= params.consecutivesForRep;
@@ -164,9 +220,12 @@ export function computeAdaptation(
     if (bumpSets) {
       nextSets   = baseSets + 1;
       nextConsec = 0;
+      // Streak-driven progression reads as overachievement in intent
+      reason = 'overachieved';
     } else if (bumpRep) {
       nextReps   = baseReps + 1;
       nextConsec = 0;
+      reason = 'overachieved';
     }
   } else if (ratio < 0.70) {
     // ── Underachieved ────────────────────────────────────────────────────────
@@ -175,9 +234,24 @@ export function computeAdaptation(
     nextConsec = 0;
   } else {
     // ── Slightly below (0.70–0.85): hold, reset streak ────────────────────────
-    reason = 'met_target';
+    reason = 'stabilise';
     nextConsec = 0;
   }
+
+  // Build the structured delta string for copy
+  let delta: string | undefined;
+  if (nextReps !== baseReps) {
+    delta = nextReps > baseReps ? `+${nextReps - baseReps} rep${nextReps - baseReps > 1 ? 's' : ''}`
+                                 : `−${baseReps - nextReps} rep${baseReps - nextReps > 1 ? 's' : ''}`;
+  } else if (nextWeight !== baseWeight && typeof nextWeight === 'number' && typeof baseWeight === 'number') {
+    const diff = nextWeight - baseWeight;
+    delta = diff > 0 ? `+${diff}kg` : `${diff}kg`;
+  } else if (nextSets !== baseSets) {
+    delta = `+1 set`;
+  }
+
+  const targetLabel = `${baseSets}×${baseReps}`;
+  const copy = copyFor(reason, { delta, target: targetLabel, ratio });
 
   const adaptation: ExerciseAdaptation = {
     exerciseId:       quest.exerciseId,
@@ -188,6 +262,7 @@ export function computeAdaptation(
     consecutiveMet:   nextConsec,
     lastAdaptedAt:    now,
     adaptationReason: reason,
+    copy,
   };
 
   // Build human-readable change lines
@@ -201,8 +276,8 @@ export function computeAdaptation(
   if (nextWeight !== baseWeight) {
     lines.push(`Weight: ${fmtWeight(baseWeight)} → ${fmtWeight(nextWeight)}`);
   }
-  // Streak progress hint for met_target (no visible change yet)
-  if (reason === 'met_target' && lines.length === 0 && nextConsec > 0) {
+  // Streak progress hint for stabilise (no visible change yet)
+  if (reason === 'stabilise' && lines.length === 0 && nextConsec > 0) {
     const needed = params.consecutivesForRep - nextConsec;
     if (needed > 0) {
       lines.push(`${needed} more consistent session${needed > 1 ? 's' : ''} to progress`);
@@ -212,6 +287,7 @@ export function computeAdaptation(
   const change: AdaptationChange = {
     exerciseName: quest.exerciseName,
     reason,
+    copy,
     lines,
   };
 

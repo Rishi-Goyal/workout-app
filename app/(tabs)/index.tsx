@@ -15,12 +15,15 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
 import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
-import { generateQuests, getDungeonRoutineInfo } from '@/lib/questGenerator';
+import { generateQuests, generateRestDayFlow, getDungeonRoutineInfo } from '@/lib/questGenerator';
+import { daysSince } from '@/lib/dateUtils';
 import { xpToNextLevel } from '@/lib/xp';
+import { computeGrowth } from '@/lib/growthTracker';
 import { relativeDate } from '@/lib/dateUtils';
 import { COLORS, FONTS, SPACING } from '@/lib/constants';
 import { getCurrentVersion, compareVersions, getReleasesUrl } from '@/lib/versionCheck';
-import type { QuestStatus, DungeonSession, MuscleGroup } from '@/types';
+import type { QuestStatus, DungeonSession, MuscleGroup, RawQuest } from '@/types';
+import type { AdaptationChange } from '@/lib/adaptationEngine';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -30,7 +33,17 @@ function getGreeting(): string {
 }
 
 export default function DungeonTabScreen() {
-  const { profile, character, muscleXP, awardXP, awardMuscleXP, incrementFloorsCleared, latestVersion } = useProfileStore();
+  const {
+    profile,
+    character,
+    muscleXP,
+    awardXP,
+    awardMuscleXP,
+    incrementFloorsCleared,
+    syncConsistencyPenalty,
+    recoverConsistencyOnSession,
+    latestVersion,
+  } = useProfileStore();
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
   const sessions = useHistoryStore((s) => s.sessions);
   const addSession = useHistoryStore((s) => s.addSession);
@@ -53,6 +66,25 @@ export default function DungeonTabScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // v4.1.0 — idempotent consistency decay on mount. The helper only raises
+  // the penalty; recovery happens on session finalize. Running on every mount
+  // is safe because the target is a pure function of the inactivity gap.
+  useEffect(() => {
+    const last = useHistoryStore.getState().sessions[0]?.startedAt ?? null;
+    syncConsistencyPenalty(last);
+    // v4.1.0 C4 — parallel mobility decay. Uses the last session with any
+    // completed mobility quest as the anchor; never raises, only decays.
+    const lastMobility =
+      useHistoryStore.getState().sessions.find((s) =>
+        s.quests.some((q) =>
+          (q.kind === 'warmup' || q.kind === 'cooldown' || q.kind === 'mobility') &&
+          q.status === 'complete',
+        ),
+      )?.startedAt ?? null;
+    useProfileStore.getState().syncMobilityDecay(lastMobility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [entering, setEntering] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [summary, setSummary] = useState<{
@@ -61,6 +93,8 @@ export default function DungeonTabScreen() {
     didLevelUp: boolean;
     newLevel?: number;
     muscleLevelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
+    adaptationChanges: AdaptationChange[];
+    previewQuests: RawQuest[];
   } | null>(null);
 
   if (!profile || !character) return null;
@@ -104,6 +138,8 @@ export default function DungeonTabScreen() {
         recentSessions: getRecent(3),
         adaptations: useAdaptationStore.getState().adaptations,
         preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
+        // v4.1.0 B8 — let the generator auto-substitute repeated-swap alternatives
+        getPreferredSwap: (id) => useAdaptationStore.getState().getPreferredSwap(id),
       });
 
       if (rawQuests.length === 0) {
@@ -115,6 +151,29 @@ export default function DungeonTabScreen() {
     } catch {
       Alert.alert('Quest generation failed', 'Something went wrong preparing your quests.');
       setError('Failed to generate quests');
+    } finally {
+      setLoading(false);
+      setEntering(false);
+    }
+  };
+
+  // v4.1.0 C3 — rest-day mobility flow. Uses the same active-session machinery
+  // as a regular dungeon, but the resulting session has only `kind='mobility'`
+  // quests, so handleFinalize will skip the floor increment.
+  const handleRestDayFlow = () => {
+    setEntering(true);
+    setLoading(true);
+    setError(null);
+    try {
+      const rawQuests = generateRestDayFlow(getRecent(3), muscleXP, 6);
+      if (rawQuests.length === 0) {
+        Alert.alert('No mobility drills', 'Something went wrong — try again.');
+        return;
+      }
+      startSession(currentFloor, rawQuests);
+    } catch {
+      Alert.alert('Rest-day flow failed', 'Something went wrong preparing your mobility session.');
+      setError('Failed to generate mobility flow');
     } finally {
       setLoading(false);
       setEntering(false);
@@ -133,8 +192,22 @@ export default function DungeonTabScreen() {
     const { leveledUp } = awardXP(xpGained);
     const newLevel = leveledUp ? useProfileStore.getState().character?.level : undefined;
 
+    // Snapshot muscle-XP before awards — B1's laggard detection uses the
+    // *going-in* level distribution, not the post-session one.
+    const muscleXPBefore = useProfileStore.getState().muscleXP;
+
     const allMuscleLevelUps: Array<{ muscle: MuscleGroup; newLevel: number }> = [];
+    // v4.1.0 Theme C — mobility drills count toward mobilityScore but never
+    // toward muscle XP, so we skip them here and tally mobility credit below.
+    let mobilityCredit = 0;
     for (const quest of finalized.quests) {
+      const isMobility = quest.kind === 'warmup' || quest.kind === 'cooldown' || quest.kind === 'mobility';
+      if (isMobility) {
+        if (quest.status === 'complete') {
+          mobilityCredit += quest.kind === 'mobility' ? 2 : 0.5;
+        }
+        continue;
+      }
       if (quest.status === 'complete' || quest.status === 'half_complete') {
         const primary = quest.targetMuscles.length > 0 ? [quest.targetMuscles[0]] : [];
         const secondary = quest.targetMuscles.slice(1);
@@ -144,21 +217,81 @@ export default function DungeonTabScreen() {
           secondary as MuscleGroup[],
           quest.difficulty,
           completion,
-          quest.exerciseId,  // ADD THIS
+          quest.exerciseId,
         );
         allMuscleLevelUps.push(...levelUps);
       }
     }
+    if (mobilityCredit > 0) {
+      useProfileStore.getState().awardMobilityScore(mobilityCredit);
+    }
 
-    incrementFloorsCleared();
-    addSession(finalized);
+    // v4.1.0 B1 — compute growth record against prior sessions and attach
+    // before persisting. SessionSummary reads it for the RESULTS/GROWTH blocks;
+    // B7's laggard-aware generator reads the last 1–2 records.
+    const priorSessions = useHistoryStore.getState().sessions;
+    const growthRecord = computeGrowth(finalized, priorSessions, muscleXPBefore);
+    const finalizedWithGrowth = { ...finalized, growthRecord };
+
+    // v4.1.0 C3 — rest-day flows are pure mobility sessions (no lift quests);
+    // they still log history and award mobility XP but must NOT bump the
+    // `floorsCleared` counter. Dungeon floors remain lift-session-only.
+    const hasLiftQuests = finalized.quests.some(
+      (q) => !q.kind || q.kind === 'lift',
+    );
+    if (hasLiftQuests) incrementFloorsCleared();
+    addSession(finalizedWithGrowth);
     // Feature 1: update per-exercise progressive overload targets
-    useAdaptationStore.getState().applyAdaptation(finalized, useProfileStore.getState().muscleXP);
+    const adaptationChanges = useAdaptationStore.getState().applyAdaptation(
+      finalizedWithGrowth,
+      useProfileStore.getState().muscleXP,
+    );
     // Feature 2: evaluate last week's streak now that a new session exists
     useWeeklyGoalStore.getState().evaluateWeek(
       useHistoryStore.getState().sessions,
     );
-    setSummary({ session: finalized, xpGained, didLevelUp: leveledUp, newLevel, muscleLevelUps: allMuscleLevelUps });
+    // v4.1.0 — pull consistencyPenalty back toward zero. If the user was
+    // inactive long enough for syncConsistencyPenalty to bump them up, this
+    // single session of recovery only pays down one -5% step; repeated weeks
+    // of activity fully clear the penalty.
+    recoverConsistencyOnSession();
+
+    // v4.1.0 B5 — generate the next-dungeon preview AFTER stores are updated
+    // so it reflects floorsCleared+1, fresh adaptation overrides, and the
+    // new laggard set from growthRecord. Wrapped in try/catch because the
+    // summary UI must still render if generation unexpectedly fails.
+    let previewQuests: RawQuest[] = [];
+    try {
+      const postCharacter = useProfileStore.getState().character;
+      const postProfile   = useProfileStore.getState().profile;
+      const postMuscleXP  = useProfileStore.getState().muscleXP;
+      const postFloor     = (postCharacter?.floorsCleared ?? 0) + 1;
+      if (postProfile) {
+        previewQuests = generateQuests({
+          equipment: postProfile.equipment,
+          goal: postProfile.goal,
+          muscleXP: postMuscleXP,
+          muscleStrengths: postProfile.muscleStrengths,
+          currentFloor: postFloor,
+          recentSessions: useHistoryStore.getState().getRecentSessions(3),
+          adaptations: useAdaptationStore.getState().adaptations,
+          preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
+          getPreferredSwap: (id) => useAdaptationStore.getState().getPreferredSwap(id),
+        });
+      }
+    } catch {
+      previewQuests = [];
+    }
+
+    setSummary({
+      session: finalizedWithGrowth,
+      xpGained,
+      didLevelUp: leveledUp,
+      newLevel,
+      muscleLevelUps: allMuscleLevelUps,
+      adaptationChanges,
+      previewQuests,
+    });
   };
 
   const handleSummaryClose = () => setSummary(null);
@@ -173,6 +306,8 @@ export default function DungeonTabScreen() {
     const estimatedXP = activeSession
       ? activeSession.quests.reduce((sum, q) => sum + (q.xpEarned ?? 0), 0)
       : 0;
+    const completeCount = activeSession?.quests.filter((q) => q.status === 'complete').length ?? 0;
+    const totalQuests = activeSession?.quests.length ?? 0;
 
     return (
       <SafeAreaView style={styles.safe}>
@@ -205,6 +340,29 @@ export default function DungeonTabScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.sessionScroll} showsVerticalScrollIndicator={false}>
+          {/* v4.1.0 A4 — dot stepper + caption; derived from session state */}
+          {activeSession && totalQuests > 0 && (
+            <View style={styles.stepperWrap}>
+              <View style={styles.stepperRow}>
+                {activeSession.quests.map((q) => (
+                  <View
+                    key={q.id}
+                    style={[
+                      styles.dot,
+                      q.status === 'complete' && styles.dotComplete,
+                      q.status === 'half_complete' && styles.dotHalf,
+                      q.status === 'skipped' && styles.dotSkipped,
+                      q.status === 'pending' && styles.dotPending,
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.stepperCaption}>
+                {completeCount} of {totalQuests} complete · {estimatedXP} XP earned so far
+              </Text>
+            </View>
+          )}
+
           <SectionLabel>QUESTS</SectionLabel>
 
           <View style={styles.questList}>
@@ -238,6 +396,8 @@ export default function DungeonTabScreen() {
             didLevelUp={summary.didLevelUp}
             newLevel={summary.newLevel}
             muscleLevelUps={summary.muscleLevelUps}
+            adaptationChanges={summary.adaptationChanges}
+            previewQuests={summary.previewQuests}
             goal={profile.goal}
             onClose={handleSummaryClose}
           />
@@ -303,6 +463,23 @@ export default function DungeonTabScreen() {
             style={styles.startBtn}
             onPress={handleEnter}
           />
+          {/* v4.1.0 C3 — rest-day mobility option. Shown only after a day of
+              inactivity so it doesn't clutter the hero on active days.
+              Fresh-install guard: no sessions → gap = 0 (not inactive). */}
+          {(() => {
+            const lastIso = sessions[0]?.startedAt ?? null;
+            const gap = lastIso ? daysSince(lastIso) : 0;
+            if (gap < 1) return null;
+            return (
+              <PressableButton
+                label="🧘 Rest-day Flow"
+                size="md"
+                variant="ghost"
+                style={styles.restDayBtn}
+                onPress={handleRestDayFlow}
+              />
+            );
+          })()}
         </Card>
 
         {/* Weekly goal widget — streak + Mon–Sun dot row + freeze */}
@@ -352,6 +529,8 @@ export default function DungeonTabScreen() {
           didLevelUp={summary.didLevelUp}
           newLevel={summary.newLevel}
           muscleLevelUps={summary.muscleLevelUps}
+          adaptationChanges={summary.adaptationChanges}
+          previewQuests={summary.previewQuests}
           goal={profile.goal}
           onClose={handleSummaryClose}
         />
@@ -409,6 +588,7 @@ const styles = StyleSheet.create({
   },
   muscleChipText: { fontSize: 10, fontFamily: FONTS.sansBold, color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
   startBtn: { width: '100%', marginTop: 18 },
+  restDayBtn: { width: '100%', marginTop: 8 },
 
   // Stats row
   statsRow: { flexDirection: 'row', gap: 12 },
@@ -469,4 +649,41 @@ const styles = StyleSheet.create({
   questList: { gap: 12 },
   finalizeBtn: { marginTop: 8 },
   hint: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textMuted, textAlign: 'center', paddingHorizontal: 20, fontStyle: 'italic' },
+
+  // A4 — dot stepper
+  stepperWrap: {
+    gap: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  dotPending: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: COLORS.textMuted,
+  },
+  dotComplete: {
+    backgroundColor: COLORS.jade,
+  },
+  dotHalf: {
+    backgroundColor: COLORS.orange,
+  },
+  dotSkipped: {
+    backgroundColor: COLORS.textMuted,
+    opacity: 0.4,
+  },
+  stepperCaption: {
+    fontSize: 11,
+    fontFamily: FONTS.mono,
+    color: COLORS.textMuted,
+    letterSpacing: 0.4,
+  },
 });

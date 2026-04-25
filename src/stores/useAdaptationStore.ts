@@ -29,8 +29,25 @@ function weightStepFor(exerciseId: string): number {
   return 1.25; // isolation / cable / machine
 }
 
+/**
+ * v4.1.0 B8 — per-exercise swap log. If the user swaps the same exercise to
+ * the same alternative repeatedly, the generator auto-substitutes the swap
+ * going forward. Kept at most MAX_SWAP_HISTORY entries per original.
+ */
+export interface SwapEntry {
+  toId: string;
+  sessionId: string;
+  swappedAt: string;
+}
+export type SwapHistory = Record<string, SwapEntry[]>;
+
+const MAX_SWAP_HISTORY = 5;
+/** Number of consecutive same-target swaps needed to promote to default. */
+const SWAP_PROMOTE_THRESHOLD = 2;
+
 interface AdaptationStore {
   adaptations: AdaptationMap;
+  swapHistory: SwapHistory;
 
   getAdaptation: (exerciseId: string) => ExerciseAdaptation | null;
 
@@ -44,6 +61,17 @@ interface AdaptationStore {
    */
   applyAdaptation: (session: DungeonSession, muscleXP: MuscleXP) => AdaptationChange[];
 
+  /** Record that the user swapped `fromId` → `toId` during `sessionId`. */
+  recordSwap: (fromId: string, toId: string, sessionId: string) => void;
+  /**
+   * Returns the user's preferred swap target if the last
+   * SWAP_PROMOTE_THRESHOLD entries in swapHistory[fromId] all point to the
+   * same exercise; otherwise null.
+   */
+  getPreferredSwap: (fromId: string) => string | null;
+  /** Forget the swap history for one exercise (Settings → Reset learned swap). */
+  clearSwapHistory: (fromId: string) => void;
+
   resetAdaptation: (exerciseId: string) => void;
   clearAllAdaptations: () => void;
 }
@@ -52,8 +80,38 @@ export const useAdaptationStore = create<AdaptationStore>()(
   persist(
     (set, get) => ({
       adaptations: {},
+      swapHistory: {},
 
       getAdaptation: (exerciseId) => get().adaptations[exerciseId] ?? null,
+
+      recordSwap: (fromId, toId, sessionId) => {
+        if (!fromId || !toId || fromId === toId) return;
+        const history = get().swapHistory[fromId] ?? [];
+        // De-dupe by sessionId so multiple swaps within the same session
+        // don't pollute the streak detection.
+        const filtered = history.filter((e) => e.sessionId !== sessionId);
+        const next = [
+          { toId, sessionId, swappedAt: new Date().toISOString() },
+          ...filtered,
+        ].slice(0, MAX_SWAP_HISTORY);
+        set({
+          swapHistory: { ...get().swapHistory, [fromId]: next },
+        });
+      },
+
+      getPreferredSwap: (fromId) => {
+        const history = get().swapHistory[fromId] ?? [];
+        if (history.length < SWAP_PROMOTE_THRESHOLD) return null;
+        const recent = history.slice(0, SWAP_PROMOTE_THRESHOLD);
+        const first = recent[0].toId;
+        return recent.every((e) => e.toId === first) ? first : null;
+      },
+
+      clearSwapHistory: (fromId) => {
+        const next = { ...get().swapHistory };
+        delete next[fromId];
+        set({ swapHistory: next });
+      },
 
       applyAdaptation: (session, muscleXP) => {
         const current = get().adaptations;
@@ -62,6 +120,9 @@ export const useAdaptationStore = create<AdaptationStore>()(
 
         for (const quest of session.quests) {
           if (!quest.exerciseId) continue;
+          // v4.1.0 Theme C — only lift quests feed progressive overload.
+          // Warmups, cooldowns, and mobility drills use fixed durations.
+          if (quest.kind && quest.kind !== 'lift') continue;
 
           // Primary muscle for this quest drives the progression rate
           const primaryMuscle = quest.targetMuscles[0] as MuscleGroup | undefined;
@@ -91,12 +152,31 @@ export const useAdaptationStore = create<AdaptationStore>()(
     {
       name: 'dungeon-adaptations',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
-      partialize: (state) => ({ adaptations: state.adaptations }),
+      version: 3,
+      partialize: (state) => ({
+        adaptations: state.adaptations,
+        swapHistory: state.swapHistory,
+      }),
       migrate: (persisted: unknown, _v: number) => {
         const s = (persisted ?? {}) as Record<string, unknown>;
         if (typeof s.adaptations !== 'object' || s.adaptations === null) {
           s.adaptations = {};
+        }
+        // v1 → v2 (v4.1.0): remap 'met_target' → 'stabilise', drop 'reset'
+        const map = s.adaptations as Record<string, Record<string, unknown>>;
+        for (const key of Object.keys(map)) {
+          const a = map[key];
+          if (a && typeof a === 'object') {
+            const reason = a.adaptationReason;
+            if (reason === 'met_target' || reason === 'reset') {
+              a.adaptationReason = 'stabilise';
+            }
+            if (a.copy === undefined) a.copy = '';
+          }
+        }
+        // v2 → v3 (v4.1.0 B8): ensure swapHistory exists as an empty record.
+        if (typeof s.swapHistory !== 'object' || s.swapHistory === null) {
+          s.swapHistory = {};
         }
         return s as Partial<AdaptationStore>;
       },

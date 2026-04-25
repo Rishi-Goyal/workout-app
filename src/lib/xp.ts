@@ -144,20 +144,27 @@ export function recoverConsistency(currentPenalty: number): number {
   return clamp(currentPenalty - CONSISTENCY_RECOVER_RATE, 0, CONSISTENCY_MAX_PENALTY);
 }
 
-// ═══ v4 Freeze tokens ════════════════════════════════════════════════════════
-//
-// Completed-consistency weeks (at least one session) earn one freeze token,
-// stacked up to MAX_FREEZE_TOKENS. If the player misses the next week, one
-// token is consumed to preserve the streak instead of resetting it.
-
-export const MAX_FREEZE_TOKENS = 3;
-
-export function earnFreezeToken(current: number | undefined): number {
-  return Math.min((current ?? 0) + 1, MAX_FREEZE_TOKENS);
+/**
+ * Idempotent "catch-up" decay. Given the last session's ISO timestamp and the
+ * current stored penalty, returns what the penalty *should* be based on the
+ * inactivity gap. Only ever raises the value — recovery happens separately
+ * via `recoverConsistency()` on session finalize. Safe to call on every mount
+ * because the target is a pure function of the gap (not the number of calls).
+ *
+ * Fresh users (`lastSessionIso === null`) are never penalised.
+ */
+export function computeConsistencyPenaltyForGap(
+  currentPenalty: number,
+  lastSessionIso: string | null,
+): number {
+  if (!lastSessionIso) return currentPenalty;
+  const days = Math.floor((Date.now() - new Date(lastSessionIso).getTime()) / 86_400_000);
+  const weeks = Math.max(0, Math.floor(days / 7));
+  const target = Math.min(CONSISTENCY_MAX_PENALTY, weeks * CONSISTENCY_WEEKLY_DECAY);
+  return Math.max(currentPenalty, target);
 }
 
-export function consumeFreezeToken(current: number | undefined): { remaining: number; used: boolean } {
-  const have = current ?? 0;
-  if (have <= 0) return { remaining: 0, used: false };
-  return { remaining: have - 1, used: true };
-}
+// Freeze tokens previously lived here as `earnFreezeToken` / `consumeFreezeToken`
+// but were never called from the app. The real streak-freeze mechanic lives in
+// useWeeklyGoalStore (freezesAvailable + consumeFreeze). Removed in v4.1.0 so
+// there's one source of truth.

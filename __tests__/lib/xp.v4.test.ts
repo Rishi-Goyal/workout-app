@@ -1,5 +1,7 @@
 /**
- * v4 XP formula + consistency + freeze-token mechanics.
+ * v4 XP formula + consistency mechanics.
+ * (Freeze-token helpers lived here before v4.1.0; they were never called and
+ *  were removed in favour of useWeeklyGoalStore.freezesAvailable.)
  */
 import {
   calculateQuestXP,
@@ -7,10 +9,8 @@ import {
   computeMuscleFreshness,
   applyConsistencyDecay,
   recoverConsistency,
-  earnFreezeToken,
-  consumeFreezeToken,
+  computeConsistencyPenaltyForGap,
   CONSISTENCY_MAX_PENALTY,
-  MAX_FREEZE_TOKENS,
 } from '@/lib/xp';
 import type { MuscleXP } from '@/lib/muscleXP';
 
@@ -88,17 +88,44 @@ describe('applyConsistencyDecay', () => {
   });
 });
 
-describe('freeze tokens', () => {
-  it('earnFreezeToken caps at MAX', () => {
-    expect(earnFreezeToken(0)).toBe(1);
-    expect(earnFreezeToken(2)).toBe(3);
-    expect(earnFreezeToken(3)).toBe(MAX_FREEZE_TOKENS);
-    expect(earnFreezeToken(undefined)).toBe(1);
+describe('computeConsistencyPenaltyForGap', () => {
+  const daysAgoIso = (days: number) =>
+    new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it('fresh user (no last session) is not penalised', () => {
+    expect(computeConsistencyPenaltyForGap(0, null)).toBe(0);
+    expect(computeConsistencyPenaltyForGap(10, null)).toBe(10); // stays put
   });
 
-  it('consumeFreezeToken drops by 1 when available', () => {
-    expect(consumeFreezeToken(2)).toEqual({ remaining: 1, used: true });
-    expect(consumeFreezeToken(0)).toEqual({ remaining: 0, used: false });
-    expect(consumeFreezeToken(undefined)).toEqual({ remaining: 0, used: false });
+  it('< 7 days gap adds no penalty', () => {
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(3))).toBe(0);
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(6))).toBe(0);
+  });
+
+  it('raises to weeksInactive × 5', () => {
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(7))).toBe(5);   // 1 week
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(14))).toBe(10); // 2 weeks
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(30))).toBe(20); // 4w → capped
+  });
+
+  it('caps at MAX_PENALTY', () => {
+    expect(computeConsistencyPenaltyForGap(0, daysAgoIso(90))).toBe(CONSISTENCY_MAX_PENALTY);
+  });
+
+  it('never lowers an already-higher penalty', () => {
+    // User is penalised 15%, but last session was only 1 week ago (target 5).
+    // Should stay at 15, not drop to 5 — recovery is separate.
+    expect(computeConsistencyPenaltyForGap(15, daysAgoIso(7))).toBe(15);
+  });
+
+  it('is idempotent — repeated calls with same gap return the same value', () => {
+    const iso = daysAgoIso(21); // 3 weeks → target 15
+    const first = computeConsistencyPenaltyForGap(0, iso);
+    const second = computeConsistencyPenaltyForGap(first, iso);
+    const third = computeConsistencyPenaltyForGap(second, iso);
+    expect(first).toBe(15);
+    expect(second).toBe(15);
+    expect(third).toBe(15);
   });
 });
+

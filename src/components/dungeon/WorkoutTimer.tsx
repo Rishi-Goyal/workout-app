@@ -51,6 +51,31 @@ interface WorkoutTimerProps {
   questId: string;
   onComplete: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
+  /**
+   * v4.1.0 A1 — label on the primary done-phase button. Active-quest passes
+   * "✓ Save & Next Quest →" mid-session and "✓ Save & Finish Dungeon →" on
+   * the last quest; falls back to "✓ Accept & Save" if omitted.
+   */
+  completeLabel?: string;
+  /**
+   * v4.1.0 A1 — optional secondary button in the done phase. Renders as a
+   * quiet ghost link under the primary for the "I want to pick a different
+   * order" escape hatch. Omitted → no button rendered.
+   */
+  onBackToList?: () => void;
+  /**
+   * v4.1.0 C1/C2/C3 — quest kind. When 'warmup' | 'cooldown' | 'mobility':
+   *   - skips the "Start Hold" pre-start gate (auto-starts timer on mount)
+   *   - hides the weight selector (mobility drills have no load)
+   *   - enforces the full hold duration (completion button disabled until timer fires)
+   *   - shows the coaching `cue` string during the countdown
+   */
+  kind?: import('@/types').QuestKind;
+  /**
+   * v4.1.0 C1/C2/C3 — coaching cue shown during the hold countdown for
+   * warmup / cooldown / mobility quests.
+   */
+  cue?: string;
 }
 
 const RING_RADIUS = 44;
@@ -156,17 +181,28 @@ export default function WorkoutTimer({
   exerciseName,
   questId,
   onComplete, onSkip,
+  completeLabel,
+  onBackToList,
+  kind,
+  cue,
 }: WorkoutTimerProps) {
+  // Warmup / cooldown / mobility quests are load-free and timer-enforced.
+  // They skip the "Start Hold" gate, hide the weight selector, and lock the
+  // completion button until the countdown fires.
+  const isNonLift = kind === 'warmup' || kind === 'cooldown' || kind === 'mobility';
+
   const recommendedReps              = parseInt(reps, 10) || 0;
-  const [phase, setPhase]            = useState<Phase>('idle');
+  // Non-lift quests (warmup/cooldown/mobility) skip the idle QUEST BRIEFING gate
+  // and enter directly into 'active' so the hold ring starts at mount.
+  const [phase, setPhase]            = useState<Phase>(isNonLift ? 'active' : 'idle');
   const [currentSet, setCurrentSet]  = useState(1);
   const [restLeft, setRestLeft]      = useState(restSeconds);
   const [holdLeft, setHoldLeft]      = useState(holdSeconds ?? 0);
   // Extra hold seconds after the isometric target is reached (for bonus XP)
   const [holdComplete, setHoldComplete] = useState(false);
   const [extraHoldSec, setExtraHoldSec] = useState(0);
-  // Whether the user has pressed "Start Hold" — prevents auto-start of isometric timer
-  const [holdStarted, setHoldStarted] = useState(false);
+  // Non-lift quests (warmup/cooldown/mobility) auto-start; lift quests wait for user "Start Hold".
+  const [holdStarted, setHoldStarted] = useState(() => isNonLift);
   const [currentWeight, setWeight]   = useState<number | 'bodyweight'>(suggestedWeight);
   // Actual reps the user logged for this set (adjustable before marking done)
   const [repsInput, setRepsInput]    = useState(recommendedReps);
@@ -325,9 +361,10 @@ export default function WorkoutTimer({
   }, [currentSet, sets, restSeconds, loggedSets, currentWeight, repsInput, recommendedReps, exerciseName, questId, reps]);
 
   // Reset holdStarted when moving to the next set.
+  // Non-lift quests auto-start (isNonLift=true); lift hold quests wait for user input (false).
   // Intentionally only depends on currentSet — phase is read as a guard, not a trigger.
   useEffect(() => {
-    if (phase === 'active') setHoldStarted(false);
+    if (phase === 'active') setHoldStarted(isNonLift);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSet]);
 
@@ -413,33 +450,44 @@ export default function WorkoutTimer({
           </View>
         </View>
 
-        {/* Suggested weight */}
-        <View style={styles.weightSection}>
-          <Text style={styles.weightHeader}>
-            {currentWeight === 'bodyweight' ? 'BODYWEIGHT EXERCISE' : 'STARTING WEIGHT'}
-          </Text>
-          <WeightSelector value={currentWeight} onChange={setWeight} unit={weightUnit} />
-          {currentWeight === 'bodyweight' && (
-            <Text style={styles.suggestedHint}>Optional: tap display to add extra weight</Text>
-          )}
-          {currentWeight !== 'bodyweight' && suggestedWeight !== currentWeight && (
-            <Text style={styles.suggestedHint}>
-              Suggested: {formatWeight(suggestedWeight, weightUnit)}
-            </Text>
-          )}
-        </View>
+        {/* Warmup / cooldown / mobility: show coaching cue instead of weight controls */}
+        {isNonLift ? (
+          cue ? (
+            <View style={styles.holdReadyCard}>
+              <Text style={styles.holdCueText}>{cue}</Text>
+            </View>
+          ) : null
+        ) : (
+          <>
+            {/* Suggested weight — lift quests only */}
+            <View style={styles.weightSection}>
+              <Text style={styles.weightHeader}>
+                {currentWeight === 'bodyweight' ? 'BODYWEIGHT EXERCISE' : 'STARTING WEIGHT'}
+              </Text>
+              <WeightSelector value={currentWeight} onChange={setWeight} unit={weightUnit} />
+              {currentWeight === 'bodyweight' && (
+                <Text style={styles.suggestedHint}>Optional: tap display to add extra weight</Text>
+              )}
+              {currentWeight !== 'bodyweight' && suggestedWeight !== currentWeight && (
+                <Text style={styles.suggestedHint}>
+                  Suggested: {formatWeight(suggestedWeight, weightUnit)}
+                </Text>
+              )}
+            </View>
 
-        {/* Progressive overload: last session data */}
-        {lastSessionLog && (
-          <View style={styles.lastSessionBox}>
-            <Text style={styles.lastSessionLabel}>LAST SESSION</Text>
-            <Text style={styles.lastSessionData}>
-              {formatWeight(lastSessionLog.weight, weightUnit)} · {lastSessionLog.reps} reps · {lastSessionLog.sets} sets
-            </Text>
-            <Text style={styles.lastSessionDate}>
-              {new Date(lastSessionLog.sessionDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </Text>
-          </View>
+            {/* Progressive overload: last session data — lift quests only */}
+            {lastSessionLog && (
+              <View style={styles.lastSessionBox}>
+                <Text style={styles.lastSessionLabel}>LAST SESSION</Text>
+                <Text style={styles.lastSessionData}>
+                  {formatWeight(lastSessionLog.weight, weightUnit)} · {lastSessionLog.reps} reps · {lastSessionLog.sets} sets
+                </Text>
+                <Text style={styles.lastSessionDate}>
+                  {new Date(lastSessionLog.sessionDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </Text>
+              </View>
+            )}
+          </>
         )}
 
         <PressableButton
@@ -534,6 +582,10 @@ export default function WorkoutTimer({
           ) : (
             <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
           )}
+          {/* Coaching cue for warmup / cooldown / mobility drills */}
+          {isNonLift && cue && !holdComplete && (
+            <Text style={styles.holdCueText}>{cue}</Text>
+          )}
           <View style={styles.ringWrapper}>
             <RingTimer progress={progress} color={ringColor} />
             <View style={styles.ringCenter}>
@@ -560,9 +612,14 @@ export default function WorkoutTimer({
           <PressableButton
             label={holdComplete
               ? (currentSet < sets ? '🏆 Release! — rest' : '🏆 Release! — done')
-              : (currentSet < sets ? `✓ Done hold — rest ${restSeconds}s` : '✓ Final hold done!')}
+              : (isNonLift
+                  ? `Hold for ${holdLeft}s…`
+                  : (currentSet < sets ? `✓ Done hold — rest ${restSeconds}s` : '✓ Final hold done!'))}
             variant="success"
             size="lg"
+            // Non-lift drills (warmup/cooldown/mobility) enforce the full duration:
+            // button is disabled until holdComplete fires, preventing early-exit.
+            disabled={isNonLift && !holdComplete}
             onPress={holdComplete ? releaseHold : () => {
               clearTimer();
               const elapsed = Math.max(holdSeconds - holdLeft, 1);
@@ -714,11 +771,12 @@ export default function WorkoutTimer({
         </View>
 
         <Text style={styles.subtitle}>Next: Set {currentSet + 1} of {sets}</Text>
-        <PressableButton
-          label="Skip rest →"
-          variant="ghost"
-          size="sm"
-          onPress={() => {
+
+        {/* v4.1.0 A5 — once the user is rested enough (≥ 50% of prescribed rest
+            elapsed), promote "next set" to a full-width primary. Early skip
+            stays available as a quiet ghost link. */}
+        {(() => {
+          const advance = () => {
             clearTimer();
             cancelRestNotification();
             setCurrentSet(s => s + 1);
@@ -727,8 +785,39 @@ export default function WorkoutTimer({
             setPhase('active');
             showActiveSetNotif(exerciseName, `Set ${currentSet + 1} of ${sets}`, questId, currentSet + 1);
             WidgetBridge?.updateWidgetTimer(0, false);
-          }}
-        />
+          };
+          const halfElapsed = restLeft <= restSeconds / 2;
+          if (halfElapsed) {
+            return (
+              <>
+                <PressableButton
+                  label="Next set →"
+                  variant="success"
+                  size="lg"
+                  onPress={advance}
+                  style={styles.mainBtn}
+                />
+                <TouchableOpacity
+                  style={styles.skipSetLink}
+                  onPress={advance}
+                  activeOpacity={0.6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Skip remaining rest"
+                >
+                  <Text style={styles.skipSetText}>— Skip rest early</Text>
+                </TouchableOpacity>
+              </>
+            );
+          }
+          return (
+            <PressableButton
+              label="Skip rest →"
+              variant="ghost"
+              size="sm"
+              onPress={advance}
+            />
+          );
+        })()}
       </View>
     );
   }
@@ -762,7 +851,9 @@ export default function WorkoutTimer({
     <View style={styles.container}>
       <Text style={styles.doneIcon}>🏆</Text>
       <Text style={styles.doneText}>Quest Complete!</Text>
-      <Text style={styles.doneSubtitle}>Review & adjust before accepting</Text>
+      <Text style={styles.doneSubtitle}>
+        {isNonLift ? 'Review your hold before saving' : 'Review & adjust before accepting'}
+      </Text>
 
       {/* ── XP breakdown table ─────────────────────────────────────────── */}
       <View style={styles.xpSectionBox}>
@@ -796,8 +887,8 @@ export default function WorkoutTimer({
         </View>
       </View>
 
-      {/* ── Editable per-set summary ───────────────────────────────────── */}
-      {displaySets.length > 0 && (
+      {/* ── Editable per-set summary (lift quests only — hold drills have no load to adjust) ── */}
+      {!isNonLift && displaySets.length > 0 && (
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>ADJUST IF NEEDED</Text>
 
@@ -864,12 +955,25 @@ export default function WorkoutTimer({
       )}
 
       <PressableButton
-        label="✓ Accept & Save"
+        label={completeLabel ?? '✓ Accept & Save'}
         variant="success"
         size="lg"
         onPress={() => onComplete(displaySets)}
         style={styles.mainBtn}
       />
+
+      {/* v4.1.0 A1 — quiet escape hatch back to the quest list */}
+      {onBackToList && (
+        <TouchableOpacity
+          style={styles.backToListLink}
+          onPress={onBackToList}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Back to quest list"
+        >
+          <Text style={styles.backToListText}>← Back to list</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -895,6 +999,7 @@ const styles = StyleSheet.create({
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
 
   // Isometric hold
+  holdCueText:  { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', fontStyle: 'italic', marginTop: 6, marginBottom: 2, paddingHorizontal: 16, lineHeight: 20 },
   holdLabel:    { fontSize: 28, fontWeight: '900', letterSpacing: 4 },
   holdReadyCard: { alignItems: 'center', gap: 6, backgroundColor: 'rgba(16,185,129,0.07)', borderRadius: 14, padding: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', width: '100%' },
   holdTargetIcon: { fontSize: 40 },
@@ -915,6 +1020,10 @@ const styles = StyleSheet.create({
   // Skip set link
   skipSetLink:   { marginTop: 2, paddingVertical: 4 },
   skipSetText:   { fontSize: 12, color: COLORS.textMuted, textDecorationLine: 'underline', textAlign: 'center' },
+
+  // A1 — "Back to list" escape hatch under the done-phase primary
+  backToListLink:  { marginTop: 8, paddingVertical: 6 },
+  backToListText:  { fontSize: 12, color: COLORS.textMuted, textDecorationLine: 'underline', textAlign: 'center' },
 
   // Rest phase
   ringWrapper:  { position: 'relative', width: 110, height: 110, alignItems: 'center', justifyContent: 'center' },

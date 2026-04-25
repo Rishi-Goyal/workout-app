@@ -75,6 +75,16 @@ export const useSessionStore = create<SessionStore>()(
         const quests = session.quests.map((q) => {
           if (q.id !== questId) return q;
 
+          // Warmup / cooldown / mobility drills carry a fixed xpReward set by
+          // the generator (20 / 15 / per-drill). Bypass getXPReward(difficulty)
+          // for these — 'easy' difficulty would give 50 XP which inflates
+          // progression and disagrees with the on-screen estimate.
+          const isNonLift = q.kind && q.kind !== 'lift';
+          const baseXP = isNonLift ? q.xpReward : getXPReward(q.difficulty);
+          const halfXP = isNonLift
+            ? Math.floor(q.xpReward / 2)
+            : getXPReward(q.difficulty, true);
+
           let xpEarned = 0;
           if (status === 'skipped') {
             xpEarned = 0;
@@ -84,13 +94,13 @@ export const useSessionStore = create<SessionStore>()(
               loggedSets,
               q.sets,
               q.reps,
-              getXPReward(q.difficulty),
+              baseXP,
               q.holdSeconds,
             );
           } else if (status === 'complete') {
-            xpEarned = getXPReward(q.difficulty);
+            xpEarned = baseXP;
           } else if (status === 'half_complete') {
-            xpEarned = getXPReward(q.difficulty, true);
+            xpEarned = halfXP;
           }
 
           return {

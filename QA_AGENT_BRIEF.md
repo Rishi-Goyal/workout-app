@@ -1,316 +1,177 @@
-# DungeonFit v4.0.0 — QA Agent Brief
+# QA Agent Brief — v4.1.0 "Daily Workout Flow"
 
-**Audience:** An autonomous AI agent tasked with QA-testing DungeonFit end to
-end on an Android emulator.
-**Goal:** Find regressions, visual bugs, flow breakage, and migration failures
-in the v4.0.0 "Solo Leveling" release before it ships to users.
-
-You are expected to act autonomously: drive the emulator, read the app's
-output, form a hypothesis when something looks wrong, reproduce it, and file
-findings. Do not modify source code — you are a tester, not a developer.
+**Branch:** `feature/v4.1.0-daily-flow`  
+**Commit:** `4bacdcb` (feat v4.1.0)  
+**Full QA plan:** `docs/qa-plan-v4.1.0.md`  
+**Environment constraint:** Android emulator **only** — Pixel 6, API 34. Do NOT use web preview or Expo Go. See MEMORY.md.
 
 ---
 
-## 0. Non-negotiables
+## STEP 0 — Pre-flight (must pass before any emulator work)
 
-- **Platform:** Android emulator only. Do **NOT** use `expo start --web`
-  (web preview is known to misrender fonts and SVG). User-memory policy:
-  verify UI only on the emulator.
-- **Branch:** `main` at tag `v4.0.0`. Do `git fetch --tags && git checkout
-  v4.0.0` before starting.
-- **Do not commit, push, merge, or rebase.** Your only git interactions are
-  read-only (`status`, `log`, `diff`, `show`).
-- **Do not edit source files.** If you believe a bug requires a code change
-  to verify, stop and file a finding instead.
-- **Do not delete, reset, or force-push anything.**
-
----
-
-## 1. Environment bring-up
+Run these in order. If either fails, stop and report — emulator QA is blocked.
 
 ```bash
-# From repo root
-node --version        # expect 20.x+
-npm ci                # clean install
-npx expo prebuild --platform android --clean   # only if android/ is stale
-npx expo run:android  # builds + installs + opens Metro
+cd C:\Users\rishi\OneDrive\Documents\GitHub\workout-app
+git checkout feature/v4.1.0-daily-flow
+npm ci
+npx tsc --noEmit
+# Expected: ONLY these 3 errors — no others:
+#   src/lib/exerciseDatabase.ts(1058,17): error TS2322: Type '"cable"' is not assignable to type 'Equipment'.
+#   src/lib/exerciseDatabase.ts(1242,17): error TS2322: Type '"machine"' is not assignable to type 'Equipment'.
+#   src/lib/exerciseDatabase.ts(1370,17): error TS2322: Type '"machine"' is not assignable to type 'Equipment'.
+
+npx jest --ci
+# Expected: 15 suites, 248 tests, 0 failures
 ```
 
-Success criteria:
-
-- Metro bundler serves without red-screen errors.
-- App launches on the emulator with icon "DungeonFit", version 4.0.0
-  (check `/settings` once inside the app).
-- No uncaught warnings about missing fonts — the splash holds until
-  Unbounded / Inter / DM Mono load.
-
-If the build fails, capture the last 50 lines of output, classify as
-**P0 Build Broken**, and stop. Do not try to patch the build.
-
----
-
-## 2. Fixtures and personas
-
-Three personas. Reset app state between personas via
-**Settings → Apps → DungeonFit → Storage → Clear storage**, then relaunch.
-
-### Persona A: First-time user (clean install)
-
-- Walks the 7-step onboarding: name, goal, experience, schedule days,
-  mobility+cardio sliders (combined step), class affinity preview,
-  confirmation.
-- Completes one dungeon run with at least 3 quests (include one boss).
-- Exits app, relaunches — state must persist.
-
-### Persona B: v3.5.5 → v4.0.0 migration
-
-- Install v3.5.5 first (`git checkout v3.5.5 && npx expo run:android`),
-  complete onboarding, finish 2 sessions, reach Level 3+.
-- Without clearing storage, reinstall v4.0.0
-  (`git checkout v4.0.0 && npx expo run:android`).
-- On relaunch, the profile must migrate: a v4 class is re-derived from
-  history, `mobilityScore` / `cardioMinutes` / `gripScore` default-seed,
-  `freezeTokens` initializes.
-
-### Persona C: Long-history user (seeded)
-
-- From a clean install, complete 10+ sessions spanning 3 weeks (you can
-  fast-forward by manipulating device system time between sessions — note
-  each time-shift in your log).
-- Verify weekly freezeTokens accrual caps at 3.
-- Verify the class-rank consistency decay kicks in after a 7-day gap
-  (check Stats screen rank pill).
-
----
-
-## 3. Screen-by-screen checklist
-
-For each screen: capture a screenshot, compare against design intent,
-record any deviations.
-
-### 3.1 Onboarding (`app/setup.tsx`)
-
-- [ ] 7 steps exactly, in this order: Name → Body → Goal → Arsenal →
-      Strength → Conditioning → Class.
-      (Body = height/weight/age/sex; Arsenal = equipment; Strength = 1RM
-      benchmarks; Conditioning = mobility + cardio sliders; Class = class
-      affinity preview.)
-- [ ] Progress indicator updates on every Next.
-- [ ] Back button preserves entered values.
-- [ ] Class preview step shows an SVG glyph (not an emoji) and a rank
-      letter (C/B/A/S/SS).
-- [ ] Completing setup lands on Home with greeting using the entered name.
-
-### 3.2 Home / Today (`app/(tabs)/index.tsx`)
-
-- [ ] Title: "TODAY'S DUNGEON" section label in violetLight, 2.5
-      letter-spacing, uppercase.
-- [ ] Hero card glows gold; CTA reads "⚔️ Enter the Dungeon"; loading
-      state reads "Summoning Quests…".
-- [ ] Three stat tiles labeled FLOORS / LEVEL / TOTAL XP in uppercase
-      Inter Bold, values in Unbounded Bold gold.
-- [ ] Expedition Log section under hero shows up to 5 recent "Floor N"
-      entries (not "Workout N").
-- [ ] Active-session view: header "FLOOR N", quests list labeled
-      "QUESTS", hint text "Clear every quest to finalize the dungeon run".
-
-### 3.3 Active Quest (`app/active-quest.tsx`)
-
-- [ ] Rank-prefixed difficulty badge ("C · EASY", "B · MEDIUM",
-      "A · HARD", "S · BOSS").
-- [ ] Boss quests render CornerBrackets in gold; non-boss do not.
-- [ ] Logging sets writes through on back-navigation (no data loss).
-
-### 3.4 History (`app/(tabs)/history.tsx`)
-
-- [ ] Title "Expedition Log", subtitle "PAST DUNGEON RUNS".
-- [ ] Calendar heatmap uses gold intensity scale (not blue).
-- [ ] Empty state: "EXPEDITION LOG EMPTY" + "⚔️ Enter the Dungeon" CTA.
-- [ ] ≥7-day gap state: orange-accented card + "⚔️ Return to the
-      Dungeon" CTA.
-- [ ] Session cards expand to show per-quest breakdown with status icons.
-
-### 3.5 Stats (`app/(tabs)/stats.tsx`)
-
-- [ ] 64×64 circular avatar with gold border and gold glow shadow.
-- [ ] Profile line reads `LV.N · <CLASSNAME>` in uppercase, violetLight.
-- [ ] Inactivity pill: orange when >3 days, crimson when ≥7 days.
-- [ ] Lifetime "Floors" tile (not "Workouts").
-- [ ] Lifetime values in 24px Unbounded Bold **gold**.
-
-### 3.6 Muscles (`app/(tabs)/muscles.tsx`)
-
-- [ ] Title "Muscles", subtitle "RECOVERY · ZONES · RANK".
-- [ ] Recovery rows show Fatigued/Recovering/Recovered badges
-      appropriately (train a muscle, check immediately, then time-shift).
-- [ ] Zone cards (Push/Pull/Legs/Core) show average level + segmented
-      gold progress bar + per-muscle level list.
-
-### 3.7 Settings (`app/(tabs)/settings.tsx`)
-
-- [ ] Version shows 4.0.0.
-- [ ] Data export / reset controls still function.
-
-### 3.8 Session Summary modal
-
-- [ ] Eyebrow text: "FLOOR CLEARED" / "RANK UP" / "FLOOR ABANDONED".
-- [ ] Title: "LEVEL N" on level-up, otherwise "Floor N".
-- [ ] CornerBrackets inside modal: gold on level-up, violet otherwise.
-- [ ] Subtitle: "The hunter ascends." (italic).
-- [ ] "NEXT EXPEDITION" section with rest copy.
-
----
-
-## 4. Class system v4 verification
-
-The 16 classes are:
-
-Awakened Novice · Iron Bulwark · Atlas Titan · Gauntlet Duelist · Ironhand
-Crusher · Shadow Archer · Dragonspine · Raven Stalker · Juggernaut · Storm
-Rider · Windrunner · Void Monk · Serpent Dancer · Flame Herald · Paragon ·
-Ascendant.
-
-- [ ] Every class name that appears in the UI exists in that list.
-- [ ] No v3 class names leak through (Berserker, Sentinel, Ranger, etc.).
-- [ ] Each class has a unique hand-coded SVG glyph. Render the Stats
-      avatar and Session Summary with several different classes (via
-      migration fixtures) — no glyph should fall back to emoji.
-- [ ] Rank pill reads one of C / B / A / S / SS.
-
----
-
-## 5. XP and consistency math
-
-Spot-check the formula
-`base × performance × exerciseDifficulty × historicalPerformance ×
-muscleFatigue` at the session summary.
-
-- [ ] A first-ever set of a new exercise yields `historicalPerformance ≈
-      1.0` (no penalty, no bonus).
-- [ ] Hitting reps at the same weight as last session yields
-      `performance ≈ 1.0`.
-- [ ] Exceeding prescribed reps yields XP > base; under-hitting yields
-      XP < base.
-- [ ] After a 7-day inactivity gap, the Stats rank shows a `-5%` tick;
-      after 4 weeks the decay caps at `-20%` and does not increase.
-- [ ] Completing a full training week (per the user's schedule) awards
-      exactly 1 freezeToken. Stacking caps at 3.
-
----
-
-## 6. Migration (Persona B) verification
-
-- [ ] App does not crash on first v4 launch with a v3 profile.
-- [ ] No "undefined is not an object" red-screens tied to missing
-      `mobilityScore` / `cardioMinutes` / `gripScore` / `freezeTokens`.
-- [ ] The assigned v4 class is sensible given the v3 history (e.g. a
-      v3 "Ranger" with high endurance should map to Windrunner or Storm
-      Rider, not Paragon).
-- [ ] Historical sessions remain visible in Expedition Log with correct
-      dates, XP, and quest breakdowns.
-
----
-
-## 7. Copy and tone audit
-
-The v4 voice is high-fantasy dungeon-crawl. Flag any surviving v3-era
-flat copy. Known required strings:
-
-- "Enter the Dungeon"
-- "Summoning Quests…"
-- "Floor N" (never "Workout N" or "Session N")
-- "Expedition Log"
-- "Clear every quest to finalize the dungeon run"
-- "The hunter ascends."
-- "Rest between dungeon runs. Your muscles rebuild stronger in recovery."
-
-Absence of any of these on its intended screen = bug.
-
----
-
-## 8. Performance and stability
-
-- [ ] Cold-start → Home in under 3 seconds on a mid-range emulator
-      (Pixel 5, API 33).
-- [ ] Tab switches feel instant; no visible relayout flash.
-- [ ] Scroll through History with 30+ sessions at 60 fps (no jank).
-- [ ] No memory leaks across 10 minutes of typical use (check Android
-      Studio profiler — RSS should stabilize, not grow linearly).
-- [ ] No Metro bundler warnings about unused reanimated worklets or
-      missing native modules.
-
----
-
-## 9. Automated sanity
-
-Before you start manual testing, confirm baseline:
+Build the release APK and install:
 
 ```bash
-npx tsc --noEmit    # expect only 4 pre-existing errors
-npx jest            # expect 199 / 199 passing
+npx expo run:android --variant release
+# Or: npx eas build --platform android --profile preview (if CI build available)
 ```
-
-Any deviation from these baselines is itself a finding.
 
 ---
 
-## 10. Bug report format
+## STEP 1 — Persona A: Fresh install (new user, golden path)
 
-Produce a single markdown file `qa-findings-v4.0.0.md`. For each issue:
-
+**Reset emulator:**
+```bash
+adb shell pm clear com.dungeonfit
 ```
-### [Severity] <short title>
+Launch the app. Complete onboarding: name "QA", goal Strength, equipment Barbell + Dumbbells + Bench + Pull-up bar + Bodyweight.
 
-- **Screen / flow:** <where>
-- **Persona:** A / B / C
-- **Repro:** numbered steps
-- **Expected:** <what should happen>
-- **Actual:** <what happens>
-- **Evidence:** path to screenshot / video / log
-- **Hypothesis:** optional — where you suspect the bug lives
-  (e.g. `src/lib/character.ts:derivedClassFromMuscles`)
-```
+**Checks — complete in order, screenshot each ★:**
 
-Severity scale:
-
-- **P0 Blocker** — app crashes, data loss, migration failure, build
-  broken.
-- **P1 High** — core flow unusable, visibly wrong class or XP math,
-  missing required copy.
-- **P2 Medium** — visual regressions (wrong color, wrong font, wrong
-  spacing) that a user would notice.
-- **P3 Low** — polish nits, copy typos, inconsistencies that only a
-  careful reviewer would notice.
-
-Group findings by severity in the report. Include an executive summary
-at the top: total counts per severity and a one-sentence verdict
-(`ship` / `ship-with-fixes` / `hold`).
+| ID | Action | Pass condition | ★ |
+|----|--------|---------------|---|
+| A-01 | Home screen after onboarding | `⚔️ Enter the Dungeon` hero button visible; no `🧘 Rest-day Flow` (same-day) | |
+| A-02 | Tap `⚔️ Enter the Dungeon` → inspect quest list | **First 3 quests** have `kind: warmup` (hold-timer style, no weight input). Dot-stepper shows `○ ○ ○ … ○` | ★ |
+| A-03 | Accept warmup quest 1 | `WorkoutTimer` shows a hold-ring countdown; `cue` text is visible | ★ |
+| A-04 | Complete warmup timer naturally | Done-phase shows `✓ Save & Next Quest →` as the primary button; `← Back to list` ghost link also present | |
+| A-05 | Tap `✓ Save & Next Quest →` | Screen swaps in-place to warmup quest 2 — no "back to list" flash | |
+| A-06 | Complete all 3 warmups | Dot-stepper shows 3 filled dots; XP caption updated | |
+| A-07 | Accept first **lift** quest | Set logger renders; primary action button is **≥ 56pt tall** and sits ≥ `inset.bottom + 12pt` above nav bar | ★ |
+| A-08 | Log set 1; let rest timer run past 50% | Full-width `[Next set →]` primary appears **mid-rest** (before 50%: only small "Skip rest →" link) | ★ |
+| A-09 | Tap `[Next set →]`; log set 2 | Advances cleanly; no duplicate state | |
+| A-10 | Log all sets for quest | Done-phase shows `✓ Save & Next Quest →` with safe-area padding matching A-07 | |
+| A-11 | Tap primary 10× at bottom edge | 10/10 registrations — no missed taps | |
+| A-12 | Continue through all remaining lifts | Auto-advance works every time; stepper increments correctly | |
+| A-13 | Accept first **cooldown** quest | Hold-timer style (no weight input), cue visible | |
+| A-14 | On the **last** quest of the session | Primary button reads `✓ Save & Finish Dungeon →` | |
+| A-15 | Tap `✓ Save & Finish Dungeon →` | SessionSummary opens | |
+| A-16 | SessionSummary scroll order | RESULTS → GROWTH → (LAGGARDS if any) → EXERCISES → MUSCLE LEVEL UPS → NEXT DUNGEON | ★ |
+| A-17 | RESULTS block | Shows `mm:ss` elapsed time (non-zero) and a coloured hit-rate % | |
+| A-18 | GROWTH block (first session) | Muted empty-state copy (no PR cards — no prior baseline) | |
+| A-19 | NEXT DUNGEON block | Shows next split name + 2–3 preview exercise names with adaptation copy | ★ |
+| A-20 | Tap `🔔 Remind me tomorrow at 7am` | Toggle flips to "Reminder set" state | |
+| A-21 | Verify notification queued | `adb shell dumpsys notification \| grep -A5 dungeonfit` — `tomorrow-reminder` entry present | |
+| A-22 | Tap toggle again | Toggle flips off; notification cancelled (re-run A-21 dump, entry absent) | |
+| A-23 | Tap Continue | Home shows updated floor count and XP bar | |
+| A-24 | Character tab | `Mobility: N` stat block present under STATS; value > 0 (warmup + cooldown credit) | ★ |
 
 ---
 
-## 11. What you must NOT do
+## STEP 2 — Persona B: Migrated + inactive user
 
-- Do not "fix" bugs you find. Report them.
-- Do not install additional npm packages or modify `package.json`.
-- Do not modify `android/` configuration.
-- Do not change the branch, the version, or any git tag.
-- Do not run `expo export`, `eas build`, or any release command.
-- Do not read or transmit the user's credentials, API keys, or any
-  `.env` file. If you see one, note its existence only.
-- Do not test under a locale or timezone different from the emulator's
-  default unless explicitly instructed — many bugs are timezone-
-  sensitive and you will generate false positives.
+**Setup:**
+1. Install v4.0.2, create a profile, finish 1 session.
+2. `adb shell "date $(date -d '+10 days' +%m%d%H%M%Y.%S)"` (fast-forward clock on rooted emulator).
+3. Install v4.1.0 APK **without** wiping.
+
+| ID | Action | Pass condition | ★ |
+|----|--------|---------------|---|
+| B-01 | Launch app | No crash; Home loads | |
+| B-02 | Home Stats card | `-N%` consistency pill visible and **non-zero** | ★ |
+| B-03 | Hero card shows Rest-day button | `🧘 Rest-day Flow` ghost button alongside `⚔️ Enter the Dungeon` | ★ |
+| B-04 | Inspect persisted profile | `adb exec-out run-as com.dungeonfit cat /data/data/com.dungeonfit/files/ExponentAsyncStorage/dungeon-profile > /tmp/profile.json && cat /tmp/profile.json` → JSON **must not** contain `freezeTokens` field on `character` | |
+| B-05 | Inspect adaptation store | Same technique on `dungeon-adaptations` → JSON has `"swapHistory":{}` and `"version":3` | |
+| B-06 | Tap `🧘 Rest-day Flow` | Session starts with exactly **6** `kind: mobility` quests; each has `holdSeconds` > 0 and a cue | ★ |
+| B-07 | Complete the rest-day flow | SessionSummary renders; `floorsCleared` **unchanged** from B-02 (re-inspect or read Home); `mobilityScore` increased | ★ |
+| B-08 | Complete one lift session | Consistency penalty decreases by one step vs B-02 baseline | |
+| B-09 | `freezesAvailable` in weekly widget | WeeklyGoalWidget shows correct freeze count from `useWeeklyGoalStore` (not undefined) | |
 
 ---
 
-## 12. Hand-off
+## STEP 3 — Persona C: Seeded laggards + swap history
 
-When complete, output:
+**Setup:** push this fixture into AsyncStorage before launching:
 
-1. `qa-findings-v4.0.0.md` (the report).
-2. A `screenshots/` folder of labeled PNGs.
-3. A one-line verdict: `SHIP` / `SHIP WITH FIXES` / `HOLD`.
-4. The exact git SHA and tag you tested against.
+```json
+// dungeon-history: ensure sessions[0] and sessions[1] both have:
+//   growthRecord.laggards = ["chest"]
+// dungeon-adaptations: ensure:
+//   swapHistory["barbell-bench-press"] = [
+//     { toId: "dumbbell-press", sessionId: "s-n-2", swappedAt: "<2-days-ago-ISO>" },
+//     { toId: "dumbbell-press", sessionId: "s-n-1", swappedAt: "<1-day-ago-ISO>" }
+//   ]
+//   version: 3
+// dungeon-profile: preferredSplit = "push_pull_legs"
+```
 
-That is the entire deliverable. Do not edit the repo. Do not open a
-pull request. A human will triage findings and open fix PRs.
+Use: `adb shell run-as com.dungeonfit ...` to write the JSON files, or inject via a test script.
+
+| ID | Action | Pass condition | ★ |
+|----|--------|---------------|---|
+| C-01 | Launch and start a new session (PPL rotation should land on Pull or Legs — NOT chest) | Quest list generated | ★ |
+| C-02 | Inspect quest targetMuscles | At least one `lift` quest targets **chest** (laggard injection, B7) | |
+| C-03 | Find the bench-press equivalent quest | Exercise name shows **Dumbbell Press** (not Barbell Bench Press) — swap promoted after 2-streak (B8) | |
+| C-04 | Open that quest card | Italic rationale reads **`Using your preferred alternative`** (B6) | ★ |
+| C-05 | Tap `⋯ → Swap exercise` on any other quest | Bottom sheet shows **3 ranked rows** with tags (`Same target · same difficulty`, `No equipment needed`, `Easier variation`) + `[I don't have this kit]` + `Browse all alternatives →` | ★ |
+| C-06 | Tap `[I don't have this kit]` on a dumbbell-requiring row | Quest swaps immediately; restart app; inspect profile — `dumbbells` removed from `equipment` array | |
+| C-07 | Open any quest with a prior adaptation | One-line italic adaptation rationale visible (e.g. `+2.5kg — you hit 3×8 cleanly last session`) | |
+| C-08 | Finalize this session | SessionSummary LAGGARDS block appears: `⚠ chest lagged this session — scheduled for next dungeon.` | ★ |
+
+---
+
+## STEP 4 — Edge cases (P0/P1 only)
+
+| ID | Test | Pass condition |
+|----|------|---------------|
+| E-01 | Rapid double-tap `Save & Next Quest →` | Single advance; no duplicate quest mark |
+| E-02 | Force-quit mid-session, reopen | `ResumeSessionCard` appears on Home |
+| E-03 | `bodyweight_only` equipment only | All suggested lifts are bodyweight; warmups/cooldowns still render |
+| E-04 | Floor `n % 5 === 0` (boss floor) | At least one `boss`-difficulty lift quest in the session |
+| E-05 | Deny notification permission; tap reminder toggle | Toggle stays off; no crash |
+| E-06 | Settings → Reset Profile | App returns to onboarding; no stale data |
+
+---
+
+## STEP 5 — Final sign-off commands
+
+Re-run before declaring QA complete:
+
+```bash
+npx tsc --noEmit   # only the 3 pre-existing exerciseDatabase.ts errors
+npx jest --ci      # 15 suites / 248 tests / 0 failures
+```
+
+---
+
+## Artefacts to hand back
+
+Deposit screenshots at: `screenshots/v4.1.0-retest/<persona>-<stepid>.png`
+
+Required minimum set (★-marked steps above):
+- `personaA-quest-list.png` (A-02)
+- `personaA-warmup-timer.png` (A-03)
+- `personaA-set-logger.png` (A-07)
+- `personaA-mid-rest-next-set.png` (A-08)
+- `personaA-session-summary.png` (A-16)
+- `personaA-next-dungeon-block.png` (A-19)
+- `personaA-character-mobility.png` (A-24)
+- `personaB-home-consistency-pill.png` (B-02)
+- `personaB-rest-day-hero.png` (B-03)
+- `personaB-rest-day-session.png` (B-06)
+- `personaB-rest-day-summary.png` (B-07)
+- `personaC-quest-list-laggard.png` (C-01)
+- `personaC-quest-card-rationale.png` (C-04)
+- `personaC-swap-picker.png` (C-05)
+- `personaC-session-summary-laggards.png` (C-08)
+
+Fill in the sign-off when all steps above pass:
+
+**QA Agent sign-off:** _________________   Date: 2026-04-24  
+**P0/P1 bugs found:** (list or "none")  
+**Branch ready to merge:** [ ] Yes  [ ] No — blocked on: ___________________

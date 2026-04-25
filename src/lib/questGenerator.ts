@@ -26,6 +26,12 @@ import {
 } from './exerciseDatabase';
 import { maxDifficultyForLevel, getWeakestMuscles, type MuscleXP } from './muscleXP';
 import type { AdaptationMap } from './adaptationEngine';
+import {
+  pickWarmupDrills,
+  pickCooldownDrills,
+  pickRestDayDrills,
+} from './warmupPicker';
+import type { WarmupExercise } from './warmupDatabase';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +47,12 @@ interface QuestGenInput {
   preferredSplit?: WorkoutSplitType;
   /** Per-exercise progressive overload targets from the adaptation engine. */
   adaptations?: AdaptationMap;
+  /**
+   * v4.1.0 B8 — preferred-swap lookup. If provided, any exercise the generator
+   * would pick is passed through this function; a non-null return replaces it
+   * with the user's learned alternative (and flags a rationale).
+   */
+  getPreferredSwap?: (exerciseId: string) => string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -198,6 +210,35 @@ const XP_REWARDS: Record<QuestDifficulty, number> = {
   boss: 300,
 };
 
+/** v4.1.0 Theme C — flat XP reward for mobility drills. */
+const WARMUP_XP   = 20;
+const COOLDOWN_XP = 15;
+
+/**
+ * Turn a `WarmupExercise` into a `RawQuest`. Reuses the isometric-hold UI in
+ * WorkoutTimer by setting `holdSeconds`, `reps='—'`, and `sets=1`.
+ */
+function warmupToRawQuest(
+  w: WarmupExercise,
+  kind: 'warmup' | 'cooldown' | 'mobility',
+  xp: number,
+): RawQuest {
+  return {
+    exerciseId: w.id,
+    exerciseName: w.name,
+    description: w.cue,
+    targetMuscles: w.targetMuscles,
+    sets: 1,
+    reps: '—',
+    holdSeconds: w.durationSec,
+    restSeconds: 0,
+    difficulty: 'easy',
+    xpReward: xp,
+    kind,
+    cue: w.cue,
+  };
+}
+
 // ─── Dungeon flavour descriptions ────────────────────────────────────────────
 
 const DESCRIPTIONS: Record<QuestDifficulty, string[]> = {
@@ -242,7 +283,7 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
   const {
     equipment, goal, muscleXP, muscleStrengths,
     currentFloor, recentSessions, preferredSplit,
-    adaptations,
+    adaptations, getPreferredSwap,
   } = input;
 
   const isBoss = currentFloor > 0 && currentFloor % 5 === 0;
@@ -258,10 +299,27 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     targetMuscles = getWeakestMuscles(muscleXP, 4);
   }
 
-  // Add weakest muscles for extra priority
-  const weakest = getWeakestMuscles(muscleXP, 2);
-  for (const m of weakest) {
-    if (!targetMuscles.includes(m)) targetMuscles.push(m);
+  // v4.1.0 B7 — laggard-aware injection.
+  // The old behaviour unconditionally injected the 2 weakest muscles every
+  // session, which overrode split intent ("chest day" became "chest + weakest").
+  // Now: if a muscle appeared in either of the last two GrowthRecord.laggards
+  // arrays, promote it into today's session once. If no laggards, respect
+  // the split as-is (honours preferredSplit and lets targeted days mean what
+  // they say). Falls back to the old behaviour only when no history exists,
+  // so fresh users still get attention on their weakest areas.
+  const recentLaggards = new Set<MuscleGroup>();
+  for (const s of recentSessions.slice(0, 2)) {
+    for (const m of s.growthRecord?.laggards ?? []) recentLaggards.add(m);
+  }
+  if (recentLaggards.size > 0) {
+    for (const m of recentLaggards) {
+      if (!targetMuscles.includes(m)) targetMuscles.push(m);
+    }
+  } else if (recentSessions.length === 0) {
+    // Cold start — historical behaviour for first-time users.
+    for (const m of getWeakestMuscles(muscleXP, 2)) {
+      if (!targetMuscles.includes(m)) targetMuscles.push(m);
+    }
   }
 
   const recentNames = getRecentExercises(recentSessions);
@@ -281,11 +339,26 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     const primaryMuscle = targetMuscles[muscleIndex];
 
     // Pick exercise
-    const exercise = pickExerciseForMuscle(
+    const picked = pickExerciseForMuscle(
       primaryMuscle, muscleXP, equipment, recentNames, usedIds,
     );
 
-    if (!exercise) continue; // Skip if nothing available (shouldn't happen)
+    if (!picked) continue; // Skip if nothing available (shouldn't happen)
+
+    // v4.1.0 B8 — honour the user's repeated swap preference. If they've
+    // swapped this exercise to the same alternative in the last N sessions,
+    // the generator auto-picks the alt instead. Swap-learning only fires
+    // when the preferred target is a real, user-doable exercise.
+    let exercise = picked;
+    let usingPreferredSwap = false;
+    if (getPreferredSwap && picked.id) {
+      const preferredId = getPreferredSwap(picked.id);
+      const preferred = preferredId ? EXERCISE_MAP[preferredId] : null;
+      if (preferred && canDoExercise(preferred, equipment) && !usedIds.has(preferred.id)) {
+        exercise = preferred;
+        usingPreferredSwap = true;
+      }
+    }
     usedIds.add(exercise.id);
 
     // Get sets/reps
@@ -311,6 +384,13 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     const holdSeconds = base.holdSeconds;
     const suggestedWeight = adaptation?.overrideWeight;
 
+    // Rationale precedence: preferred-swap label wins over the store copy
+    // because the generator is speaking about *this* slot, not a historical
+    // adaptation of the original exercise.
+    const adaptationCopy = usingPreferredSwap
+      ? 'Using your preferred alternative'
+      : adaptation?.copy;
+
     quests.push({
       exerciseId: exercise.id,
       exerciseName: exercise.name,
@@ -320,13 +400,69 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
       reps,
       ...(holdSeconds !== undefined && { holdSeconds }),
       ...(suggestedWeight !== undefined && { suggestedWeight }),
+      ...(adaptationCopy && { adaptationCopy }),
       restSeconds,
       difficulty: questDifficulty,
       xpReward: XP_REWARDS[questDifficulty],
+      kind: 'lift',
     });
   }
 
-  return quests;
+  // v4.1.0 C1/C2 — bookend the session with mobility blocks.
+  // Derive the final muscle set from the lift quests that were actually
+  // generated so the drills match what the user is about to do (survives
+  // fallback paths where targetMuscles and actual picks diverge).
+  const actualLiftMuscles = new Set<MuscleGroup>();
+  for (const q of quests) {
+    for (const m of q.targetMuscles) actualLiftMuscles.add(m);
+  }
+  const muscleForPicker = actualLiftMuscles.size > 0
+    ? (Array.from(actualLiftMuscles) as MuscleGroup[])
+    : targetMuscles;
+
+  const warmups = pickWarmupDrills(muscleForPicker, 3)
+    .map((w) => warmupToRawQuest(w, 'warmup', WARMUP_XP));
+  const cooldowns = pickCooldownDrills(muscleForPicker, 3)
+    .map((w) => warmupToRawQuest(w, 'cooldown', COOLDOWN_XP));
+
+  return [...warmups, ...quests, ...cooldowns];
+}
+
+// ─── Rest-day mobility flow (v4.1.0 C3) ──────────────────────────────────────
+
+/**
+ * Generate a rest-day mobility session — 5–8 drills weighted toward muscles
+ * trained in the most recent sessions. Awards mobility-only XP; finalize code
+ * (handleFinalize) is responsible for skipping floor increment / PR tracking
+ * for these sessions by checking `quest.kind`.
+ *
+ * @param recentSessions Newest-first history. Muscles from the last session
+ *                       drive picker weighting; fallback to weakest muscles.
+ * @param muscleXP       Fallback signal when history is empty.
+ * @param count          Number of drills (default 6).
+ */
+export function generateRestDayFlow(
+  recentSessions: DungeonSession[],
+  muscleXP: MuscleXP,
+  count: number = 6,
+): RawQuest[] {
+  // Muscles from the most recent (non-empty) session drive picker weighting.
+  let recentMuscles: MuscleGroup[] = [];
+  const last = recentSessions.find((s) => s.quests.some((q) => q.kind !== 'warmup' && q.kind !== 'cooldown' && q.kind !== 'mobility'));
+  if (last) {
+    const set = new Set<MuscleGroup>();
+    for (const q of last.quests) {
+      if (q.kind === 'warmup' || q.kind === 'cooldown' || q.kind === 'mobility') continue;
+      for (const m of q.targetMuscles) set.add(m);
+    }
+    recentMuscles = Array.from(set);
+  }
+  if (recentMuscles.length === 0) {
+    recentMuscles = getWeakestMuscles(muscleXP, 3);
+  }
+
+  return pickRestDayDrills(recentMuscles, count)
+    .map((w) => warmupToRawQuest(w, 'mobility', Math.round(w.durationSec / 2)));
 }
 
 // ─── Exercise swap (progression) ─────────────────────────────────────────────

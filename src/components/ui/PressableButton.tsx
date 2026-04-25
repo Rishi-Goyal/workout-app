@@ -45,6 +45,9 @@ export default function PressableButton({
   const fontSize = size === 'sm' ? 12 : size === 'lg' ? 15 : 13;
   const paddingV = size === 'sm' ? 8 : size === 'lg' ? 15 : 11;
   const paddingH = size === 'sm' ? 14 : size === 'lg' ? 24 : 18;
+  // v4.1.0 A2 — primary CTAs get 56pt min-height (Material guideline) so thumbs
+  // don't miss, plus hitSlop to catch near-edge taps near device gesture bars.
+  const minHeight = size === 'sm' ? 32 : size === 'lg' ? 56 : 44;
 
   // Primary CTA gets a soft gold glow to signal the "key action" in a screen.
   const glowStyle =
@@ -66,6 +69,7 @@ export default function PressableButton({
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
+      hitSlop={{ top: 8, bottom: 16, left: 12, right: 12 }}
       style={({ pressed }) => [
         styles.base,
         {
@@ -74,6 +78,7 @@ export default function PressableButton({
           borderWidth: BORDER[variant] ? 1 : 0,
           paddingVertical: paddingV,
           paddingHorizontal: paddingH,
+          minHeight,
           opacity: pressed || disabled ? 0.55 : 1,
         },
         glowStyle,
