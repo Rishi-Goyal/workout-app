@@ -63,7 +63,7 @@ function inferSecondary(primary: MuscleGroup[]): MuscleGroup[] {
 
 export default function ActiveQuestScreen() {
   const { questId } = useLocalSearchParams<{ questId: string }>();
-  const { activeSession, markQuest } = useSessionStore();
+  const { activeSession, markQuest, swapQuestExercise } = useSessionStore();
   const { profile } = useProfileStore();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
@@ -149,6 +149,17 @@ export default function ActiveQuestScreen() {
       return;
     }
     router.back();
+  }
+
+  // v4.2.0 Theme E — swap the exercise for an easier/harder alternative.
+  function handleSwap(newExerciseId: string) {
+    if (!profile) return;
+    swapQuestExercise(quest!.id, newExerciseId, {
+      bodyWeight: profile.bodyWeight,
+      muscleStrengths: profile.muscleStrengths,
+      equipment: profile.equipment,
+      goal: profile.goal,
+    });
   }
 
   return (
@@ -292,6 +303,8 @@ export default function ActiveQuestScreen() {
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}
                 muscles={quest.targetMuscles as MuscleGroup[]}
+                loggedSetCount={quest.loggedSets?.length ?? 0}
+                onSwap={!isNonLift ? handleSwap : undefined}
               />
             </View>
           )}

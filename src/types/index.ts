@@ -140,6 +140,11 @@ export interface Quest {
   kind?: QuestKind;
   /** v4.1.0 Theme C — short cue string shown on warmup/cooldown/mobility drills. */
   cue?: string;
+  /**
+   * v4.2.0 Theme E — original exerciseId before a mid-session swap.
+   * Set by swapQuestExercise when the user taps an easier/harder alternative.
+   */
+  swappedFromId?: string;
 }
 
 export interface DungeonSession {

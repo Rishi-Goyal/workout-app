@@ -9,11 +9,21 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeModules, Platform } from 'react-native';
-import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog } from '../types';
+import type { DungeonSession, Quest, QuestStatus, RawQuest, SetLog, MuscleGroup, Equipment, FitnessGoal, MuscleStrengths } from '../types';
 import { getXPReward } from '../lib/xp';
 import { calculatePerformanceXP } from '../lib/muscleXP';
+import { EXERCISE_MAP } from '../lib/exerciseDatabase';
+import { getSuggestedWeight } from '../lib/weights';
 
 const WidgetBridge = Platform.OS === 'android' ? NativeModules.WidgetBridge : null;
+
+/** Minimal profile data needed to re-derive suggestedWeight on exercise swap. */
+export interface SwapProfile {
+  bodyWeight?: number;
+  muscleStrengths: MuscleStrengths;
+  equipment: Equipment[];
+  goal: FitnessGoal;
+}
 
 interface SessionStore {
   activeSession: DungeonSession | null;
@@ -25,6 +35,17 @@ interface SessionStore {
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   markQuest: (questId: string, status: QuestStatus, loggedSets?: SetLog[]) => void;
+  /**
+   * v4.2.0 Theme E — swap a quest's exercise mid-session.
+   *
+   * Re-derives targetMuscles, exerciseName, exerciseId, suggestedWeight, and
+   * holdSeconds from the new exercise. Preserves sets / reps / difficulty /
+   * xpReward / adaptationCopy / kind. Records swappedFromId so history can
+   * show what was substituted.
+   *
+   * No-ops silently if questId or newExerciseId isn't found.
+   */
+  swapQuestExercise: (questId: string, newExerciseId: string, profile: SwapProfile) => void;
   finalizeSession: () => DungeonSession | null;
   clearSession: () => void;
   setPendingSetReps: (v: { questId: string; setNumber: number; reps: number }) => void;
@@ -139,6 +160,41 @@ export const useSessionStore = create<SessionStore>()(
 
       setPendingSetReps: (v) => set({ pendingSetReps: v }),
       clearPendingSetReps: () => set({ pendingSetReps: null }),
+
+      swapQuestExercise: (questId, newExerciseId, profile) => {
+        const session = get().activeSession;
+        if (!session) return;
+        const newEx = EXERCISE_MAP[newExerciseId];
+        if (!newEx) return;
+
+        const newTargetMuscles: MuscleGroup[] = [
+          newEx.primaryMuscle,
+          ...newEx.secondaryMuscles,
+        ];
+        const newWeight = getSuggestedWeight(
+          newEx.name,
+          newTargetMuscles,
+          profile.bodyWeight ?? 70,
+          profile.muscleStrengths,
+          profile.equipment,
+          profile.goal,
+        );
+
+        const quests = session.quests.map((q): Quest => {
+          if (q.id !== questId) return q;
+          return {
+            ...q,
+            exerciseId: newEx.id,
+            exerciseName: newEx.name,
+            targetMuscles: newTargetMuscles,
+            suggestedWeight: newWeight,
+            // Carry over holdSeconds only if the new exercise is also static
+            holdSeconds: newEx.isStatic ? (newEx.defaultHoldSeconds ?? q.holdSeconds) : undefined,
+            swappedFromId: q.swappedFromId ?? q.exerciseId,
+          };
+        });
+        set({ activeSession: { ...session, quests } });
+      },
     }),
     {
       name: 'dungeon-session',
