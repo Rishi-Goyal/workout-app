@@ -18,8 +18,7 @@ npx expo run:android --variant release
 
 ## What changed
 
-5 themes shipped via 5 squash-merged PRs (#33–#37). Plan reference:
-[`C:\Users\rishi\.claude\plans\we-need-to-plan-whimsical-manatee.md`](../../../.claude/plans/we-need-to-plan-whimsical-manatee.md).
+5 themes shipped via 5 squash-merged PRs ([#33](https://github.com/Rishi-Goyal/workout-app/pull/33), [#34](https://github.com/Rishi-Goyal/workout-app/pull/34), [#35](https://github.com/Rishi-Goyal/workout-app/pull/35), [#36](https://github.com/Rishi-Goyal/workout-app/pull/36), [#37](https://github.com/Rishi-Goyal/workout-app/pull/37)). Each PR description carries the per-theme plan and acceptance criteria.
 
 | Theme | Headline change | Risk |
 |---|---|---|
