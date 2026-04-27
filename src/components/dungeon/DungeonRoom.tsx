@@ -179,16 +179,18 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: SPACING.gapSm,
-    paddingTop: 4,
+    paddingTop: 6,
   },
   questWrap: {
-    gap: 4,
+    gap: 6,
   },
   roomLabel: {
     fontSize: 10,
     fontFamily: FONTS.sansBold,
     color: COLORS.gold,
     letterSpacing: 1.8,
-    paddingLeft: 2,
+    // Aligned flush with the QuestCard's left edge (no inset) so the eyebrow
+    // reads as a label *for* the card directly below it.
+    paddingLeft: 0,
   },
 });
