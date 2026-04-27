@@ -11,7 +11,7 @@ import PressableButton from '@/components/ui/PressableButton';
 import Badge from '@/components/ui/Badge';
 import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
-import { useProfileStore } from '@/stores/useProfileStore';
+import { useProfileStore, useBeginnerMode } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
@@ -45,6 +45,7 @@ export default function DungeonTabScreen() {
     recoverConsistencyOnSession,
     latestVersion,
   } = useProfileStore();
+  const isBeginnerMode = useBeginnerMode();
   const getRecent = useHistoryStore((s) => s.getRecentSessions);
   const sessions = useHistoryStore((s) => s.sessions);
   const addSession = useHistoryStore((s) => s.addSession);
@@ -448,7 +449,9 @@ export default function DungeonTabScreen() {
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>{getGreeting()}, {profile.name}</Text>
-            <Text style={styles.charName}>{character.class}</Text>
+            <Text style={styles.charName}>
+              {isBeginnerMode ? 'New Hunter' : character.class}
+            </Text>
           </View>
           <Badge label={`Level ${character.level}`} variant="muted" />
         </View>

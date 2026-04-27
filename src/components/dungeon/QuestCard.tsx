@@ -10,9 +10,10 @@ import { COLORS, FONTS, RADIUS } from '@/lib/constants';
 import { swapExercise } from '@/lib/questGenerator';
 import { getSwapSuggestions, type SwapSuggestion } from '@/lib/exerciseSwapper';
 import { EXERCISE_MAP, type Exercise } from '@/lib/exerciseDatabase';
-import { useProfileStore } from '@/stores/useProfileStore';
+import { useProfileStore, useBeginnerMode } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
+import { getCopy } from '@/lib/copy';
 import type { Quest, QuestStatus, Equipment } from '@/types';
 
 interface QuestCardProps {
@@ -21,11 +22,11 @@ interface QuestCardProps {
   disabled?: boolean;
 }
 
-const DIFF_BADGE: Record<Quest['difficulty'], { variant: 'jade' | 'gold' | 'orange' | 'crimson'; label: string }> = {
-  easy:   { variant: 'jade',    label: 'C · EASY' },
-  medium: { variant: 'gold',    label: 'B · MEDIUM' },
-  hard:   { variant: 'orange',  label: 'A · HARD' },
-  boss:   { variant: 'crimson', label: 'S · BOSS' },
+const DIFF_BADGE_VARIANT: Record<Quest['difficulty'], 'jade' | 'gold' | 'orange' | 'crimson'> = {
+  easy:   'jade',
+  medium: 'gold',
+  hard:   'orange',
+  boss:   'crimson',
 };
 
 /** Pretty-print an equipment slug for "I don't have this kit" copy. */
@@ -36,7 +37,15 @@ function formatEquipment(items: Equipment[]): string {
 }
 
 export default function QuestCard({ quest, onAction, disabled }: QuestCardProps) {
-  const diff = DIFF_BADGE[quest.difficulty];
+  const isBeginnerMode = useBeginnerMode();
+  const diffVariant = DIFF_BADGE_VARIANT[quest.difficulty];
+  const diffLabel = getCopy(
+    quest.difficulty === 'easy' ? 'diffEasy'
+    : quest.difficulty === 'medium' ? 'diffMedium'
+    : quest.difficulty === 'hard' ? 'diffHard'
+    : 'diffBoss',
+    isBeginnerMode,
+  );
   const isSkipped = quest.status === 'skipped';
   const { profile, removeEquipment } = useProfileStore();
 
@@ -141,7 +150,7 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
         {/* Row 1: Exercise name + difficulty badge */}
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={2}>{quest.exerciseName}</Text>
-          <Badge label={diff.label} variant={diff.variant} />
+          <Badge label={diffLabel} variant={diffVariant} />
         </View>
 
         {/* Row 2: Sets/reps/weight info */}

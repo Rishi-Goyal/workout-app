@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, Character, MuscleGroup, Equipment } from '../types';
+
+/** v4.2.0 Theme C — three-state beginner mode setting. */
+export type BeginnerMode = 'auto' | 'on' | 'off';
 import type { WorkoutSplitType } from '../lib/exerciseDatabase';
 import { createCharacter, applyLevelUpStats, deriveClass } from '../lib/character';
 import {
@@ -31,11 +34,19 @@ interface ProfileStore {
   character: Character | null;
   muscleXP: MuscleXP;
   preferredSplit: WorkoutSplitType | null;
+  /**
+   * v4.2.0 Theme C — three-way beginner mode.
+   *   'auto'  → beginner when floorsCleared < 5 (default for all users)
+   *   'on'    → always beginner
+   *   'off'   → always advanced (full rank/class UI)
+   */
+  beginnerMode: BeginnerMode;
   // Version checking (transient — not persisted, re-checked each launch)
   latestVersion: string | null;
   checkForUpdate: () => Promise<void>;
   setProfile: (profile: UserProfile) => void;
   setPreferredSplit: (split: WorkoutSplitType | null) => void;
+  setBeginnerMode: (mode: BeginnerMode) => void;
   updateMuscleStrength: (muscle: MuscleGroup, value: number) => void;
   awardXP: (amount: number) => { leveledUp: boolean; levelsGained: number };
   awardMuscleXP: (
@@ -85,6 +96,7 @@ export const useProfileStore = create<ProfileStore>()(
       character: null,
       muscleXP: DEFAULT_MUSCLE_XP,
       preferredSplit: null,
+      beginnerMode: 'auto' as BeginnerMode,
       latestVersion: null,
 
       checkForUpdate: async () => {
@@ -115,6 +127,7 @@ export const useProfileStore = create<ProfileStore>()(
       },
 
       setPreferredSplit: (split) => set({ preferredSplit: split }),
+      setBeginnerMode: (mode) => set({ beginnerMode: mode }),
 
       updateMuscleStrength: (muscle, value) => {
         const p = get().profile;
@@ -232,9 +245,13 @@ export const useProfileStore = create<ProfileStore>()(
     {
       name: 'dungeon-profile',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 6,
+      version: 7,
       migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Record<string, unknown>;
+        // v6 → v7: add beginnerMode (all existing users get 'auto'; the
+        // useBeginnerMode() resolver decides the effective value based on
+        // floorsCleared at runtime — no data transform needed).
+        if (s.beginnerMode === undefined) s.beginnerMode = 'auto';
         if (!s.muscleXP) s.muscleXP = DEFAULT_MUSCLE_XP;
         if (s.character && typeof s.character === 'object') {
           const c = s.character as Record<string, unknown>;
@@ -306,8 +323,26 @@ export const useProfileStore = create<ProfileStore>()(
         character: state.character,
         muscleXP: state.muscleXP,
         preferredSplit: state.preferredSplit,
+        beginnerMode: state.beginnerMode,
         // latestVersion intentionally excluded — re-checked on every launch
       }),
     }
   )
 );
+
+/**
+ * v4.2.0 Theme C — resolves the effective beginner mode boolean.
+ *
+ * Returns true when:
+ *   • beginnerMode === 'on'
+ *   • beginnerMode === 'auto' AND character.floorsCleared < 5
+ *
+ * Use this hook in any component that needs to swap copy or hide advanced UI.
+ * Selecting two separate slices (mode + floorsCleared) lets Zustand skip
+ * re-renders when only unrelated store fields change.
+ */
+export function useBeginnerMode(): boolean {
+  const mode = useProfileStore((s) => s.beginnerMode);
+  const floorsCleared = useProfileStore((s) => s.character?.floorsCleared ?? 0);
+  return mode === 'on' || (mode === 'auto' && floorsCleared < 5);
+}
