@@ -24,6 +24,7 @@ import type { QuestDifficulty } from '../types';
 import { getMuscleFatigue, EXERCISE_MAP } from '../lib/exerciseDatabase';
 import { useAdaptationStore } from './useAdaptationStore';
 import { useWeeklyGoalStore } from './useWeeklyGoalStore';
+import { useTutorialStore } from './useTutorialStore';
 
 interface MuscleXPResult {
   levelUps: Array<{ muscle: MuscleGroup; newLevel: number }>;
@@ -236,10 +237,19 @@ export const useProfileStore = create<ProfileStore>()(
       },
 
       resetProfile: () => {
-        set({ profile: null, character: null, muscleXP: DEFAULT_MUSCLE_XP, preferredSplit: null });
+        set({
+          profile: null,
+          character: null,
+          muscleXP: DEFAULT_MUSCLE_XP,
+          preferredSplit: null,
+          beginnerMode: 'auto',
+        });
         // Clear all dependent stores so no stale data persists after a profile wipe
         useAdaptationStore.getState().clearAllAdaptations();
         useWeeklyGoalStore.getState().resetAll();
+        // v4.2.0 Theme D — re-enable the Floor 1 coach-mark tour for the
+        // re-onboarding user.
+        useTutorialStore.getState().resetTutorial();
       },
     }),
     {

@@ -15,6 +15,7 @@ import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import HoldDrillTimer from '@/components/dungeon/HoldDrillTimer';
+import CoachMark from '@/components/tutorial/CoachMark';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -65,7 +66,7 @@ function inferSecondary(primary: MuscleGroup[]): MuscleGroup[] {
 export default function ActiveQuestScreen() {
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const { activeSession, markQuest, swapQuestExercise } = useSessionStore();
-  const { profile } = useProfileStore();
+  const { profile, character } = useProfileStore();
   const isBeginnerMode = useBeginnerMode();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
@@ -199,6 +200,17 @@ export default function ActiveQuestScreen() {
              updates) never run for mobility drills. The earlier in-component
              early-return left those effects active behind the unmounted
              render — the consumer-level branch fixes it cleanly. */}
+        {/* v4.2.0 Theme D — coach-marks 2 (hold drills) and 3 (lifts) sit
+            above the timer card on Floor 1. They auto-dismiss on tap and
+            self-hide once the user clears their first floor. */}
+        {(() => {
+          const tutorialActive =
+            !!activeSession?.isTutorial && (character?.floorsCleared ?? 0) < 1;
+          if (!tutorialActive) return null;
+          const stepId = isNonLift ? 2 : 3;
+          return <CoachMark stepId={stepId} isVisible anchor="bottom" />;
+        })()}
+
         <View style={styles.timerSection}>
           <SectionLabel>THE QUEST</SectionLabel>
           {isNonLift && quest.holdSeconds && quest.holdSeconds > 0 ? (
@@ -254,6 +266,13 @@ export default function ActiveQuestScreen() {
             />
           )}
         </View>
+
+        {/* v4.2.0 Theme D — coach-mark 4 (rest period) sits between the
+            timer and the XP row, only for lifts on the tutorial floor.
+            It points up at the timer where rest counts down. */}
+        {!isNonLift && !!activeSession?.isTutorial && (character?.floorsCleared ?? 0) < 1 && (
+          <CoachMark stepId={4} isVisible anchor="top" />
+        )}
 
         <View style={styles.xpRow}>
           <Text style={styles.xpLabel}>

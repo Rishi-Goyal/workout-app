@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert, Linking, Pressable } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DungeonRoom from '@/components/dungeon/DungeonRoom';
 import QuestSkeleton from '@/components/dungeon/QuestSkeleton';
+import CoachMark from '@/components/tutorial/CoachMark';
 import { groupQuestsByPhase, PHASE_META } from '@/lib/questPhase';
 import SessionSummary from '@/components/dungeon/SessionSummary';
 import ResumeSessionCard from '@/components/dungeon/ResumeSessionCard';
@@ -16,7 +17,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
 import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
-import { generateQuests, generateRestDayFlow, getDungeonRoutineInfo } from '@/lib/questGenerator';
+import { generateQuests, generateRestDayFlow, generateTutorialFloor, getDungeonRoutineInfo } from '@/lib/questGenerator';
 import { daysSince } from '@/lib/dateUtils';
 import { xpToNextLevel } from '@/lib/xp';
 import { computeGrowth } from '@/lib/growthTracker';
@@ -131,25 +132,31 @@ export default function DungeonTabScreen() {
     setLoading(true);
     setError(null);
     try {
-      const rawQuests = generateQuests({
-        equipment: profile.equipment,
-        goal: profile.goal,
-        muscleXP,
-        muscleStrengths: profile.muscleStrengths,
-        currentFloor,
-        recentSessions: getRecent(3),
-        adaptations: useAdaptationStore.getState().adaptations,
-        preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
-        // v4.1.0 B8 — let the generator auto-substitute repeated-swap alternatives
-        getPreferredSwap: (id) => useAdaptationStore.getState().getPreferredSwap(id),
-      });
+      // v4.2.0 Theme D — first-ever dungeon (floor 0) gets a scripted
+      // tutorial floor. Coach-marks fire on the home + active-quest screens
+      // for as long as `session.isTutorial && floorsCleared < 1`.
+      const isTutorial = (character.floorsCleared ?? 0) === 0;
+      const rawQuests = isTutorial
+        ? generateTutorialFloor(profile.equipment)
+        : generateQuests({
+            equipment: profile.equipment,
+            goal: profile.goal,
+            muscleXP,
+            muscleStrengths: profile.muscleStrengths,
+            currentFloor,
+            recentSessions: getRecent(3),
+            adaptations: useAdaptationStore.getState().adaptations,
+            preferredSplit: useProfileStore.getState().preferredSplit ?? undefined,
+            // v4.1.0 B8 — let the generator auto-substitute repeated-swap alternatives
+            getPreferredSwap: (id) => useAdaptationStore.getState().getPreferredSwap(id),
+          });
 
       if (rawQuests.length === 0) {
         Alert.alert('No quests available', 'Try adding more equipment to unlock exercises.');
         return;
       }
 
-      startSession(currentFloor, rawQuests);
+      startSession(currentFloor, rawQuests, isTutorial);
     } catch {
       Alert.alert('Quest generation failed', 'Something went wrong preparing your quests.');
       setError('Failed to generate quests');
@@ -368,7 +375,14 @@ export default function DungeonTabScreen() {
           {/* v4.2.0 Theme A — quests rendered as three rooms instead of a flat
               list. Mobs and Recovery default collapsed; Mini-Bosses default
               expanded with one labelled room per lift. The hidden /dungeon
-              tab uses the same component; this is the user-facing entry. */}
+              tab uses the same component; this is the user-facing entry.
+              Theme D — coach-mark step 1 sits above the room list while the
+              user is on their tutorial run AND hasn't cleared a floor yet. */}
+          <CoachMark
+            stepId={1}
+            isVisible={!!activeSession?.isTutorial && (character.floorsCleared ?? 0) < 1}
+            anchor="bottom"
+          />
           <View style={styles.questList}>
             {isLoading || !activeSession ? (
               <><QuestSkeleton /><QuestSkeleton /><QuestSkeleton /></>
@@ -405,12 +419,19 @@ export default function DungeonTabScreen() {
           </View>
 
           {activeSession && allActioned && (
-            <PressableButton
-              label={`Finish & Save [+${estimatedXP} XP] →`}
-              size="lg"
-              style={styles.finalizeBtn}
-              onPress={handleFinalize}
-            />
+            <>
+              <CoachMark
+                stepId={5}
+                isVisible={!!activeSession.isTutorial && (character.floorsCleared ?? 0) < 1}
+                anchor="bottom"
+              />
+              <PressableButton
+                label={`Finish & Save [+${estimatedXP} XP] →`}
+                size="lg"
+                style={styles.finalizeBtn}
+                onPress={handleFinalize}
+              />
+            </>
           )}
 
           {activeSession && !allActioned && (
