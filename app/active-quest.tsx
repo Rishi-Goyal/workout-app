@@ -14,6 +14,7 @@ import ExerciseGif from '@/components/dungeon/ExerciseGif';
 import ExerciseVideo from '@/components/dungeon/ExerciseVideo';
 import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
+import HoldDrillTimer from '@/components/dungeon/HoldDrillTimer';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -170,36 +171,66 @@ export default function ActiveQuestScreen() {
           </Text>
         </View>
 
-        {/* ── Timer first — primary action is always above the fold ── */}
+        {/* ── Timer first — primary action is always above the fold.
+             v4.2.0 Theme A — non-lifts mount <HoldDrillTimer/> directly so
+             <WorkoutTimer/>'s hooks (intervals, notifications, widget
+             updates) never run for mobility drills. The earlier in-component
+             early-return left those effects active behind the unmounted
+             render — the consumer-level branch fixes it cleanly. */}
         <View style={styles.timerSection}>
           <SectionLabel>THE QUEST</SectionLabel>
-          <WorkoutTimer
-            sets={quest.sets}
-            reps={quest.reps}
-            holdSeconds={quest.holdSeconds}
-            restSeconds={quest.restSeconds}
-            suggestedWeight={suggestedWeight}
-            weightUnit={weightUnit}
-            lastSessionLog={lastSessionLog}
-            baseXP={quest.xpReward}
-            exerciseName={quest.exerciseName}
-            questId={quest.id}
-            completeLabel={completeLabel}
-            kind={quest.kind}
-            cue={quest.cue}
-            onBackToList={() => router.back()}
-            onComplete={logs => handleMark('complete', logs)}
-            onSkip={() =>
-              Alert.alert(
-                'Skip Quest?',
-                "You won't earn any XP for this quest.",
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Skip', style: 'destructive', onPress: () => handleMark('skipped') },
-                ],
-              )
-            }
-          />
+          {isNonLift && quest.holdSeconds && quest.holdSeconds > 0 ? (
+            <HoldDrillTimer
+              sets={quest.sets}
+              holdSeconds={quest.holdSeconds}
+              restSeconds={quest.restSeconds}
+              baseXP={quest.xpReward}
+              exerciseName={quest.exerciseName}
+              questId={quest.id}
+              cue={quest.cue}
+              completeLabel={completeLabel}
+              onBackToList={() => router.back()}
+              onComplete={logs => handleMark('complete', logs)}
+              onSkip={() =>
+                Alert.alert(
+                  'Skip Drill?',
+                  "You won't earn any XP for this drill.",
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Skip', style: 'destructive', onPress: () => handleMark('skipped') },
+                  ],
+                )
+              }
+            />
+          ) : (
+            <WorkoutTimer
+              sets={quest.sets}
+              reps={quest.reps}
+              holdSeconds={quest.holdSeconds}
+              restSeconds={quest.restSeconds}
+              suggestedWeight={suggestedWeight}
+              weightUnit={weightUnit}
+              lastSessionLog={lastSessionLog}
+              baseXP={quest.xpReward}
+              exerciseName={quest.exerciseName}
+              questId={quest.id}
+              completeLabel={completeLabel}
+              kind={quest.kind}
+              cue={quest.cue}
+              onBackToList={() => router.back()}
+              onComplete={logs => handleMark('complete', logs)}
+              onSkip={() =>
+                Alert.alert(
+                  'Skip Quest?',
+                  "You won't earn any XP for this quest.",
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Skip', style: 'destructive', onPress: () => handleMark('skipped') },
+                  ],
+                )
+              }
+            />
+          )}
         </View>
 
         <View style={styles.xpRow}>
