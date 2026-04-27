@@ -1,11 +1,17 @@
 /**
- * InstructionsPanel — numbered steps, form cues, and equipment for an exercise.
- * The video tutorial lives in the Video tab; this panel is steps + cues only.
+ * InstructionsPanel — exercise guide pane for the active-quest screen.
+ *
+ * v4.2.0 Theme E additions:
+ *   - Top-pinned "⚠️ Watch Out" red-accent card listing common mistakes
+ *   - ProgressionSwapRow — ↓ Easier / ↑ Harder pill buttons at the bottom
+ *
+ * Render order: mistakes → form cues → step-by-step → swap row
  */
-import { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { COLORS } from '@/lib/constants';
+import { memo, useCallback } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
+import { getMistakes } from '@/lib/exerciseMistakes';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
 import FormCueChecklist from '@/components/dungeon/FormCueChecklist';
 import type { MuscleGroup, Equipment } from '@/types';
@@ -41,16 +47,167 @@ const EQUIPMENT_ICONS: Record<Equipment, string> = {
   bodyweight_only:  '🧍',
 };
 
+// ---------------------------------------------------------------------------
+// ProgressionSwapRow
+// ---------------------------------------------------------------------------
+
+interface ProgressionSwapRowProps {
+  easierExerciseId: string | null;
+  harderExerciseId: string | null;
+  /** Number of sets already logged for the current quest. */
+  loggedSetCount: number;
+  onSwap: (newExerciseId: string) => void;
+}
+
+function ProgressionSwapRow({
+  easierExerciseId,
+  harderExerciseId,
+  loggedSetCount,
+  onSwap,
+}: ProgressionSwapRowProps) {
+  const easierEx = easierExerciseId ? EXERCISE_MAP[easierExerciseId] : null;
+  const harderEx = harderExerciseId ? EXERCISE_MAP[harderExerciseId] : null;
+
+  const requestSwap = useCallback(
+    (newId: string, label: string) => {
+      if (loggedSetCount > 0) {
+        Alert.alert(
+          'Swap exercise?',
+          `You've already logged ${loggedSetCount} set${loggedSetCount !== 1 ? 's' : ''}. Swapping to "${label}" will keep your set count but reset your weight suggestion.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Swap anyway', style: 'destructive', onPress: () => onSwap(newId) },
+          ],
+        );
+      } else {
+        onSwap(newId);
+      }
+    },
+    [loggedSetCount, onSwap],
+  );
+
+  if (!easierEx && !harderEx) return null;
+
+  return (
+    <View style={swapStyles.container}>
+      <Text style={swapStyles.label}>SWAP EXERCISE</Text>
+      <View style={swapStyles.row}>
+        {easierEx && (
+          <Pressable
+            style={({ pressed }) => [swapStyles.pill, swapStyles.easierPill, pressed && swapStyles.pillPressed]}
+            onPress={() => requestSwap(easierEx.id, easierEx.name)}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch to easier exercise: ${easierEx.name}`}
+          >
+            <Text style={swapStyles.pillArrow}>↓</Text>
+            <View style={swapStyles.pillText}>
+              <Text style={[swapStyles.pillDirection, swapStyles.easierText]}>EASIER</Text>
+              <Text style={swapStyles.pillName} numberOfLines={1}>{easierEx.name}</Text>
+            </View>
+          </Pressable>
+        )}
+        {harderEx && (
+          <Pressable
+            style={({ pressed }) => [swapStyles.pill, swapStyles.harderPill, pressed && swapStyles.pillPressed]}
+            onPress={() => requestSwap(harderEx.id, harderEx.name)}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch to harder exercise: ${harderEx.name}`}
+          >
+            <Text style={swapStyles.pillArrow}>↑</Text>
+            <View style={swapStyles.pillText}>
+              <Text style={[swapStyles.pillDirection, swapStyles.harderText]}>HARDER</Text>
+              <Text style={swapStyles.pillName} numberOfLines={1}>{harderEx.name}</Text>
+            </View>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const swapStyles = StyleSheet.create({
+  container: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    letterSpacing: 2,
+    fontFamily: FONTS.sansBold,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: RADIUS.button,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  easierPill: {
+    backgroundColor: 'rgba(16,185,129,0.07)',
+    borderColor: 'rgba(16,185,129,0.35)',
+  },
+  harderPill: {
+    backgroundColor: 'rgba(245,166,35,0.07)',
+    borderColor: 'rgba(245,166,35,0.35)',
+  },
+  pillPressed: {
+    opacity: 0.65,
+  },
+  pillArrow: {
+    fontSize: 18,
+    color: COLORS.textSecondary,
+    width: 18,
+    textAlign: 'center',
+  },
+  pillText: {
+    flex: 1,
+    gap: 1,
+  },
+  pillDirection: {
+    fontSize: 9,
+    fontFamily: FONTS.sansBold,
+    letterSpacing: 1.5,
+  },
+  easierText: {
+    color: COLORS.jade,
+  },
+  harderText: {
+    color: COLORS.gold,
+  },
+  pillName: {
+    fontSize: 12,
+    fontFamily: FONTS.sansMed,
+    color: COLORS.text,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// InstructionsPanel
+// ---------------------------------------------------------------------------
+
 interface InstructionsPanelProps {
   exerciseId: string;
   exerciseName: string;
   muscles: MuscleGroup[];
+  /** Number of sets already logged — gates the swap confirm dialog. */
+  loggedSetCount?: number;
+  /** Called when user taps an easier/harder swap pill and confirms. */
+  onSwap?: (newExerciseId: string) => void;
 }
 
 function InstructionsPanel({
   exerciseId,
   exerciseName,
   muscles,
+  loggedSetCount = 0,
+  onSwap,
 }: InstructionsPanelProps) {
   const exercise = EXERCISE_MAP[exerciseId];
   const type = inferExerciseType(exerciseName, muscles);
@@ -59,6 +216,11 @@ function InstructionsPanel({
   const steps = exercise?.steps ?? exercise?.formCues ?? [];
   const formCues = exercise?.formCues ?? [];
   const equipment = exercise?.equipment ?? [];
+  const mistakes = getMistakes(exerciseId, exercise?.primaryMuscle ?? muscles[0] ?? 'chest');
+
+  const easierExerciseId = exercise?.progression?.easierExerciseId ?? null;
+  const harderExerciseId = exercise?.progression?.harderExerciseId ?? null;
+  const showSwapRow = onSwap && (easierExerciseId || harderExerciseId);
 
   return (
     <View style={styles.container}>
@@ -84,6 +246,32 @@ function InstructionsPanel({
         </View>
       )}
 
+      {/* ⚠️ Watch Out — common mistakes */}
+      {mistakes.length > 0 && (
+        <View style={styles.mistakesCard}>
+          <View style={styles.mistakesHeader}>
+            <Text style={styles.mistakesIcon}>⚠️</Text>
+            <Text style={styles.mistakesTitle}>WATCH OUT</Text>
+          </View>
+          <View style={styles.mistakesList}>
+            {mistakes.map((m, i) => (
+              <View key={i} style={styles.mistakeRow}>
+                <View style={styles.mistakeBullet} />
+                <Text style={styles.mistakeText}>{m}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Form cue checklist — interactive, tap each cue to check it off during a set */}
+      {formCues.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>FORM CHECKLIST — tap to check off</Text>
+          <FormCueChecklist cues={formCues} accentColor={color} />
+        </View>
+      )}
+
       {/* Step-by-step instructions */}
       {steps.length > 0 && (
         <View style={styles.section}>
@@ -101,12 +289,14 @@ function InstructionsPanel({
         </View>
       )}
 
-      {/* Form cue checklist — interactive, tap each cue to check it off during a set */}
-      {formCues.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>FORM CHECKLIST — tap to check off</Text>
-          <FormCueChecklist cues={formCues} accentColor={color} />
-        </View>
+      {/* Easier / harder swap row */}
+      {showSwapRow && (
+        <ProgressionSwapRow
+          easierExerciseId={easierExerciseId}
+          harderExerciseId={harderExerciseId}
+          loggedSetCount={loggedSetCount}
+          onSwap={onSwap}
+        />
       )}
 
     </View>
@@ -138,7 +328,7 @@ const styles = StyleSheet.create({
   typeText: {
     fontSize: 10,
     letterSpacing: 1.5,
-    fontWeight: '700',
+    fontFamily: FONTS.sansBold,
   },
   equipRow: {
     gap: 8,
@@ -147,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
     letterSpacing: 2,
-    fontWeight: '700',
+    fontFamily: FONTS.sansBold,
     marginBottom: 2,
   },
   equipChips: {
@@ -173,6 +363,53 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textSecondary,
     textTransform: 'capitalize',
+    fontFamily: FONTS.sans,
+  },
+  // Watch Out card
+  mistakesCard: {
+    backgroundColor: 'rgba(229,62,62,0.07)',
+    borderRadius: RADIUS.card,
+    borderWidth: 1,
+    borderColor: 'rgba(229,62,62,0.30)',
+    padding: 14,
+    gap: 10,
+  },
+  mistakesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mistakesIcon: {
+    fontSize: 14,
+  },
+  mistakesTitle: {
+    fontSize: 10,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.crimson,
+    letterSpacing: 2,
+  },
+  mistakesList: {
+    gap: 8,
+  },
+  mistakeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  mistakeBullet: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.crimson,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+  mistakeText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: FONTS.sans,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
   section: {
     gap: 10,
@@ -197,11 +434,12 @@ const styles = StyleSheet.create({
   },
   stepNum: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: FONTS.sansBold,
   },
   stepText: {
     flex: 1,
     fontSize: 13,
+    fontFamily: FONTS.sans,
     color: COLORS.text,
     lineHeight: 20,
   },
