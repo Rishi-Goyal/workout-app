@@ -1,13 +1,61 @@
 /**
- * Exercise GIF service — fetches animated GIFs from ExerciseDB API (free, no auth).
- * Falls back to Free Exercise DB static images on GitHub CDN.
+ * Exercise GIF service — local-first asset lookup with remote fallback.
+ *
+ * v4.2.0 Theme B: every exercise we have a CDN URL for is now bundled into
+ * the APK at curation time (scripts/curateExerciseGifs.js writes them to
+ * assets/exercises/, scripts/generateLocalGifManifest.js exports the
+ * Metro require map). `resolveGif(exerciseId)` is the single entry point —
+ * local wins; remote (`fetchExerciseGif`) is the fallback for anything we
+ * couldn't curate.
  *
  * ExerciseDB API: https://exercisedb-api.vercel.app
  * Free Exercise DB images: https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/
  */
+import { LOCAL_GIF_MANIFEST } from './localGifManifest';
 
 const EXERCISEDB_BASE = 'https://exercisedb-api.vercel.app/api/v1';
 const FREE_DB_BASE    = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
+
+/**
+ * Local manifest accessor. The manifest itself can be empty if the user
+ * hasn't run the curation script yet — that's fine, callers fall through
+ * to the remote fetch path.
+ */
+export type ResolvedGif =
+  | { source: 'local'; value: number }   // Metro asset module
+  | { source: 'remote'; value: string }  // URL string
+  | null;
+
+/**
+ * Look up the bundled GIF for an exerciseId. Returns null if no asset is
+ * bundled — caller is expected to follow up with `fetchExerciseGif(name)`.
+ *
+ * Pure synchronous lookup; no network, no async. Safe to call in render.
+ */
+export function resolveGif(exerciseId: string | undefined): ResolvedGif {
+  if (!exerciseId) return null;
+  const local = LOCAL_GIF_MANIFEST[exerciseId];
+  if (local !== undefined) {
+    return { source: 'local', value: local };
+  }
+  return null;
+}
+
+/** Top-N most-used exercise IDs — driver for the boot-time warmup pass. */
+export const WARMUP_EXERCISE_IDS: readonly string[] = [
+  'push-up',
+  'barbell-back-squat',
+  'deadlift',
+  'barbell-bench-press',
+  'pull-up',
+  'plank',
+  'dumbbell-row',
+  'romanian-deadlift',
+  'bodyweight-squat',
+  'glute-bridge',
+  'lunge',
+  'barbell-overhead-press',
+];
 
 interface ExerciseDBResult {
   exerciseId: string;

@@ -321,6 +321,7 @@ export default function ActiveQuestScreen() {
           {(tab === 'guide' || isNonLift) && (
             <View style={styles.guideTabContent}>
               <ExerciseGif
+                exerciseId={quest.exerciseId}
                 animationUrl={exerciseEntry?.animationUrl}
                 exerciseName={quest.exerciseName}
               />

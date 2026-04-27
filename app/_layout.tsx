@@ -10,6 +10,11 @@ import { Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-f
 import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useSessionStore } from '@/stores/useSessionStore';
+// v4.2.0 Theme B — eagerly import the local GIF manifest at app boot. This
+// triggers Metro to register all 91 bundled exercise assets up front so the
+// first <ExerciseGif/> render is instant (no module-resolution lag inside
+// the active-quest screen). The module export itself isn't used here.
+import '@/lib/localGifManifest';
 import {
   setupWorkoutChannel,
   setupRestAlertChannel,
