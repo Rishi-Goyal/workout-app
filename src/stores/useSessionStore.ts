@@ -146,6 +146,24 @@ export const useSessionStore = create<SessionStore>()(
       version: 1,
       // Only persist the active session — transient flags always reset
       partialize: (state) => ({ activeSession: state.activeSession }),
+      // v4.2.0 Theme A — pre-v4.1.0 sessions stored mid-upgrade have no
+      // `kind` on their quests. Backfill 'lift' so the dungeon-room grouping
+      // doesn't drop them and the routing branch in WorkoutTimer falls
+      // through to the lift UI as it always has.
+      onRehydrateStorage: () => (state) => {
+        if (!state?.activeSession) return;
+        let mutated = false;
+        const quests = state.activeSession.quests.map((q) => {
+          if (q.kind === undefined) {
+            mutated = true;
+            return { ...q, kind: 'lift' as const };
+          }
+          return q;
+        });
+        if (mutated) {
+          state.activeSession = { ...state.activeSession, quests };
+        }
+      },
     },
   ),
 );

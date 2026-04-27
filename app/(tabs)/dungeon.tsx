@@ -2,9 +2,10 @@ import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import QuestCard from '@/components/dungeon/QuestCard';
+import DungeonRoom from '@/components/dungeon/DungeonRoom';
 import QuestSkeleton from '@/components/dungeon/QuestSkeleton';
 import SessionSummary from '@/components/dungeon/SessionSummary';
+import { groupQuestsByPhase, PHASE_META } from '@/lib/questPhase';
 import PressableButton from '@/components/ui/PressableButton';
 import Badge from '@/components/ui/Badge';
 import { useSessionStore } from '@/stores/useSessionStore';
@@ -157,7 +158,8 @@ export default function DungeonScreen() {
           )}
         </View>
 
-        {/* Quest cards or skeletons */}
+        {/* Quest cards or skeletons — v4.2.0 Theme A renders three "rooms"
+            (Mobs / Mini-Bosses / Recovery Camp) instead of a flat list. */}
         <View style={styles.questList}>
           {isLoading || !activeSession ? (
             <>
@@ -166,9 +168,34 @@ export default function DungeonScreen() {
               <QuestSkeleton />
             </>
           ) : (
-            activeSession.quests.map((quest) => (
-              <QuestCard key={quest.id} quest={quest} onAction={handleQuestAction} />
-            ))
+            (() => {
+              const groups = groupQuestsByPhase(activeSession.quests);
+              return (
+                <>
+                  <DungeonRoom
+                    phase="mob"
+                    title={PHASE_META.mob.title}
+                    icon={PHASE_META.mob.icon}
+                    quests={groups.mob}
+                    onAction={handleQuestAction}
+                  />
+                  <DungeonRoom
+                    phase="miniboss"
+                    title={PHASE_META.miniboss.title}
+                    icon={PHASE_META.miniboss.icon}
+                    quests={groups.miniboss}
+                    onAction={handleQuestAction}
+                  />
+                  <DungeonRoom
+                    phase="recovery"
+                    title={PHASE_META.recovery.title}
+                    icon={PHASE_META.recovery.icon}
+                    quests={groups.recovery}
+                    onAction={handleQuestAction}
+                  />
+                </>
+              );
+            })()
           )}
         </View>
 

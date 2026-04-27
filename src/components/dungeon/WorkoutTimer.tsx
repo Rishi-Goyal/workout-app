@@ -186,9 +186,12 @@ export default function WorkoutTimer({
   kind,
   cue,
 }: WorkoutTimerProps) {
-  // Warmup / cooldown / mobility quests are load-free and timer-enforced.
-  // They skip the "Start Hold" gate, hide the weight selector, and lock the
-  // completion button until the countdown fires.
+  // v4.2.0 Theme A — non-lift quests render <HoldDrillTimer/> directly at
+  // the consumer level (app/active-quest.tsx). WorkoutTimer is now only
+  // mounted for lifts, so `isNonLift` is always false in practice; the
+  // remaining checks are defensive (e.g. if some future caller still
+  // passes kind='warmup', the lift UI will gracefully degrade rather than
+  // explode). Don't rely on these branches for new behavior.
   const isNonLift = kind === 'warmup' || kind === 'cooldown' || kind === 'mobility';
 
   const recommendedReps              = parseInt(reps, 10) || 0;
