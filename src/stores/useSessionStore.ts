@@ -31,7 +31,13 @@ interface SessionStore {
   error: string | null;
   /** Reps logged from a background notification while the app was backgrounded. Not persisted. */
   pendingSetReps: { questId: string; setNumber: number; reps: number } | null;
-  startSession: (floor: number, rawQuests: RawQuest[]) => void;
+  /**
+   * @param isTutorial v4.2.0 Theme D — set true when the caller has detected
+   * a brand-new user (`character.floorsCleared === 0`) and seeded `rawQuests`
+   * via `generateTutorialFloor`. The flag is persisted on the session and
+   * gates coach-mark visibility downstream.
+   */
+  startSession: (floor: number, rawQuests: RawQuest[], isTutorial?: boolean) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   markQuest: (questId: string, status: QuestStatus, loggedSets?: SetLog[]) => void;
@@ -69,7 +75,7 @@ export const useSessionStore = create<SessionStore>()(
       error: null,
       pendingSetReps: null,
 
-      startSession: (floor, rawQuests) => {
+      startSession: (floor, rawQuests, isTutorial) => {
         set({
           activeSession: {
             id: `session-${Date.now()}`,
@@ -78,6 +84,7 @@ export const useSessionStore = create<SessionStore>()(
             status: 'active',
             totalXPEarned: 0,
             startedAt: new Date().toISOString(),
+            ...(isTutorial && { isTutorial: true }),
           },
           error: null,
         });
@@ -199,7 +206,10 @@ export const useSessionStore = create<SessionStore>()(
     {
       name: 'dungeon-session',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      // v2 (v4.2.0): added optional Quest.swappedFromId (Theme E) and
+      // optional DungeonSession.isTutorial (Theme D). Both fields are
+      // optional so v1-persisted sessions hydrate cleanly with no transform.
+      version: 2,
       // Only persist the active session — transient flags always reset
       partialize: (state) => ({ activeSession: state.activeSession }),
       // v4.2.0 Theme A — pre-v4.1.0 sessions stored mid-upgrade have no

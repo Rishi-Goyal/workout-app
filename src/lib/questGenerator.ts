@@ -32,6 +32,7 @@ import {
   pickRestDayDrills,
 } from './warmupPicker';
 import type { WarmupExercise } from './warmupDatabase';
+import { WARMUP_MAP } from './warmupDatabase';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -426,6 +427,85 @@ export function generateQuests(input: QuestGenInput): RawQuest[] {
     .map((w) => warmupToRawQuest(w, 'cooldown', COOLDOWN_XP));
 
   return [...warmups, ...quests, ...cooldowns];
+}
+
+// ─── Tutorial floor (v4.2.0 D1) ─────────────────────────────────────────────
+
+/**
+ * Tutorial-floor lift fallback chain — ordered easiest → hardest.
+ * The first one whose required equipment the user has wins. Wall push-up
+ * works for everyone (bodyweight_only is universal); if that's somehow
+ * filtered out we fall through bodyweight squat → glute bridge → push-up.
+ */
+const TUTORIAL_LIFT_FALLBACKS = [
+  'wall-push-up',
+  'bodyweight-squat',
+  'glute-bridge',
+  'push-up',
+] as const;
+
+function pickTutorialLift(equipment: Equipment[]): Exercise {
+  const hasBodyweight = equipment.includes('bodyweight_only') || equipment.length === 0;
+  for (const id of TUTORIAL_LIFT_FALLBACKS) {
+    const ex = EXERCISE_MAP[id];
+    if (!ex) continue;
+    // All four fallbacks are bodyweight; this guard is defensive.
+    if (ex.equipment.includes('bodyweight_only') && (hasBodyweight || ex.equipment.length === 1)) {
+      return ex;
+    }
+  }
+  // Last-resort fallback: any push-up. EXERCISE_MAP['push-up'] is guaranteed
+  // by the database — but assert only if absolutely missing to prevent crashes.
+  const fallback = EXERCISE_MAP['push-up'] ?? ALL_EXERCISES[0];
+  return fallback;
+}
+
+/**
+ * v4.2.0 Theme D — Floor 1 tutorial dungeon.
+ *
+ * Generates a 4-quest scripted floor:
+ *   1. Cat-Cow (warmup, dynamic mobility — gentlest possible opener)
+ *   2. Arm Circles (warmup, full upper-body activation)
+ *   3. One easy bodyweight lift (wall push-up by default; falls back through
+ *      a curated chain gated by user equipment)
+ *   4. Child's Pose (cooldown stretch — calm finish)
+ *
+ * Deliberately short and hand-curated so first-time users see all five
+ * coach-mark steps without slogging through a full session. After Floor 1
+ * the gates lift and `generateQuests` takes over from Floor 2 onward.
+ *
+ * Pure: no store reads, no recent-history dependencies. Safe to run inside
+ * `startSession` without ordering concerns.
+ */
+export function generateTutorialFloor(equipment: Equipment[]): RawQuest[] {
+  const warmups: RawQuest[] = [];
+
+  const catCow = WARMUP_MAP['wu-cat-cow'];
+  const armCircles = WARMUP_MAP['wu-arm-circles'];
+  if (catCow) warmups.push(warmupToRawQuest(catCow, 'warmup', WARMUP_XP));
+  if (armCircles) warmups.push(warmupToRawQuest(armCircles, 'warmup', WARMUP_XP));
+
+  // The lift — keep it dead simple: 2 sets of 8 reps, 60s rest.
+  const lift = pickTutorialLift(equipment);
+  const liftQuest: RawQuest = {
+    exerciseId: lift.id,
+    exerciseName: lift.name,
+    description: 'Your first dungeon room — go slow, focus on form.',
+    targetMuscles: [lift.primaryMuscle, ...lift.secondaryMuscles],
+    sets: 2,
+    reps: '8',
+    restSeconds: 60,
+    difficulty: 'easy',
+    xpReward: XP_REWARDS.easy,
+    kind: 'lift',
+  };
+
+  // Cooldown — Child's Pose is universally calming and easy to demo.
+  const cooldown: RawQuest[] = [];
+  const childsPose = WARMUP_MAP['wu-childs-pose'];
+  if (childsPose) cooldown.push(warmupToRawQuest(childsPose, 'cooldown', COOLDOWN_XP));
+
+  return [...warmups, liftQuest, ...cooldown];
 }
 
 // ─── Rest-day mobility flow (v4.1.0 C3) ──────────────────────────────────────
