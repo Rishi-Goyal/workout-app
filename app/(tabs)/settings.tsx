@@ -7,7 +7,8 @@ import Card from '@/components/ui/Card';
 import SectionLabel from '@/components/ui/SectionLabel';
 import PressableButton from '@/components/ui/PressableButton';
 import MuscleStrengthSliders from '@/components/setup/MuscleStrengthSliders';
-import { useProfileStore } from '@/stores/useProfileStore';
+import { useProfileStore, useBeginnerMode, type BeginnerMode } from '@/stores/useProfileStore';
+import { getCopy } from '@/lib/copy';
 import { useHistoryStore } from '@/stores/useHistoryStore';
 import { useAdaptationStore } from '@/stores/useAdaptationStore';
 import { useWeeklyGoalStore } from '@/stores/useWeeklyGoalStore';
@@ -34,6 +35,9 @@ export default function SettingsScreen() {
   const muscleXP = useProfileStore((s) => s.muscleXP);
   const preferredSplit = useProfileStore((s) => s.preferredSplit);
   const setPreferredSplit = useProfileStore((s) => s.setPreferredSplit);
+  const beginnerMode = useProfileStore((s) => s.beginnerMode);
+  const setBeginnerMode = useProfileStore((s) => s.setBeginnerMode);
+  const isBeginnerResolved = useBeginnerMode();
   const updateMuscleStrength = useProfileStore((s) => s.updateMuscleStrength);
   const resetProfile = useProfileStore((s) => s.resetProfile);
   const sessions = useHistoryStore((s) => s.sessions);
@@ -106,6 +110,43 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
           </View>
+        </Card>
+
+        {/* ── EXPERIENCE MODE ──────────────────────────────────────── */}
+        <Card padding={16}>
+          <SectionLabel>EXPERIENCE MODE</SectionLabel>
+          <Text style={styles.fieldHint}>{getCopy('beginnerModeHint', false)}</Text>
+          <View style={styles.segmentedControl}>
+            {(['auto', 'on', 'off'] as BeginnerMode[]).map((mode) => {
+              const label = mode === 'auto'
+                ? getCopy('beginnerModeAuto', false)
+                : mode === 'on'
+                  ? getCopy('beginnerModeOn', false)
+                  : getCopy('beginnerModeOff', false);
+              const active = beginnerMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => setBeginnerMode(mode)}
+                  style={[styles.segmentedOption, active && styles.segmentedOptionActive]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  accessibilityLabel={`Experience mode: ${label}`}
+                >
+                  <Text style={[styles.segmentedText, active && styles.segmentedTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {beginnerMode === 'auto' && (
+            <Text style={styles.segmentedHint}>
+              Currently resolved to: <Text style={{ color: isBeginnerResolved ? COLORS.jade : COLORS.gold }}>
+                {isBeginnerResolved ? 'Beginner' : 'Advanced'}
+              </Text>
+            </Text>
+          )}
         </Card>
 
         {/* ── TRAINING ─────────────────────────────────────────────── */}
@@ -297,6 +338,42 @@ const styles = StyleSheet.create({
   stepperBtnDisabled: { opacity: 0.3 },
   stepperBtnText: { fontSize: 18, color: COLORS.text, fontFamily: FONTS.sansBold },
   stepperValue: { fontSize: 20, fontFamily: FONTS.mono, color: COLORS.gold, minWidth: 24, textAlign: 'center', letterSpacing: 0.5 },
+
+  // Experience mode segmented control
+  segmentedControl: {
+    flexDirection: 'row',
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  segmentedOption: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentedOptionActive: {
+    backgroundColor: COLORS.violet,
+  },
+  segmentedText: {
+    fontSize: 12,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.textMuted,
+    letterSpacing: 1.2,
+  },
+  segmentedTextActive: {
+    color: COLORS.text,
+  },
+  segmentedHint: {
+    fontSize: 11,
+    fontFamily: FONTS.sans,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 2,
+  },
 
   // Training section
   fieldLabel: { fontSize: 14, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },

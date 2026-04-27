@@ -20,19 +20,20 @@ import PressableButton from '@/components/ui/PressableButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 
 import { useSessionStore } from '@/stores/useSessionStore';
-import { useProfileStore } from '@/stores/useProfileStore';
+import { useProfileStore, useBeginnerMode } from '@/stores/useProfileStore';
 import { useHistoryStore } from '@/stores/useHistoryStore';
+import { getCopy } from '@/lib/copy';
 import { getSuggestedWeight } from '@/lib/weights';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
 import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 import { showWorkoutNotification, dismissWorkoutNotification } from '@/lib/workoutNotification';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
 
-const DIFF_BADGE = {
-  easy:   { variant: 'jade'    as const, label: 'C · EASY' },
-  medium: { variant: 'gold'    as const, label: 'B · MEDIUM' },
-  hard:   { variant: 'orange'  as const, label: 'A · HARD' },
-  boss:   { variant: 'crimson' as const, label: 'S · BOSS' },
+const DIFF_BADGE_VARIANT = {
+  easy:   'jade'    as const,
+  medium: 'gold'    as const,
+  hard:   'orange'  as const,
+  boss:   'crimson' as const,
 };
 
 // v4.2.0 Theme A — non-lift quests don't have a rank; show their phase instead.
@@ -65,6 +66,7 @@ export default function ActiveQuestScreen() {
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const { activeSession, markQuest, swapQuestExercise } = useSessionStore();
   const { profile } = useProfileStore();
+  const isBeginnerMode = useBeginnerMode();
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
   const [tab, setTab] = useState<'guide' | 'muscles'>('guide');
@@ -113,7 +115,16 @@ export default function ActiveQuestScreen() {
     quest.kind === 'warmup' || quest.kind === 'cooldown' || quest.kind === 'mobility';
   const headerBadge = isNonLift
     ? PHASE_BADGE[quest.kind as 'warmup' | 'cooldown' | 'mobility']
-    : DIFF_BADGE[quest.difficulty];
+    : {
+        variant: DIFF_BADGE_VARIANT[quest.difficulty],
+        label: getCopy(
+          quest.difficulty === 'easy' ? 'diffEasy'
+          : quest.difficulty === 'medium' ? 'diffMedium'
+          : quest.difficulty === 'hard' ? 'diffHard'
+          : 'diffBoss',
+          isBeginnerMode,
+        ),
+      };
 
   // ── Persistent workout notification ────────────────────────────────────────
   useEffect(() => {
