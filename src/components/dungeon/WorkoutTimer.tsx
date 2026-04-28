@@ -52,6 +52,15 @@ interface WorkoutTimerProps {
   onComplete: (loggedSets: SetLog[]) => void;
   onSkip: () => void;
   /**
+   * v4.2.0 hotfix — fires whenever the in-progress logged-set count changes.
+   * Lets the parent (ActiveQuestScreen) gate Theme E's progression-swap
+   * confirm dialog on a *live* count rather than `quest.loggedSets`, which
+   * is only populated at quest finalization (onComplete). Without this,
+   * mid-quest swaps after logging set 1 silently mutate the quest with no
+   * confirmation prompt.
+   */
+  onLoggedSetsChange?: (count: number) => void;
+  /**
    * v4.1.0 A1 — label on the primary done-phase button. Active-quest passes
    * "✓ Save & Next Quest →" mid-session and "✓ Save & Finish Dungeon →" on
    * the last quest; falls back to "✓ Accept & Save" if omitted.
@@ -181,6 +190,7 @@ export default function WorkoutTimer({
   exerciseName,
   questId,
   onComplete, onSkip,
+  onLoggedSetsChange,
   completeLabel,
   onBackToList,
   kind,
@@ -370,6 +380,14 @@ export default function WorkoutTimer({
     if (phase === 'active') setHoldStarted(isNonLift);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSet]);
+
+  // v4.2.0 hotfix — surface the live logged-set count to the parent so
+  // Theme E's mid-quest progression-swap can gate its confirm dialog on
+  // the count *as the user is logging*, not on the persisted quest.loggedSets
+  // (which is only written at quest finalization).
+  useEffect(() => {
+    onLoggedSetsChange?.(loggedSets.length);
+  }, [loggedSets.length, onLoggedSetsChange]);
 
   useEffect(() => {
     if (phase === 'active') {
