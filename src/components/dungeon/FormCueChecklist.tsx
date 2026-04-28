@@ -3,8 +3,15 @@
  *
  * State is local and intentionally not persisted: the list resets each time the
  * user navigates to a new exercise, which is the correct behaviour.
+ *
+ * v4.2.0 hotfix — each cue row is now its own <CueRow/> component so the
+ * parent calls a fixed number of hooks regardless of cue count. The
+ * previous version called `useSharedValue` and `useAnimatedStyle` inside
+ * `cues.map(...)`, which crashed with "Should have a queue. You are
+ * likely calling Hooks conditionally" the moment Theme E's mid-quest
+ * progression-swap changed the underlying exercise's cue count.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -19,32 +26,90 @@ interface FormCueChecklistProps {
   accentColor: string;
 }
 
+// ---------------------------------------------------------------------------
+// CueRow — owns its own animation state. One instance per cue.
+// Hook count is fixed (1 useSharedValue + 1 useAnimatedStyle + 1 useEffect),
+// so changes to the parent's `cues` array length never violate rules of hooks.
+// ---------------------------------------------------------------------------
+
+interface CueRowProps {
+  cue: string;
+  isChecked: boolean;
+  accentColor: string;
+  onPress: () => void;
+}
+
+function CueRow({ cue, isChecked, accentColor, onPress }: CueRowProps) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  // Spring pop on the false → true transition. Skip the initial-mount fire.
+  useEffect(() => {
+    if (!isChecked) return;
+    scale.value = withSpring(1.08, { damping: 6, stiffness: 300 }, () => {
+      scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+    });
+  }, [isChecked, scale]);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.cueRow, pressed && styles.cueRowPressed]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isChecked }}
+      accessibilityLabel={cue}
+    >
+      <Animated.View style={animStyle}>
+        <View
+          style={[
+            styles.checkbox,
+            isChecked
+              ? { backgroundColor: accentColor, borderColor: accentColor }
+              : { borderColor: accentColor + '60' },
+          ]}
+        >
+          {isChecked && <Text style={styles.checkmark}>✓</Text>}
+        </View>
+      </Animated.View>
+
+      <Text
+        style={[styles.cueText, isChecked && styles.cueTextChecked]}
+        numberOfLines={2}
+      >
+        {cue}
+      </Text>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FormCueChecklist
+// ---------------------------------------------------------------------------
+
 export default function FormCueChecklist({ cues, accentColor }: FormCueChecklistProps) {
-  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [checked, setChecked] = useState<Set<string>>(new Set());
 
-  // One shared value per cue for the spring pop animation on check.
-  // useRef ensures stable allocation across re-renders without violating rules of hooks.
-  const scales = useRef(cues.map(() => useSharedValue(1))).current;
+  // v4.2.0 — reset checked-state when the cue list itself changes (e.g. the
+  // user swaps the active quest's exercise). Otherwise stale checks from the
+  // previous exercise carry over by index/text and look weird. Keying off
+  // the joined cue text gives a stable identity that survives re-orderings.
+  const cueKey = cues.join('|');
+  useEffect(() => {
+    setChecked(new Set());
+  }, [cueKey]);
 
-  function toggle(index: number) {
-    const next = new Set(checked);
-    const isChecking = !next.has(index);
-
-    if (isChecking) {
-      next.add(index);
-      // Spring pop: scale up then snap back
-      scales[index].value = withSpring(1.08, { damping: 6, stiffness: 300 }, () => {
-        scales[index].value = withSpring(1, { damping: 12, stiffness: 200 });
-      });
-    } else {
-      next.delete(index);
-    }
-    setChecked(next);
+  function toggle(cue: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(cue)) next.delete(cue);
+      else next.add(cue);
+      return next;
+    });
   }
 
   const total = cues.length;
   const doneCount = checked.size;
-  const allDone = doneCount === total;
+  const allDone = total > 0 && doneCount === total;
 
   return (
     <View style={styles.container}>
@@ -55,7 +120,7 @@ export default function FormCueChecklist({ cues, accentColor }: FormCueChecklist
             style={[
               styles.progressFill,
               {
-                width: `${(doneCount / total) * 100}%`,
+                width: total > 0 ? `${(doneCount / total) * 100}%` : '0%',
                 backgroundColor: allDone ? COLORS.jade : accentColor,
               },
             ]}
@@ -66,46 +131,18 @@ export default function FormCueChecklist({ cues, accentColor }: FormCueChecklist
         </Text>
       </View>
 
-      {/* Cue rows */}
-      {cues.map((cue, i) => {
-        const isChecked = checked.has(i);
-        // eslint-disable-next-line react-hooks/rules-of-hooks -- stable array length
-        const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scales[i].value }] }));
-
-        return (
-          <Pressable
-            key={i}
-            onPress={() => toggle(i)}
-            style={({ pressed }) => [styles.cueRow, pressed && styles.cueRowPressed]}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: isChecked }}
-            accessibilityLabel={cue}
-          >
-            <Animated.View style={animStyle}>
-              <View
-                style={[
-                  styles.checkbox,
-                  isChecked
-                    ? { backgroundColor: accentColor, borderColor: accentColor }
-                    : { borderColor: accentColor + '60' },
-                ]}
-              >
-                {isChecked && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-            </Animated.View>
-
-            <Text
-              style={[
-                styles.cueText,
-                isChecked && styles.cueTextChecked,
-              ]}
-              numberOfLines={2}
-            >
-              {cue}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {/* Cue rows — one CueRow component per cue. Hook count per child is
+          fixed; total parent hook count is also fixed, so this is safe under
+          dynamic-length cue arrays (mid-quest progression swaps). */}
+      {cues.map((cue) => (
+        <CueRow
+          key={cue}
+          cue={cue}
+          isChecked={checked.has(cue)}
+          accentColor={accentColor}
+          onPress={() => toggle(cue)}
+        />
+      ))}
     </View>
   );
 }
