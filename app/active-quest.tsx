@@ -71,7 +71,16 @@ export default function ActiveQuestScreen() {
   const getLastExerciseLog = useHistoryStore(s => s.getLastExerciseLog);
   const quest = activeSession?.quests.find(q => q.id === questId);
   const [tab, setTab] = useState<'guide' | 'muscles'>('guide');
+  // v4.2.0 hotfix — live logged-set count from the timer, lifted up so the
+  // progression-swap confirm dialog gates correctly during a quest. Reset on
+  // quest navigation so a new quest starts at 0 even if the user just
+  // logged sets on the previous one.
+  const [inProgressSetCount, setInProgressSetCount] = useState(0);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    setInProgressSetCount(0);
+  }, [questId]);
 
   if (!quest) {
     return (
@@ -253,6 +262,7 @@ export default function ActiveQuestScreen() {
               cue={quest.cue}
               onBackToList={() => router.back()}
               onComplete={logs => handleMark('complete', logs)}
+              onLoggedSetsChange={setInProgressSetCount}
               onSkip={() =>
                 Alert.alert(
                   'Skip Quest?',
@@ -334,7 +344,14 @@ export default function ActiveQuestScreen() {
                 exerciseId={quest.exerciseId ?? ''}
                 exerciseName={quest.exerciseName}
                 muscles={quest.targetMuscles as MuscleGroup[]}
-                loggedSetCount={quest.loggedSets?.length ?? 0}
+                // Use the live in-progress count (from WorkoutTimer's local
+                // state, lifted via onLoggedSetsChange) when the user is
+                // mid-quest. quest.loggedSets is only populated at finalize
+                // — falling back to it covers any rehydrate edge case.
+                loggedSetCount={Math.max(
+                  inProgressSetCount,
+                  quest.loggedSets?.length ?? 0,
+                )}
                 onSwap={!isNonLift ? handleSwap : undefined}
               />
             </View>
