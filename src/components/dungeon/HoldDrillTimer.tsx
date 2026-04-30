@@ -12,7 +12,7 @@
  * The "Done" CTA is disabled until the hold timer completes for the current set.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, AppState } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import PressableButton from '@/components/ui/PressableButton';
@@ -139,6 +139,20 @@ export default function HoldDrillTimer({
     },
     [],
   );
+
+  // v4.2.1 — auto-pause when the app goes to background. Handles the
+  // "user accidentally swipes away" / "user takes a phone call" case so
+  // the rest countdown doesn't tick away while they're not looking. We
+  // intentionally do NOT auto-resume on foreground — the user manually
+  // taps Resume when they're actually ready to continue.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        setPaused(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── Mark the current set done ─────────────────────────────────────────────
   const markSetDone = useCallback(() => {

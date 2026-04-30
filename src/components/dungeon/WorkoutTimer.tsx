@@ -5,7 +5,7 @@
  * States: idle → active → resting → done
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -422,6 +422,21 @@ export default function WorkoutTimer({
   }, [phase, currentSet, holdStarted, holdSeconds, pulse]);
 
   useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); dismissSessionNotif(); }, []);
+
+  // v4.2.1 — auto-pause when the app goes to background. Handles the
+  // "user accidentally swipes away" / "phone call" case so the rest
+  // (or hold) countdown doesn't tick down while they're not looking.
+  // We intentionally do NOT auto-resume on foreground — the user manually
+  // taps Resume when they're actually ready, which is the safer default
+  // for the "I came back later than expected" path.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        setPaused(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Pre-fill reps logged via a background notification (user typed reps while app was closed).
   const pendingSetReps = useSessionStore(s => s.pendingSetReps);
