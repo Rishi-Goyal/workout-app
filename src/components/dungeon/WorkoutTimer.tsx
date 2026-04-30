@@ -228,6 +228,13 @@ export default function WorkoutTimer({
   const [lastSetBonus, setLastSetBonus] = useState(0);
   // Track set numbers the user explicitly skipped (logged as 0 reps)
   const [skippedSets, setSkippedSets] = useState<Set<number>>(new Set());
+  // v4.2.1 — pause/resume gate. Each setInterval callback short-circuits
+  // when `pausedRef.current` is true, freezing the displayed countdown
+  // without re-creating the interval. The mirror-ref pattern keeps
+  // setInterval closures from reading stale state.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const extraHoldRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -283,9 +290,11 @@ export default function WorkoutTimer({
     } else {
       setPhase('resting');
       setRestLeft(restSeconds);
+      setPaused(false);
       let r = restSeconds;
       clearTimer();
       intervalRef.current = setInterval(() => {
+        if (pausedRef.current) return;
         r -= 1;
         setRestLeft(r);
         if (r <= 0) {
@@ -305,10 +314,12 @@ export default function WorkoutTimer({
     setHoldLeft(holdSeconds);
     setHoldComplete(false);
     setExtraHoldSec(0);
+    setPaused(false);
     holdElapsedRef.current = 0;
     let remaining = holdSeconds;
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       holdElapsedRef.current += 1;
       setHoldLeft(remaining);
@@ -317,6 +328,7 @@ export default function WorkoutTimer({
         setHoldComplete(true);
         let extra = 0;
         extraHoldRef.current = setInterval(() => {
+          if (pausedRef.current) return;
           extra += 1;
           setExtraHoldSec(extra);
         }, 1000);
@@ -350,8 +362,10 @@ export default function WorkoutTimer({
     }
 
     let remaining = restSeconds;
+    setPaused(false);
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       setRestLeft(remaining);
       if (remaining <= 0) {
@@ -580,8 +594,10 @@ export default function WorkoutTimer({
         } else {
           setPhase('resting');
           setRestLeft(restSeconds);
+          setPaused(false);
           let r = restSeconds;
           intervalRef.current = setInterval(() => {
+            if (pausedRef.current) return;
             r -= 1;
             setRestLeft(r);
             if (r <= 0) {
@@ -650,8 +666,10 @@ export default function WorkoutTimer({
               } else {
                 setPhase('resting');
                 setRestLeft(restSeconds);
+                setPaused(false);
                 let r = restSeconds;
                 intervalRef.current = setInterval(() => {
+                  if (pausedRef.current) return;
                   r -= 1;
                   setRestLeft(r);
                   if (r <= 0) {
@@ -665,6 +683,21 @@ export default function WorkoutTimer({
             }}
             style={styles.mainBtn}
           />
+          {/* v4.2.1 — pause hold countdown (and the bonus extra-time tally
+              after holdComplete). Hidden once the lift quest's "Release"
+              CTA is the only forward action, since for ergonomic
+              isometrics holding through a paused state isn't meaningful —
+              but extra-hold bonus accrual benefits from pausing if the
+              user gets interrupted. */}
+          {!isNonLift && (
+            <PressableButton
+              label={paused ? '▶ Resume' : '❚❚ Pause'}
+              variant="ghost"
+              size="sm"
+              onPress={() => setPaused((p) => !p)}
+              style={styles.pauseBtn}
+            />
+          )}
           <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
         </View>
       );
@@ -768,7 +801,7 @@ export default function WorkoutTimer({
 
     return (
       <View style={styles.container}>
-        <Text style={styles.setCounter}>REST</Text>
+        <Text style={styles.setCounter}>REST{paused ? ' · PAUSED' : ''}</Text>
 
         {/* What just happened */}
         {lastLog && (
@@ -791,7 +824,20 @@ export default function WorkoutTimer({
           </View>
         </View>
 
-        <Text style={styles.subtitle}>Next: Set {currentSet + 1} of {sets}</Text>
+        <Text style={styles.subtitle}>
+          {paused ? 'Timer paused — resume when ready' : `Next: Set ${currentSet + 1} of ${sets}`}
+        </Text>
+
+        {/* v4.2.1 — pause/resume rest countdown. Sits above the next-set CTAs
+            so it stays accessible whether the half-elapsed promotion has
+            happened yet or not. */}
+        <PressableButton
+          label={paused ? '▶ Resume' : '❚❚ Pause'}
+          variant="ghost"
+          size="sm"
+          onPress={() => setPaused((p) => !p)}
+          style={styles.pauseBtn}
+        />
 
         {/* v4.1.0 A5 — once the user is rested enough (≥ 50% of prescribed rest
             elapsed), promote "next set" to a full-width primary. Early skip
@@ -1017,6 +1063,9 @@ const styles = StyleSheet.create({
   dotActive:    { backgroundColor: COLORS.gold, transform: [{ scale: 1.35 }] },
 
   mainBtn:      { minWidth: 220 },
+  // v4.2.1 — pause/resume button shown during hold + rest countdowns.
+  // Quiet ghost variant; sits between the primary CTA and the "Skip" link.
+  pauseBtn:     { marginTop: 4 },
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
 
   // Isometric hold
