@@ -107,6 +107,7 @@ function fetchJson(url) {
 // ---------------------------------------------------------------------------
 
 const MANUAL_OVERRIDES = {
+  // ── EXDB-prefixed entries (no JDLV path → fuzzy needs help) ───────────────
   'push-up': 'Pushups',
   'pull-up': 'Pullups',
   'wide-push-up': 'Push-Up_Wide',
@@ -120,12 +121,43 @@ const MANUAL_OVERRIDES = {
   'cable-chest-fly': 'Cable_Crossover',
   'dumbbell-fly': 'Dumbbell_Flyes',
   'lat-pulldown': 'Wide-Grip_Lat_Pulldown',
-  'weighted-dip': 'Weighted_Bench_Dip',
-  // No good free-exercise-db analog — intentionally omitted:
-  //   'wall-push-up'    — too beginner; closest is plain Pushups
-  //   'archer-push-up'  — no archer variant in catalogue
-  //   'dead-hang'       — no isometric dead-hang in catalogue
+
+  // ── v4.4.0 P1 fixes — direct JDLV mapping pointed at the wrong variant ──
+  // QA flagged these as actively wrong instructions (e.g. pike push-up
+  // showing "hang from a pull-up bar" because JDLV mapped it to "Hanging
+  // Pike"). Override with the semantically-equivalent free-exercise-db
+  // entry, or DROP entirely if no acceptable analog exists.
+  'deadlift':                 'Barbell_Deadlift',                       // was: Deadlift_with_Bands
+  'lateral-raise':            'Side_Lateral_Raise',                     // was: Cable_Seated_Lateral_Raise
+  'reverse-fly':              'Reverse_Flyes',                          // was: Cable_Rear_Delt_Fly
+  'overhead-tricep-extension':'Overhead_Triceps',                       // was: Cable_Rope_Overhead_Triceps_Extension (we want the bodyweight extension)
+  'weighted-dip':             'Dips_-_Triceps_Version',                 // was: Weighted_Bench_Dip (different exercise)
+  'lunge':                    'Bodyweight_Walking_Lunge',               // was: Lunge_Pass_Through (kettlebell)
+  'walking-lunge':            'Bodyweight_Walking_Lunge',               // was: Barbell_Walking_Lunge
+  'step-up':                  'Step-up_with_Knee_Raise',                // was: Barbell_Step_Ups
+  'glute-bridge':             'Bent-Knee_Hip_Raise',                    // was: Barbell_Glute_Bridge (we want bodyweight bilateral)
+  'ab-wheel-rollout':         'Ab_Roller',                              // was: Barbell_Ab_Rollout
+  'standing-ab-wheel':        'Ab_Roller',                              // was: Barbell_Ab_Rollout
+  'leg-press-calf-raise':     'Calf_Press_On_The_Leg_Press_Machine',    // was: Leg_Press (different exercise)
 };
+
+// Explicit drops — these exerciseIds have NO acceptable free-exercise-db
+// analog. Without an override, fuzzy matching would point at a different
+// movement pattern (e.g. pike-push-up → Hanging Pike). Better to hide the
+// Watch Out / Form Tips card entirely than ship guidance for a different
+// exercise. Curated mistakes (exerciseMistakes.ts) still apply for any of
+// these that have hand-written entries.
+const MANUAL_DROPS = new Set([
+  'arnold-press',          // free-ex-db only has Kettlebell_Arnold_Press; we want dumbbell
+  'pike-push-up',          // closest is "Hanging Pike" — different movement
+  'elevated-pike-push-up', // same — no analog
+  'upright-row',           // only band / smith-machine variants; we want barbell upright row
+  'skull-crusher',         // only "Decline Close-Grip Bench To Skull Crusher" combo movement
+  'tricep-pushdown-band',  // catalogue only has cable pushdowns; bands are functionally different
+  'resistance-band-curl',  // no clean band-only curl in catalogue
+  'single-leg-rdl',        // no single-leg variant; matching plain RDL would be misleading
+  'sissy-squat',           // only Weighted_Sissy_Squat exists; beginner sissy squat is bodyweight
+]);
 
 // ---------------------------------------------------------------------------
 // 3. Fuzzy name match for the EXDB-mapped entries
@@ -170,10 +202,16 @@ async function main() {
   const misses = [];
 
   for (const ourId of ourIds.sort()) {
+    // Honour explicit drops — exercises where any auto-match would be
+    // semantically wrong. Skip resolution entirely.
+    if (MANUAL_DROPS.has(ourId)) continue;
+
     let entry = null;
     let how = '';
     // 1. Manual override (highest priority — covers EXDB-mapped exercises
-    //    whose canonical free-exercise-db ID isn't reachable via fuzzy match).
+    //    whose canonical free-exercise-db ID isn't reachable via fuzzy match,
+    //    plus P1 corrections for direct-JDLV mappings that pointed at the
+    //    wrong variant).
     if (MANUAL_OVERRIDES[ourId] && fdbById.has(MANUAL_OVERRIDES[ourId])) {
       entry = fdbById.get(MANUAL_OVERRIDES[ourId]);
       how = 'override';
@@ -230,9 +268,10 @@ async function main() {
     ' * Watch Out / Form-cues card so the panel never repeats the same',
     ' * generic muscle copy across multiple exercises in a session.',
     ' *',
-    ' * Coverage: see EXERCISE_DB_COVERAGE_NOTE for the latest curation result.',
-    ' * Misses fall back to curated content (exerciseMistakes.ts) or omit the',
-    ' * card entirely.',
+    ' * Coverage is tracked in scripts/curateExerciseDBData.js — exerciseIds',
+    ' * with no acceptable analog in the catalogue (see MANUAL_DROPS) are',
+    ' * intentionally omitted so the panel hides rather than ship instructions',
+    ' * for a different exercise (P1 lesson from PR #44 QA).',
     ' */',
     '',
     'export interface ExerciseDBEntry {',
@@ -252,7 +291,10 @@ async function main() {
     '  mechanic: string | null;',
     '}',
     '',
-    `// Generated ${new Date().toISOString()} from ${Object.keys(out).length}/${ourIds.length} matches.`,
+    // Note: deliberately no timestamp — the file is byte-stable across runs
+    // when the upstream catalogue is unchanged, so re-running this script
+    // produces no spurious diffs (P2 fix from PR #44 review).
+    `// Generated from ${Object.keys(out).length}/${ourIds.length} matches.`,
     '',
     'export const EXERCISE_DB_DATA: Record<string, ExerciseDBEntry> = {',
   ];
