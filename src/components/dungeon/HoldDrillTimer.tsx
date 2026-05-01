@@ -12,7 +12,7 @@
  * The "Done" CTA is disabled until the hold timer completes for the current set.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, AppState } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import PressableButton from '@/components/ui/PressableButton';
@@ -92,6 +92,13 @@ export default function HoldDrillTimer({
   const [restLeft, setRestLeft] = useState(restSeconds);
   const [holdComplete, setHoldComplete] = useState(false);
   const [logs, setLogs] = useState<SetLog[]>([]);
+  // v4.2.1 — pause/resume gate. When `paused` is true, the active interval
+  // skips its tick instead of decrementing. We mirror to a ref so the
+  // closures captured by setInterval read the latest value (state itself
+  // would be stale-closure'd for the lifetime of the interval).
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -104,9 +111,11 @@ export default function HoldDrillTimer({
   const startHoldCountdown = useCallback(() => {
     setHoldLeft(holdSeconds);
     setHoldComplete(false);
+    setPaused(false);
     let remaining = holdSeconds;
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       setHoldLeft(remaining);
       if (remaining <= 0) {
@@ -131,6 +140,20 @@ export default function HoldDrillTimer({
     [],
   );
 
+  // v4.2.1 — auto-pause when the app goes to background. Handles the
+  // "user accidentally swipes away" / "user takes a phone call" case so
+  // the rest countdown doesn't tick away while they're not looking. We
+  // intentionally do NOT auto-resume on foreground — the user manually
+  // taps Resume when they're actually ready to continue.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        setPaused(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   // ── Mark the current set done ─────────────────────────────────────────────
   const markSetDone = useCallback(() => {
     if (!holdComplete) return;
@@ -154,6 +177,7 @@ export default function HoldDrillTimer({
     // Otherwise → rest, then auto-advance
     setPhase('resting');
     setRestLeft(restSeconds);
+    setPaused(false);
     showRestingNotif(
       exerciseName,
       `Set ${currentSet} of ${sets} done`,
@@ -174,6 +198,7 @@ export default function HoldDrillTimer({
     let remaining = restSeconds;
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       setRestLeft(remaining);
       if (remaining <= 0) {
@@ -235,7 +260,9 @@ export default function HoldDrillTimer({
   if (phase === 'resting') {
     return (
       <Animated.View entering={FadeIn.duration(200)} style={styles.container}>
-        <Text style={styles.eyebrow}>REST · SET {currentSet} OF {sets}</Text>
+        <Text style={styles.eyebrow}>
+          REST · SET {currentSet} OF {sets}{paused ? ' · PAUSED' : ''}
+        </Text>
         <View style={styles.ringWrap}>
           <HoldRing progress={1 - restLeft / restSeconds} />
           <View style={styles.ringText}>
@@ -243,7 +270,16 @@ export default function HoldDrillTimer({
             <Text style={styles.ringUnit}>SECONDS</Text>
           </View>
         </View>
-        <Text style={styles.subText}>Breathe. The next set starts automatically.</Text>
+        <Text style={styles.subText}>
+          {paused ? 'Timer paused. Resume when you\'re ready.' : 'Breathe. The next set starts automatically.'}
+        </Text>
+        <PressableButton
+          label={paused ? '▶ Resume' : '❚❚ Pause'}
+          variant="ghost"
+          size="sm"
+          onPress={() => setPaused((p) => !p)}
+          style={styles.secondaryCta}
+        />
         <PressableButton
           label="Skip rest →"
           variant="ghost"
@@ -258,7 +294,9 @@ export default function HoldDrillTimer({
   // ── Render: hold phase ────────────────────────────────────────────────────
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.container}>
-      <Text style={styles.eyebrow}>SET {currentSet} OF {sets}</Text>
+      <Text style={styles.eyebrow}>
+        SET {currentSet} OF {sets}{paused ? ' · PAUSED' : ''}
+      </Text>
 
       <View style={styles.ringWrap}>
         <HoldRing progress={holdProgress} />
@@ -283,6 +321,18 @@ export default function HoldDrillTimer({
         disabled={!holdComplete}
         style={styles.cta}
       />
+
+      {/* v4.2.1 — pause/resume the hold countdown. Hidden once the hold has
+          completed for this set; the only forward action then is "Set Done". */}
+      {!holdComplete && (
+        <PressableButton
+          label={paused ? '▶ Resume' : '❚❚ Pause'}
+          variant="ghost"
+          size="sm"
+          onPress={() => setPaused((p) => !p)}
+          style={styles.secondaryCta}
+        />
+      )}
 
       <PressableButton
         label="Skip drill"

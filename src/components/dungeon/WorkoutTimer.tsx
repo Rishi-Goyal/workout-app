@@ -5,7 +5,7 @@
  * States: idle → active → resting → done
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AppState } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -228,6 +228,13 @@ export default function WorkoutTimer({
   const [lastSetBonus, setLastSetBonus] = useState(0);
   // Track set numbers the user explicitly skipped (logged as 0 reps)
   const [skippedSets, setSkippedSets] = useState<Set<number>>(new Set());
+  // v4.2.1 — pause/resume gate. Each setInterval callback short-circuits
+  // when `pausedRef.current` is true, freezing the displayed countdown
+  // without re-creating the interval. The mirror-ref pattern keeps
+  // setInterval closures from reading stale state.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   const intervalRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const extraHoldRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -283,9 +290,11 @@ export default function WorkoutTimer({
     } else {
       setPhase('resting');
       setRestLeft(restSeconds);
+      setPaused(false);
       let r = restSeconds;
       clearTimer();
       intervalRef.current = setInterval(() => {
+        if (pausedRef.current) return;
         r -= 1;
         setRestLeft(r);
         if (r <= 0) {
@@ -305,10 +314,12 @@ export default function WorkoutTimer({
     setHoldLeft(holdSeconds);
     setHoldComplete(false);
     setExtraHoldSec(0);
+    setPaused(false);
     holdElapsedRef.current = 0;
     let remaining = holdSeconds;
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       holdElapsedRef.current += 1;
       setHoldLeft(remaining);
@@ -317,6 +328,7 @@ export default function WorkoutTimer({
         setHoldComplete(true);
         let extra = 0;
         extraHoldRef.current = setInterval(() => {
+          if (pausedRef.current) return;
           extra += 1;
           setExtraHoldSec(extra);
         }, 1000);
@@ -350,8 +362,10 @@ export default function WorkoutTimer({
     }
 
     let remaining = restSeconds;
+    setPaused(false);
     clearTimer();
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       remaining -= 1;
       setRestLeft(remaining);
       if (remaining <= 0) {
@@ -408,6 +422,21 @@ export default function WorkoutTimer({
   }, [phase, currentSet, holdStarted, holdSeconds, pulse]);
 
   useEffect(() => () => { clearTimer(); clearExtraHold(); cancelRestNotification(); dismissSessionNotif(); }, []);
+
+  // v4.2.1 — auto-pause when the app goes to background. Handles the
+  // "user accidentally swipes away" / "phone call" case so the rest
+  // (or hold) countdown doesn't tick down while they're not looking.
+  // We intentionally do NOT auto-resume on foreground — the user manually
+  // taps Resume when they're actually ready, which is the safer default
+  // for the "I came back later than expected" path.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' || state === 'inactive') {
+        setPaused(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // Pre-fill reps logged via a background notification (user typed reps while app was closed).
   const pendingSetReps = useSessionStore(s => s.pendingSetReps);
@@ -580,8 +609,10 @@ export default function WorkoutTimer({
         } else {
           setPhase('resting');
           setRestLeft(restSeconds);
+          setPaused(false);
           let r = restSeconds;
           intervalRef.current = setInterval(() => {
+            if (pausedRef.current) return;
             r -= 1;
             setRestLeft(r);
             if (r <= 0) {
@@ -599,9 +630,13 @@ export default function WorkoutTimer({
           <SetSlots phase="active" />
           <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
           {holdComplete ? (
-            <Text style={[styles.holdLabel, { color: COLORS.gold }]}>TARGET HIT!</Text>
+            <Text style={[styles.holdLabel, { color: COLORS.gold }]}>
+              TARGET HIT!{paused ? ' · PAUSED' : ''}
+            </Text>
           ) : (
-            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
+            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>
+              HOLD{paused ? ' · PAUSED' : ''}
+            </Text>
           )}
           {/* Coaching cue for warmup / cooldown / mobility drills */}
           {isNonLift && cue && !holdComplete && (
@@ -650,8 +685,10 @@ export default function WorkoutTimer({
               } else {
                 setPhase('resting');
                 setRestLeft(restSeconds);
+                setPaused(false);
                 let r = restSeconds;
                 intervalRef.current = setInterval(() => {
+                  if (pausedRef.current) return;
                   r -= 1;
                   setRestLeft(r);
                   if (r <= 0) {
@@ -665,6 +702,22 @@ export default function WorkoutTimer({
             }}
             style={styles.mainBtn}
           />
+          {/* v4.2.1 — pause/resume the hold countdown. Stays visible after
+              holdComplete because the bonus extra-hold tally is still
+              ticking up, and a user interrupted mid-extra-hold needs a way
+              to stop the clock. Hidden only for non-lift drills, where the
+              pause control lives in <HoldDrillTimer/> instead — this
+              branch is defensive-only since v4.2.0 mounts those at the
+              consumer level. */}
+          {!isNonLift && (
+            <PressableButton
+              label={paused ? '▶ Resume' : '❚❚ Pause'}
+              variant="ghost"
+              size="sm"
+              onPress={() => setPaused((p) => !p)}
+              style={styles.pauseBtn}
+            />
+          )}
           <PressableButton label="✕ Skip exercise" variant="danger" size="sm" onPress={onSkip} />
         </View>
       );
@@ -768,7 +821,7 @@ export default function WorkoutTimer({
 
     return (
       <View style={styles.container}>
-        <Text style={styles.setCounter}>REST</Text>
+        <Text style={styles.setCounter}>REST{paused ? ' · PAUSED' : ''}</Text>
 
         {/* What just happened */}
         {lastLog && (
@@ -791,7 +844,20 @@ export default function WorkoutTimer({
           </View>
         </View>
 
-        <Text style={styles.subtitle}>Next: Set {currentSet + 1} of {sets}</Text>
+        <Text style={styles.subtitle}>
+          {paused ? 'Timer paused — resume when ready' : `Next: Set ${currentSet + 1} of ${sets}`}
+        </Text>
+
+        {/* v4.2.1 — pause/resume rest countdown. Sits above the next-set CTAs
+            so it stays accessible whether the half-elapsed promotion has
+            happened yet or not. */}
+        <PressableButton
+          label={paused ? '▶ Resume' : '❚❚ Pause'}
+          variant="ghost"
+          size="sm"
+          onPress={() => setPaused((p) => !p)}
+          style={styles.pauseBtn}
+        />
 
         {/* v4.1.0 A5 — once the user is rested enough (≥ 50% of prescribed rest
             elapsed), promote "next set" to a full-width primary. Early skip
@@ -1017,6 +1083,9 @@ const styles = StyleSheet.create({
   dotActive:    { backgroundColor: COLORS.gold, transform: [{ scale: 1.35 }] },
 
   mainBtn:      { minWidth: 220 },
+  // v4.2.1 — pause/resume button shown during hold + rest countdowns.
+  // Quiet ghost variant; sits between the primary CTA and the "Skip" link.
+  pauseBtn:     { marginTop: 4 },
   setCounter:   { fontSize: 14, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 2 },
 
   // Isometric hold
