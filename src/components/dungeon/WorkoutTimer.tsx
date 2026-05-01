@@ -630,9 +630,13 @@ export default function WorkoutTimer({
           <SetSlots phase="active" />
           <Text style={styles.setCounter}>Set {currentSet} of {sets}</Text>
           {holdComplete ? (
-            <Text style={[styles.holdLabel, { color: COLORS.gold }]}>TARGET HIT!</Text>
+            <Text style={[styles.holdLabel, { color: COLORS.gold }]}>
+              TARGET HIT!{paused ? ' · PAUSED' : ''}
+            </Text>
           ) : (
-            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>HOLD</Text>
+            <Text style={[styles.holdLabel, { color: COLORS.jade }]}>
+              HOLD{paused ? ' · PAUSED' : ''}
+            </Text>
           )}
           {/* Coaching cue for warmup / cooldown / mobility drills */}
           {isNonLift && cue && !holdComplete && (
@@ -698,12 +702,13 @@ export default function WorkoutTimer({
             }}
             style={styles.mainBtn}
           />
-          {/* v4.2.1 — pause hold countdown (and the bonus extra-time tally
-              after holdComplete). Hidden once the lift quest's "Release"
-              CTA is the only forward action, since for ergonomic
-              isometrics holding through a paused state isn't meaningful —
-              but extra-hold bonus accrual benefits from pausing if the
-              user gets interrupted. */}
+          {/* v4.2.1 — pause/resume the hold countdown. Stays visible after
+              holdComplete because the bonus extra-hold tally is still
+              ticking up, and a user interrupted mid-extra-hold needs a way
+              to stop the clock. Hidden only for non-lift drills, where the
+              pause control lives in <HoldDrillTimer/> instead — this
+              branch is defensive-only since v4.2.0 mounts those at the
+              consumer level. */}
           {!isNonLift && (
             <PressableButton
               label={paused ? '▶ Resume' : '❚❚ Pause'}

@@ -294,7 +294,9 @@ export default function HoldDrillTimer({
   // ── Render: hold phase ────────────────────────────────────────────────────
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.container}>
-      <Text style={styles.eyebrow}>SET {currentSet} OF {sets}</Text>
+      <Text style={styles.eyebrow}>
+        SET {currentSet} OF {sets}{paused ? ' · PAUSED' : ''}
+      </Text>
 
       <View style={styles.ringWrap}>
         <HoldRing progress={holdProgress} />
