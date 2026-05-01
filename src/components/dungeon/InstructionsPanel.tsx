@@ -246,17 +246,35 @@ function InstructionsPanel({
         </View>
       )}
 
-      {/* ⚠️ Watch Out — common mistakes */}
-      {mistakes.length > 0 && (
-        <View style={styles.mistakesCard}>
+      {/* v4.4.0 — Watch Out / Form Tips card.
+          - 'curated' source → red "WATCH OUT" with hand-written mistakes
+          - 'exercisedb' source → violet "FORM TIPS" with per-exercise how-to
+            steps from free-exercise-db (replaces v4.2.0's repetitive
+            muscle-keyed fallback)
+          - 'none' → card hides entirely */}
+      {mistakes.items.length > 0 && (
+        <View style={[
+          styles.mistakesCard,
+          mistakes.source === 'exercisedb' && styles.mistakesCardTips,
+        ]}>
           <View style={styles.mistakesHeader}>
-            <Text style={styles.mistakesIcon}>⚠️</Text>
-            <Text style={styles.mistakesTitle}>WATCH OUT</Text>
+            <Text style={styles.mistakesIcon}>
+              {mistakes.source === 'curated' ? '⚠️' : '💡'}
+            </Text>
+            <Text style={[
+              styles.mistakesTitle,
+              mistakes.source === 'exercisedb' && styles.mistakesTitleTips,
+            ]}>
+              {mistakes.source === 'curated' ? 'WATCH OUT' : 'FORM TIPS'}
+            </Text>
           </View>
           <View style={styles.mistakesList}>
-            {mistakes.map((m, i) => (
+            {mistakes.items.map((m, i) => (
               <View key={i} style={styles.mistakeRow}>
-                <View style={styles.mistakeBullet} />
+                <View style={[
+                  styles.mistakeBullet,
+                  mistakes.source === 'exercisedb' && styles.mistakeBulletTips,
+                ]} />
                 <Text style={styles.mistakeText}>{m}</Text>
               </View>
             ))}
@@ -403,6 +421,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.crimson,
     marginTop: 7,
     flexShrink: 0,
+  },
+  // v4.4.0 — violet variant of the card for ExerciseDB-sourced "FORM TIPS"
+  // (instructions, not literal mistakes). Distinct from the red WATCH OUT.
+  mistakesCardTips: {
+    backgroundColor: 'rgba(99,102,241,0.07)',
+    borderColor: 'rgba(99,102,241,0.30)',
+  },
+  mistakesTitleTips: {
+    color: COLORS.violetLight,
+  },
+  mistakeBulletTips: {
+    backgroundColor: COLORS.violetLight,
   },
   mistakeText: {
     flex: 1,
