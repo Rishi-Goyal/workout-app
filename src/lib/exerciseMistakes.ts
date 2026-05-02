@@ -15,6 +15,7 @@
 import type { MuscleGroup } from '@/types';
 import { EXERCISE_DB_DATA } from './exerciseDBData';
 import { WGER_DATA } from './wgerData';
+import { WARMUP_MAP } from './warmupDatabase';
 
 // ---------------------------------------------------------------------------
 // Curated mistakes — keyed by exerciseId
@@ -169,11 +170,12 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
  * InstructionsPanel pick the right header label + accent color:
  *   - 'curated'    → "⚠️ WATCH OUT"   (red, real mistake bullets)
  *   - 'exercisedb' → "💡 FORM TIPS"   (violet, free-exercise-db how-to steps)
+ *   - 'warmup'     → "💡 FORM TIPS"   (violet, single-line cue from warmupDatabase)
  *   - 'none'       → empty `items`; panel hides the card entirely.
  */
 export interface MistakesResult {
   items: string[];
-  source: 'curated' | 'exercisedb' | 'none';
+  source: 'curated' | 'exercisedb' | 'warmup' | 'none';
 }
 
 /**
@@ -206,15 +208,24 @@ export function getMistakes(
   if (dbEntry && dbEntry.instructions.length > 0) {
     return { items: dbEntry.instructions, source: 'exercisedb' };
   }
-  // v4.5.0 — wger.de fallback. Only fires when free-exercise-db has no
-  // entry for this exerciseId (drops + ANIMATION_URLS gaps). wger covers
-  // some of those gaps (Cobra Stretch, Pigeon Stretch, Hollow Hold,
-  // Inverted Rows, etc.) with CC-BY-SA narrative descriptions split into
-  // bullet sentences by the curation script. Same `exercisedb` source
-  // tag because the panel's visual treatment is identical (violet FORM TIPS).
+  // v4.5.0 — wger.de fallback. Fires when neither curated nor free-exercise-db
+  // has content for this exerciseId. wger covers some lift gaps (drops +
+  // ANIMATION_URLS gaps) and some warmups (Cobra Stretch, Pigeon Stretch,
+  // Hollow Hold) with CC-BY-SA narrative descriptions split into bullet
+  // sentences by the curation script. Same `exercisedb` source tag because
+  // the panel's visual treatment is identical (violet FORM TIPS).
   const wger = WGER_DATA[exerciseId];
   if (wger && wger.instructions.length > 0) {
     return { items: wger.instructions, source: 'exercisedb' };
+  }
+  // v4.4.1 — warmup last-resort: for `wu-*` quests with no curated, no
+  // free-exercise-db, and no wger entry, surface the existing one-line
+  // `cue` from warmupDatabase so the Guide tab is never empty.
+  if (exerciseId.startsWith('wu-')) {
+    const warmup = WARMUP_MAP[exerciseId];
+    if (warmup?.cue) {
+      return { items: [warmup.cue], source: 'warmup' };
+    }
   }
   return { items: [], source: 'none' };
 }

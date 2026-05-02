@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { useKeepAwake } from 'expo-keep-awake';
 
 import MuscleMap from '@/components/dungeon/MuscleMap';
 import ExerciseGif from '@/components/dungeon/ExerciseGif';
@@ -64,6 +65,14 @@ function inferSecondary(primary: MuscleGroup[]): MuscleGroup[] {
 }
 
 export default function ActiveQuestScreen() {
+  // v4.4.1 — keep the screen on for the whole active-quest lifecycle.
+  // Without this, the OS screen-timeout fires Android's `inactive`/`background`
+  // AppState transition, which the timer's auto-pause listener (PR #41) treats
+  // as "user left the app" and freezes the countdown. Users mid-plank reported
+  // their progress getting paused under their own gaze. Releasing the wake-lock
+  // happens automatically when this screen unmounts (router.back, finalize, etc).
+  useKeepAwake();
+
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const { activeSession, markQuest, swapQuestExercise } = useSessionStore();
   const { profile, character } = useProfileStore();
