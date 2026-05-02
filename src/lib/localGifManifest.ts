@@ -8,7 +8,7 @@
  * `resolveGif()` (src/lib/exerciseGifs.ts).
  */
 
-// Generated 2026-04-27T15:56:28.803Z from 91 bundled assets.
+// Generated 2026-05-02T19:39:24.329Z from 107 bundled assets.
 
 export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'ab-wheel-rollout': require('../../assets/exercises/ab-wheel-rollout.jpg'),
@@ -102,4 +102,20 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'weighted-dip': require('../../assets/exercises/weighted-dip.gif'),
   'weighted-pull-up': require('../../assets/exercises/weighted-pull-up.jpg'),
   'wide-push-up': require('../../assets/exercises/wide-push-up.gif'),
+  'wu-ankle-circle': require('../../assets/exercises/wu-ankle-circle.jpg'),
+  'wu-arm-circles': require('../../assets/exercises/wu-arm-circles.jpg'),
+  'wu-band-pull-apart': require('../../assets/exercises/wu-band-pull-apart.jpg'),
+  'wu-bodyweight-squat': require('../../assets/exercises/wu-bodyweight-squat.jpg'),
+  'wu-calf-wall': require('../../assets/exercises/wu-calf-wall.jpg'),
+  'wu-cat-cow': require('../../assets/exercises/wu-cat-cow.jpg'),
+  'wu-childs-pose': require('../../assets/exercises/wu-childs-pose.jpg'),
+  'wu-deadbug': require('../../assets/exercises/wu-deadbug.jpg'),
+  'wu-glute-bridge': require('../../assets/exercises/wu-glute-bridge.jpg'),
+  'wu-hamstring-stretch': require('../../assets/exercises/wu-hamstring-stretch.jpg'),
+  'wu-quad-stretch': require('../../assets/exercises/wu-quad-stretch.jpg'),
+  'wu-scap-pull': require('../../assets/exercises/wu-scap-pull.jpg'),
+  'wu-supine-twist': require('../../assets/exercises/wu-supine-twist.jpg'),
+  'wu-triceps-stretch': require('../../assets/exercises/wu-triceps-stretch.jpg'),
+  'wu-walking-lunge': require('../../assets/exercises/wu-walking-lunge.jpg'),
+  'wu-wrist-circle': require('../../assets/exercises/wu-wrist-circle.jpg'),
 };

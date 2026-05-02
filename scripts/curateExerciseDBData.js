@@ -34,6 +34,7 @@ const https = require('https');
 
 const ROOT = path.resolve(__dirname, '..');
 const DB_PATH = path.join(ROOT, 'src', 'lib', 'exerciseDatabase.ts');
+const WARMUP_PATH = path.join(ROOT, 'src', 'lib', 'warmupDatabase.ts');
 const OUT_PATH = path.join(ROOT, 'src', 'lib', 'exerciseDBData.ts');
 const FREE_DB_URL =
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
@@ -70,6 +71,18 @@ function loadOurIds() {
   const nameMap = {};
   const objRe = /\bid:\s*['"]([a-z0-9-]+)['"][\s\S]{0,200}?\bname:\s*['"]([^'"]+)['"]/g;
   while ((m = objRe.exec(src)) !== null) {
+    nameMap[m[1]] = m[2];
+  }
+
+  // v4.4.x — also include warmup IDs from warmupDatabase.ts. Warmups don't
+  // have JDLV/EXDB animation URLs (no GIF mapping), but free-exercise-db
+  // does have static images for many of them (Cat-Cow → Cat_Stretch, etc.).
+  // We add them to `ourIds` and to `nameMap`; resolution happens via the
+  // WARMUP_OVERRIDES map below since warmup names rarely match by fuzzy.
+  const warmupSrc = fs.readFileSync(WARMUP_PATH, 'utf8');
+  const wuRe = /\bid:\s*['"](wu-[a-z0-9-]+)['"][\s\S]{0,200}?\bname:\s*['"]([^'"]+)['"]/g;
+  while ((m = wuRe.exec(warmupSrc)) !== null) {
+    ourIds.add(m[1]);
     nameMap[m[1]] = m[2];
   }
 
@@ -139,6 +152,27 @@ const MANUAL_OVERRIDES = {
   'ab-wheel-rollout':         'Ab_Roller',                              // was: Barbell_Ab_Rollout
   'standing-ab-wheel':        'Ab_Roller',                              // was: Barbell_Ab_Rollout
   'leg-press-calf-raise':     'Calf_Press_On_The_Leg_Press_Machine',    // was: Leg_Press (different exercise)
+
+  // ── v4.4.x — warmup quests (wu-* IDs from warmupDatabase.ts) ─────────────
+  // These have no animation URL mapping; pull instructions + images by
+  // direct ID. Only the 16 warmups with confident analogs are mapped here;
+  // the rest fall through to the existing `cue` one-liner in InstructionsPanel.
+  'wu-arm-circles':       'Arm_Circles',
+  'wu-band-pull-apart':   'Band_Pull_Apart',
+  'wu-scap-pull':         'Scapular_Pull-Up',
+  'wu-cat-cow':           'Cat_Stretch',
+  'wu-wrist-circle':      'Wrist_Circles',
+  'wu-deadbug':           'Dead_Bug',
+  'wu-bodyweight-squat':  'Bodyweight_Squat',
+  'wu-walking-lunge':     'Bodyweight_Walking_Lunge',
+  'wu-glute-bridge':      'Bent-Knee_Hip_Raise',
+  'wu-ankle-circle':      'Ankle_Circles',
+  'wu-triceps-stretch':   'Triceps_Stretch',
+  'wu-childs-pose':       "Childs_Pose",  // free-ex-db ID has no apostrophe
+  'wu-quad-stretch':      'All_Fours_Quad_Stretch',
+  'wu-hamstring-stretch': 'Hamstring_Stretch',
+  'wu-calf-wall':         'Calf_Stretch_Hands_Against_Wall',
+  'wu-supine-twist':      'Spinal_Stretch',
 };
 
 // Explicit drops — these exerciseIds have NO acceptable free-exercise-db
