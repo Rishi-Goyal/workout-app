@@ -14,6 +14,7 @@
  */
 import type { MuscleGroup } from '@/types';
 import { EXERCISE_DB_DATA } from './exerciseDBData';
+import { WARMUP_MAP } from './warmupDatabase';
 
 // ---------------------------------------------------------------------------
 // Curated mistakes — keyed by exerciseId
@@ -168,11 +169,12 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
  * InstructionsPanel pick the right header label + accent color:
  *   - 'curated'    → "⚠️ WATCH OUT"   (red, real mistake bullets)
  *   - 'exercisedb' → "💡 FORM TIPS"   (violet, free-exercise-db how-to steps)
+ *   - 'warmup'     → "💡 FORM TIPS"   (violet, single-line cue from warmupDatabase)
  *   - 'none'       → empty `items`; panel hides the card entirely.
  */
 export interface MistakesResult {
   items: string[];
-  source: 'curated' | 'exercisedb' | 'none';
+  source: 'curated' | 'exercisedb' | 'warmup' | 'none';
 }
 
 /**
@@ -204,6 +206,15 @@ export function getMistakes(
   const dbEntry = EXERCISE_DB_DATA[exerciseId];
   if (dbEntry && dbEntry.instructions.length > 0) {
     return { items: dbEntry.instructions, source: 'exercisedb' };
+  }
+  // v4.4.1 — warmup quests (id starts with 'wu-') aren't in either curated
+  // mistakes or EXERCISE_DB_DATA. Surface the existing one-line `cue` from
+  // warmupDatabase so the Guide tab is never empty for warmups like Cat-Cow.
+  if (exerciseId.startsWith('wu-')) {
+    const warmup = WARMUP_MAP[exerciseId];
+    if (warmup?.cue) {
+      return { items: [warmup.cue], source: 'warmup' };
+    }
   }
   return { items: [], source: 'none' };
 }
