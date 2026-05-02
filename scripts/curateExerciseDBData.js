@@ -200,11 +200,15 @@ async function main() {
 
   const out = {};
   const misses = [];
+  const dropped = [];
 
   for (const ourId of ourIds.sort()) {
     // Honour explicit drops — exercises where any auto-match would be
     // semantically wrong. Skip resolution entirely.
-    if (MANUAL_DROPS.has(ourId)) continue;
+    if (MANUAL_DROPS.has(ourId)) {
+      dropped.push(ourId);
+      continue;
+    }
 
     let entry = null;
     let how = '';
@@ -251,8 +255,11 @@ async function main() {
   }
 
   console.log(`Matched ${Object.keys(out).length}/${ourIds.length} exerciseIds`);
+  if (dropped.length > 0) {
+    console.log(`  Dropped (${dropped.length}): ${dropped.join(', ')}`);
+  }
   if (misses.length > 0) {
-    console.log(`Misses (${misses.length}): ${misses.join(', ')}`);
+    console.log(`  Misses (${misses.length}): ${misses.join(', ')}`);
   }
 
   // Emit src/lib/exerciseDBData.ts
@@ -321,6 +328,12 @@ async function main() {
 
   fs.writeFileSync(OUT_PATH, lines.join('\n'));
   console.log(`Wrote ${OUT_PATH}`);
+  if (dropped.length > 0) {
+    console.log(`\nDropped exercises (no acceptable free-exercise-db analog):`);
+    console.log(`  ${dropped.join(', ')}`);
+    console.log(`  → These hide the Watch Out / Form Tips card entirely.`);
+    console.log(`  → Consider adding curated entries to exerciseMistakes.ts for common exercises.`);
+  }
   if (misses.length > 0) {
     console.log(`\nMisses to curate manually or fuzzy-fix later: ${misses.join(', ')}`);
   }
