@@ -65,6 +65,44 @@ function loadAnimationUrls() {
 }
 
 // ---------------------------------------------------------------------------
+// v4.4.x — also bundle warmup images. warmupDatabase.ts entries don't have
+// ANIMATION_URLS; we map them to free-exercise-db IDs (same source as JDLV)
+// using the same overrides as exerciseDBData curation. Static JPGs only
+// (free-exercise-db has no GIFs), but a static "start position" image is
+// still much better than the empty-pane experience for warmup quests.
+// ---------------------------------------------------------------------------
+
+const JDLV_BASE =
+  'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+
+const WARMUP_GIF_OVERRIDES = {
+  'wu-arm-circles':       'Arm_Circles',
+  'wu-band-pull-apart':   'Band_Pull_Apart',
+  'wu-scap-pull':         'Scapular_Pull-Up',
+  'wu-cat-cow':           'Cat_Stretch',
+  'wu-wrist-circle':      'Wrist_Circles',
+  'wu-deadbug':           'Dead_Bug',
+  'wu-bodyweight-squat':  'Bodyweight_Squat',
+  'wu-walking-lunge':     'Bodyweight_Walking_Lunge',
+  'wu-glute-bridge':      'Bent-Knee_Hip_Raise',
+  'wu-ankle-circle':      'Ankle_Circles',
+  'wu-triceps-stretch':   'Triceps_Stretch',
+  'wu-childs-pose':       'Childs_Pose',
+  'wu-quad-stretch':      'All_Fours_Quad_Stretch',
+  'wu-hamstring-stretch': 'Hamstring_Stretch',
+  'wu-calf-wall':         'Calf_Stretch_Hands_Against_Wall',
+  'wu-supine-twist':      'Spinal_Stretch',
+};
+
+function loadWarmupUrls() {
+  const urls = {};
+  for (const [ourId, theirId] of Object.entries(WARMUP_GIF_OVERRIDES)) {
+    urls[ourId] = `${JDLV_BASE}${theirId}/0.jpg`;
+  }
+  return urls;
+}
+
+// ---------------------------------------------------------------------------
 // HTTP fetch helper — follows redirects, writes to disk
 // ---------------------------------------------------------------------------
 
@@ -112,7 +150,7 @@ async function main() {
     fs.mkdirSync(OUT_DIR, { recursive: true });
   }
 
-  const urls = loadAnimationUrls();
+  const urls = { ...loadAnimationUrls(), ...loadWarmupUrls() };
   const ids = Object.keys(urls).sort();
   console.log(`curateExerciseGifs: ${ids.length} URLs to fetch`);
 
