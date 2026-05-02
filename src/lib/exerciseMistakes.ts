@@ -1,15 +1,19 @@
 /**
- * Exercise common mistakes — curated 3–5 bullet list for the top ~20 most-used
- * exercises; muscle-keyed generic fallback for everything else.
+ * Exercise per-form-card content — drives the "Watch Out / Form Tips" panel
+ * in InstructionsPanel.
  *
- * Rendered in InstructionsPanel as the top-pinned "⚠️ Watch Out" card so
- * beginners can self-correct before bad habits stick.
- *
- * Authorship: exercise-science consensus from ACE, ExRx, Barbell Medicine, and
- * r/Fitness wiki. Content is intentionally brief and beginner-first — coaches
- * can override via `exerciseDatabase.formCues` if they want subtlety.
+ * Resolution order:
+ *   1. Curated 3–5 bullet "common mistakes" for the top ~20 exercises (this
+ *      file). Authorship: ACE, ExRx, Barbell Medicine, r/Fitness wiki.
+ *   2. Per-exercise instructions from free-exercise-db (auto-curated by
+ *      scripts/curateExerciseDBData.js). Covers 88/91 exerciseIds. These are
+ *      step-by-step "how-to" cues rather than literal mistakes — the panel
+ *      relabels its header accordingly.
+ *   3. None — the panel hides the card entirely (no muscle fallback; that
+ *      was v4.2.0's repetition source the user flagged in v4.4.0).
  */
 import type { MuscleGroup } from '@/types';
+import { EXERCISE_DB_DATA } from './exerciseDBData';
 
 // ---------------------------------------------------------------------------
 // Curated mistakes — keyed by exerciseId
@@ -145,62 +149,13 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
     'Looking down — keep the gaze forward and slightly up.',
     'Arms not counterbalancing — extend them forward to help balance at depth.',
   ],
-};
-
-// ---------------------------------------------------------------------------
-// Muscle-keyed generic fallbacks
-// ---------------------------------------------------------------------------
-
-const MUSCLE_FALLBACK: Record<MuscleGroup, string[]> = {
-  chest: [
-    'Letting the elbows flare too wide — keep them at ~45° to protect the shoulder joint.',
-    'Rushing the descent — slow controlled lowering builds more muscle and prevents injury.',
-    'Not retracting the shoulder blades — this protects the rotator cuff on every press.',
-  ],
-  back: [
-    'Rounding the lower back — always brace your core before pulling.',
-    'Pulling with the arms instead of initiating with the lats — think "elbows to hips."',
-    'Losing tension between reps — don\'t let the weight fully rest; maintain constant tension.',
-  ],
-  shoulders: [
-    'Pressing with an arched lower back — brace your core and tuck your pelvis.',
-    'Using momentum to get the weight up — slow the movement down and reduce the load.',
-    'Internally rotating the shoulder at the top — keep the thumb slightly up (neutral or external rotation).',
-  ],
-  biceps: [
-    'Swinging the elbows forward — keep them pinned to your sides.',
-    'Not going through a full range of motion — full extension at the bottom matters.',
-    'Rushing the eccentric (lowering phase) — slow it down to maximise time under tension.',
-  ],
-  triceps: [
-    'Elbows flaring out to the sides — keep them tucked and pointing toward the floor.',
-    'Partial reps — always lock out completely for full tricep activation.',
-    'Going too heavy and losing form — a lighter weight with perfect technique wins every time.',
-  ],
-  core: [
-    'Holding your breath — learn to brace and breathe simultaneously.',
-    'Letting the hips sag or pike — maintain one straight line from head to heels.',
-    'Using momentum instead of muscle control — slow every rep down.',
-  ],
-  quads: [
-    'Knees caving inward — actively push them out in the direction of your toes.',
-    'Heels rising — work on ankle mobility; elevate heels temporarily if needed.',
-    'Leaning forward excessively — keep the chest up and the spine tall.',
-  ],
-  hamstrings: [
-    'Rounding the lower back at the bottom of the movement — stop when you feel the stretch.',
-    'Locking the knees straight — keep a soft bend to avoid hyperextension.',
-    'Moving too fast — hamstrings are injury-prone when loaded; slow and controlled wins.',
-  ],
-  glutes: [
-    'Using lower back to extend instead of the glutes — squeeze the glutes hard at lockout.',
-    'Feet too close together — a hip-width stance gives the glutes more room to fire.',
-    'Not reaching full hip extension at the top — drive those hips all the way through.',
-  ],
-  calves: [
-    'Bouncing at the bottom — the stretch reflex is cheating; pause for 1 second at the bottom.',
-    'Half reps — rise all the way onto the toes for a full contraction.',
-    'Rushing the descent — slow eccentric builds more calf mass and prevents achilles strain.',
+  // v4.4.0 — wall-push-up is the Floor 1 tutorial lift; every brand-new
+  // user sees it first. free-exercise-db has no analog, so we curate.
+  'wall-push-up': [
+    'Standing too close to the wall — step back so arms are fully extended at the start.',
+    'Letting the hips sag or pike — keep one straight line from heels to head.',
+    'Flaring elbows straight out (90°) — tuck them to ~45° to protect the shoulders.',
+    'Partial range of motion — chest should nearly touch the wall on every rep.',
   ],
 };
 
@@ -209,13 +164,46 @@ const MUSCLE_FALLBACK: Record<MuscleGroup, string[]> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns 3–5 common-mistake strings for the given exercise.
- *
- * Lookup order:
- *   1. Curated per-exercise list (exact ID match)
- *   2. Muscle-group generic fallback (primaryMuscle)
- *   3. Empty array (should never happen; all muscles covered)
+ * Result of {@link getMistakes}. The `source` discriminator lets the
+ * InstructionsPanel pick the right header label + accent color:
+ *   - 'curated'    → "⚠️ WATCH OUT"   (red, real mistake bullets)
+ *   - 'exercisedb' → "💡 FORM TIPS"   (violet, free-exercise-db how-to steps)
+ *   - 'none'       → empty `items`; panel hides the card entirely.
  */
-export function getMistakes(exerciseId: string, primaryMuscle: MuscleGroup): string[] {
-  return EXERCISE_MISTAKES[exerciseId] ?? MUSCLE_FALLBACK[primaryMuscle] ?? [];
+export interface MistakesResult {
+  items: string[];
+  source: 'curated' | 'exercisedb' | 'none';
+}
+
+/**
+ * Returns the per-exercise content for the "Watch Out / Form Tips" card.
+ *
+ * Resolution order:
+ *   1. Curated mistakes for the top 20 exercises (real common-mistake bullets)
+ *   2. free-exercise-db instructions for the remaining 71 (how-to steps)
+ *   3. Empty result → caller hides the card
+ *
+ * v4.2.0 behaviour (now removed): a generic muscle-keyed fallback that
+ * returned the same 3 bullets for every exercise of a given muscle group,
+ * causing visible repetition across the dungeon's rooms. v4.4.0 replaces
+ * that with per-exercise content from free-exercise-db.
+ *
+ * @param exerciseId    The exerciseId from our exerciseDatabase.
+ * @param _primaryMuscle Kept in the signature for backwards compatibility
+ *                       but no longer consulted (no muscle-keyed fallback).
+ */
+export function getMistakes(
+  exerciseId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _primaryMuscle: MuscleGroup,
+): MistakesResult {
+  const curated = EXERCISE_MISTAKES[exerciseId];
+  if (curated && curated.length > 0) {
+    return { items: curated, source: 'curated' };
+  }
+  const dbEntry = EXERCISE_DB_DATA[exerciseId];
+  if (dbEntry && dbEntry.instructions.length > 0) {
+    return { items: dbEntry.instructions, source: 'exercisedb' };
+  }
+  return { items: [], source: 'none' };
 }
