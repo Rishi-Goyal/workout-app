@@ -10,4 +10,4 @@ Hosts touched during curation:
 - cdn.jsdelivr.net
 - static.exercisedb.dev
 
-Last regenerated: 2026-05-02T19:39:19.468Z
+Last regenerated: 2026-05-04T11:42:03.884Z

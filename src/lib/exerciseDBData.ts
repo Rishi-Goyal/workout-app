@@ -32,7 +32,7 @@ export interface ExerciseDBEntry {
   mechanic: string | null;
 }
 
-// Generated from 95/133 matches.
+// Generated from 98/133 matches.
 
 export const EXERCISE_DB_DATA: Record<string, ExerciseDBEntry> = {
   'ab-wheel-rollout': {
@@ -1218,6 +1218,18 @@ export const EXERCISE_DB_DATA: Record<string, ExerciseDBEntry> = {
     level: "beginner",
     mechanic: "isolation",
   },
+  'wu-biceps-wall': {
+    sourceId: "Standing_Biceps_Stretch",
+    sourceName: "Standing Biceps Stretch",
+    instructions: [
+    "Clasp your hands behind your back with your palms together, straighten arms and then rotate them so your palms face downward.",
+    "Raise your arms up and hold until you feel a stretch in your biceps.",
+    ],
+    primaryMuscles: ["biceps"],
+    secondaryMuscles: ["chest","shoulders"],
+    level: "beginner",
+    mechanic: "isolation",
+  },
   'wu-bodyweight-squat': {
     sourceId: "Bodyweight_Squat",
     sourceName: "Bodyweight Squat",
@@ -1287,6 +1299,20 @@ export const EXERCISE_DB_DATA: Record<string, ExerciseDBEntry> = {
     level: "beginner",
     mechanic: "compound",
   },
+  'wu-doorway-stretch': {
+    sourceId: "Behind_Head_Chest_Stretch",
+    sourceName: "Behind Head Chest Stretch",
+    instructions: [
+    "Sit upright on the floor with your partner behind you.",
+    "Place your hands behind your hand, and push your elbows back as far as you can. Your partner should hold your elbows. This will be your starting position.",
+    "Gently attempt to pull your elbows forward with your hands still behind your head for 10 or more seconds. Your partner should prevent your elbows from moving.",
+    "Now, relax your muscles and have your partner gently pull the elbows back as far as it comfortable for you. Be sure to let your partner know when the stretch is adequate to prevent overstretching or injury.",
+    ],
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["shoulders"],
+    level: "expert",
+    mechanic: "isolation",
+  },
   'wu-glute-bridge': {
     sourceId: "Bent-Knee_Hip_Raise",
     sourceName: "Bent-Knee Hip Raise",
@@ -1314,6 +1340,19 @@ export const EXERCISE_DB_DATA: Record<string, ExerciseDBEntry> = {
     secondaryMuscles: [],
     level: "beginner",
     mechanic: "isolation",
+  },
+  'wu-lat-stretch': {
+    sourceId: "Overhead_Lat",
+    sourceName: "Overhead Lat",
+    instructions: [
+    "Sit upright on the floor with your partner behind you. Raise one arm straight up, and flex the elbow, attempting to touch your hand to your back. Your parner should hold your tricep and wrist. This will be your starting position.",
+    "Attempt to pull your upper arm to your side as your partner prevents you from doing actually doing so.",
+    "After 10-20 seconds, relax the arm and allow your partner to further stretch the lat by applying gentle pressure to the tricep. Hold for 10-20 seconds, and then switch sides.",
+    ],
+    primaryMuscles: ["lats"],
+    secondaryMuscles: ["triceps"],
+    level: "expert",
+    mechanic: null,
   },
   'wu-quad-stretch': {
     sourceId: "All_Fours_Quad_Stretch",

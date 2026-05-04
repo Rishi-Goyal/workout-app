@@ -153,10 +153,11 @@ const MANUAL_OVERRIDES = {
   'standing-ab-wheel':        'Ab_Roller',                              // was: Barbell_Ab_Rollout
   'leg-press-calf-raise':     'Calf_Press_On_The_Leg_Press_Machine',    // was: Leg_Press (different exercise)
 
-  // ── v4.4.x — warmup quests (wu-* IDs from warmupDatabase.ts) ─────────────
-  // These have no animation URL mapping; pull instructions + images by
-  // direct ID. Only the 16 warmups with confident analogs are mapped here;
-  // the rest fall through to the existing `cue` one-liner in InstructionsPanel.
+  // ── v4.4.x — warmup quests (wu-* IDs from warmupDatabase.ts). Direct
+  //    or near-exact matches in the free-exercise-db catalogue. Warmups
+  //    without an entry here fall through to hand-curated multi-step
+  //    instructions in WARMUP_CURATED_INSTRUCTIONS (exerciseMistakes.ts)
+  //    or finally to the one-line cue in warmupDatabase.ts.
   'wu-arm-circles':       'Arm_Circles',
   'wu-band-pull-apart':   'Band_Pull_Apart',
   'wu-scap-pull':         'Scapular_Pull-Up',
@@ -173,6 +174,11 @@ const MANUAL_OVERRIDES = {
   'wu-hamstring-stretch': 'Hamstring_Stretch',
   'wu-calf-wall':         'Calf_Stretch_Hands_Against_Wall',
   'wu-supine-twist':      'Spinal_Stretch',
+
+  // Loose matches — image illustrates the right pose, name differs slightly
+  'wu-lat-stretch':       'Overhead_Lat',
+  'wu-biceps-wall':       'Standing_Biceps_Stretch',
+  'wu-doorway-stretch':   'Behind_Head_Chest_Stretch',
 };
 
 // Explicit drops — these exerciseIds have NO acceptable free-exercise-db
