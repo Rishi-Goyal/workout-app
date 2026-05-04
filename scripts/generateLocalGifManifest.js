@@ -23,6 +23,22 @@ const OUT_PATH = path.join(ROOT, 'src', 'lib', 'localGifManifest.ts');
 // matching extension for an exerciseId wins.
 const EXT_PRIORITY = ['gif', 'webp', 'png', 'jpg', 'jpeg'];
 
+// v4.4.x — alias map. Where one exerciseId is the *same physical movement*
+// (or close enough that the visual is honest) as an exerciseId we already
+// bundle, we point the alias at the existing asset rather than duplicating
+// the file. Metro deduplicates the require()s automatically. Listed here so
+// the manifest generator picks them up alongside the directory scan.
+const ASSET_ALIASES = {
+  // Warmup → lift (same movement, just a warmup vs working set)
+  'wu-wall-pushup':         'wall-push-up',
+  'wu-good-morning':        'good-morning',
+  // Lift → lift (identical visual or close family — fills v4.4.x coverage gaps
+  // for exercises that were missing from ANIMATION_URLS originally)
+  'pause-squat':            'barbell-back-squat',  // same exercise, paused tempo
+  'single-leg-hip-thrust':  'hip-thrust',          // same setup, one leg
+  'hanging-knee-raise':     'hanging-leg-raise',   // same hang, smaller ROM
+};
+
 function main() {
   if (!fs.existsSync(ASSET_DIR)) {
     console.warn(
@@ -49,6 +65,13 @@ function main() {
     const existingExt = existing.split('.').pop().toLowerCase();
     if (EXT_PRIORITY.indexOf(ext.toLowerCase()) < EXT_PRIORITY.indexOf(existingExt)) {
       byId.set(id, file);
+    }
+  }
+
+  // Add aliases that resolve to existing assets in byId.
+  for (const [aliasId, sourceId] of Object.entries(ASSET_ALIASES)) {
+    if (byId.has(sourceId) && !byId.has(aliasId)) {
+      byId.set(aliasId, byId.get(sourceId));
     }
   }
 
