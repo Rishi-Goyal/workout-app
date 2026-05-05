@@ -30,7 +30,7 @@ export interface WgerEntry {
   equipment: string[];
 }
 
-// Generated from 40/138 matches.
+// Generated from 37/138 matches.
 
 export const WGER_DATA: Record<string, WgerEntry> = {
   'ab-wheel-rollout': {
@@ -247,19 +247,6 @@ export const WGER_DATA: Record<string, WgerEntry> = {
     muscles: ["Chest"],
     musclesSecondary: ["Shoulders","Triceps"],
     equipment: ["Dumbbell"],
-  },
-  'incline-push-up': {
-    sourceId: 313,
-    sourceName: "Incline Push up",
-    sourceUuid: "312017c4-c431-46b2-86dd-b9f480617d6f",
-    instructions: [
-      "Regular push with a 30 degree incline.",
-    ],
-    description: "Regular push with a 30 degree incline.",
-    category: "Chest",
-    muscles: ["Chest"],
-    musclesSecondary: ["Hamstrings"],
-    equipment: [],
   },
   'kettlebell-swing': {
     sourceId: 960,
@@ -537,19 +524,6 @@ export const WGER_DATA: Record<string, WgerEntry> = {
     musclesSecondary: [],
     equipment: [],
   },
-  'tricep-pushdown': {
-    sourceId: 1185,
-    sourceName: "Triceps Pushdown",
-    sourceUuid: "6ebb138e-bb0a-402e-84e5-68fe0896e897",
-    instructions: [
-      "Triceps pushdown on cable using lat bar.",
-    ],
-    description: "Triceps pushdown on cable using lat bar.",
-    category: "Arms",
-    muscles: ["Triceps"],
-    musclesSecondary: [],
-    equipment: [],
-  },
   'walking-lunge': {
     sourceId: 1903,
     sourceName: "Walking Lunges",
@@ -647,19 +621,6 @@ export const WGER_DATA: Record<string, WgerEntry> = {
     category: "Legs",
     muscles: ["Glutes"],
     musclesSecondary: ["Hamstrings"],
-    equipment: [],
-  },
-  'wu-pigeon': {
-    sourceId: 1872,
-    sourceName: "Pigeon Stretch",
-    sourceUuid: "91adc5c9-bdeb-4ed8-b261-b7fcd3157330",
-    instructions: [
-      "View the video to undestand the exercise",
-    ],
-    description: "View the video to undestand the exercise",
-    category: "Legs",
-    muscles: [],
-    musclesSecondary: [],
     equipment: [],
   },
 };

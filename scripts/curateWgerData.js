@@ -192,6 +192,28 @@ function sentencesFrom(prose) {
   return out.slice(0, 6);
 }
 
+// Reject entries whose only "instruction" is a placeholder stub. Some wger
+// contributors leave entries like "View the video to understand the
+// exercise" — useless on our card and undermines user trust. We'd rather
+// have no card than a placeholder.
+const PLACEHOLDER_PATTERNS = [
+  /\bview\s+(the\s+)?video\b/i,
+  /\bwatch\s+(the\s+)?video\b/i,
+  /\bsee\s+(the\s+)?(demonstration|demo|video)\b/i,
+  /\bundestand\b/i,           // wger contributor typo, hand-flagged
+  /\brefer\s+to\s+(the\s+)?(video|image)\b/i,
+];
+
+function isUseful(instructions) {
+  if (instructions.length === 0) return false;
+  const joined = instructions.join(' ');
+  // Any placeholder pattern → reject the whole entry
+  if (PLACEHOLDER_PATTERNS.some((re) => re.test(joined))) return false;
+  // A single very-short sentence is also too thin to be a useful card
+  if (instructions.length === 1 && instructions[0].length < 60) return false;
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -259,7 +281,9 @@ async function main() {
     }
 
     const instructions = sentencesFrom(description);
-    if (instructions.length === 0) {
+    if (!isUseful(instructions)) {
+      // Either empty after sentence-split, or a placeholder stub like
+      // "View the video to understand the exercise". Don't ship.
       misses.push(ourId);
       continue;
     }
