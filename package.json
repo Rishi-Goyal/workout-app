@@ -12,7 +12,9 @@
     "test:coverage": "jest --coverage",
     "curate-gifs": "node scripts/curateExerciseGifs.js && node scripts/generateLocalGifManifest.js",
     "curate-exercisedb": "node scripts/curateExerciseDBData.js",
-    "curate-all": "npm run curate-gifs && npm run curate-exercisedb"
+    "curate-wger": "node scripts/curateWgerData.js",
+    "audit-exercises": "node scripts/auditExerciseData.js",
+    "curate-all": "npm run curate-gifs && npm run curate-exercisedb && npm run curate-wger"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",

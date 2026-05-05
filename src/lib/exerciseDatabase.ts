@@ -429,7 +429,9 @@ const backExercises: Exercise[] = [
     id: 'barbell-bent-over-row',
     name: 'Barbell Bent-Over Row',
     primaryMuscle: 'back',
-    secondaryMuscles: ['biceps', 'hamstrings', 'core'],
+    // v4.5.0 audit fix: hamstrings only stabilize (not significant work).
+    // Cross-check with free-exercise-db: rear delts engage on the pull.
+    secondaryMuscles: ['biceps', 'shoulders', 'core'],
     movementPattern: 'pull',
     difficultyLevel: 3,
     equipment: ['barbell'],
@@ -447,7 +449,8 @@ const backExercises: Exercise[] = [
     id: 'pendlay-row',
     name: 'Pendlay Row',
     primaryMuscle: 'back',
-    secondaryMuscles: ['biceps', 'hamstrings', 'core'],
+    // v4.5.0 audit fix: same correction as barbell-bent-over-row above.
+    secondaryMuscles: ['biceps', 'shoulders', 'core'],
     movementPattern: 'pull',
     difficultyLevel: 4,
     equipment: ['barbell'],
