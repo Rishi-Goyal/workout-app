@@ -14,6 +14,7 @@
  */
 import type { MuscleGroup } from '@/types';
 import { EXERCISE_DB_DATA } from './exerciseDBData';
+import { WGER_DATA } from './wgerData';
 
 // ---------------------------------------------------------------------------
 // Curated mistakes — keyed by exerciseId
@@ -204,6 +205,16 @@ export function getMistakes(
   const dbEntry = EXERCISE_DB_DATA[exerciseId];
   if (dbEntry && dbEntry.instructions.length > 0) {
     return { items: dbEntry.instructions, source: 'exercisedb' };
+  }
+  // v4.5.0 — wger.de fallback. Only fires when free-exercise-db has no
+  // entry for this exerciseId (drops + ANIMATION_URLS gaps). wger covers
+  // some of those gaps (Cobra Stretch, Pigeon Stretch, Hollow Hold,
+  // Inverted Rows, etc.) with CC-BY-SA narrative descriptions split into
+  // bullet sentences by the curation script. Same `exercisedb` source
+  // tag because the panel's visual treatment is identical (violet FORM TIPS).
+  const wger = WGER_DATA[exerciseId];
+  if (wger && wger.instructions.length > 0) {
+    return { items: wger.instructions, source: 'exercisedb' };
   }
   return { items: [], source: 'none' };
 }
