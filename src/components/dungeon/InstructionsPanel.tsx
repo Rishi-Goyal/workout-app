@@ -246,41 +246,38 @@ function InstructionsPanel({
         </View>
       )}
 
-      {/* v4.4.0 — Watch Out / Form Tips card.
-          - 'curated' source → red "WATCH OUT" with hand-written mistakes
-          - 'exercisedb' source → violet "FORM TIPS" with per-exercise how-to
-            steps from free-exercise-db (replaces v4.2.0's repetitive
-            muscle-keyed fallback)
+      {/* v4.4.0 / v4.4.1 — Watch Out / Form Tips card.
+          - 'curated' → red "WATCH OUT" with hand-written mistakes
+          - 'exercisedb' → violet "FORM TIPS" with per-exercise how-to from
+            free-exercise-db (replaces v4.2.0's repetitive muscle-keyed
+            fallback)
+          - 'warmup' → violet "FORM TIPS" with the one-line cue from
+            warmupDatabase (so warmups like Cat-Cow are never empty)
           - 'none' → card hides entirely */}
-      {mistakes.items.length > 0 && (
-        <View style={[
-          styles.mistakesCard,
-          mistakes.source === 'exercisedb' && styles.mistakesCardTips,
-        ]}>
+      {mistakes.items.length > 0 && (() => {
+        // Both 'exercisedb' and 'warmup' sources use the violet "FORM TIPS"
+        // styling — they're both "how to do it" content rather than literal
+        // mistakes.
+        const isTips = mistakes.source !== 'curated';
+        return (
+        <View style={[styles.mistakesCard, isTips && styles.mistakesCardTips]}>
           <View style={styles.mistakesHeader}>
-            <Text style={styles.mistakesIcon}>
-              {mistakes.source === 'curated' ? '⚠️' : '💡'}
-            </Text>
-            <Text style={[
-              styles.mistakesTitle,
-              mistakes.source === 'exercisedb' && styles.mistakesTitleTips,
-            ]}>
-              {mistakes.source === 'curated' ? 'WATCH OUT' : 'FORM TIPS'}
+            <Text style={styles.mistakesIcon}>{isTips ? '💡' : '⚠️'}</Text>
+            <Text style={[styles.mistakesTitle, isTips && styles.mistakesTitleTips]}>
+              {isTips ? 'FORM TIPS' : 'WATCH OUT'}
             </Text>
           </View>
           <View style={styles.mistakesList}>
             {mistakes.items.map((m, i) => (
               <View key={i} style={styles.mistakeRow}>
-                <View style={[
-                  styles.mistakeBullet,
-                  mistakes.source === 'exercisedb' && styles.mistakeBulletTips,
-                ]} />
+                <View style={[styles.mistakeBullet, isTips && styles.mistakeBulletTips]} />
                 <Text style={styles.mistakeText}>{m}</Text>
               </View>
             ))}
           </View>
         </View>
-      )}
+        );
+      })()}
 
       {/* Form cue checklist — interactive, tap each cue to check it off during a set */}
       {formCues.length > 0 && (

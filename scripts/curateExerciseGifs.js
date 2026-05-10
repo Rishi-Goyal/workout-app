@@ -65,6 +65,58 @@ function loadAnimationUrls() {
 }
 
 // ---------------------------------------------------------------------------
+// v4.4.x — bundle additional images that aren't in ANIMATION_URLS. Two
+// origins covered here:
+//   1. Warmups (`wu-*` IDs from warmupDatabase.ts) where free-exercise-db
+//      has the same/equivalent pose.
+//   2. Lifts that were missed when the original ANIMATION_URLS map was
+//      built (e.g. nordic-curl), backfilled via free-exercise-db.
+// Static JPGs only (free-exercise-db has no GIFs), but better than empty.
+// ---------------------------------------------------------------------------
+
+const JDLV_BASE =
+  'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/';
+
+const EXTRA_GIF_OVERRIDES = {
+  // ── Direct or near-exact matches in free-exercise-db ──────────────────────
+  'wu-arm-circles':       'Arm_Circles',
+  'wu-band-pull-apart':   'Band_Pull_Apart',
+  'wu-scap-pull':         'Scapular_Pull-Up',
+  'wu-cat-cow':           'Cat_Stretch',
+  'wu-wrist-circle':      'Wrist_Circles',
+  'wu-deadbug':           'Dead_Bug',
+  'wu-bodyweight-squat':  'Bodyweight_Squat',
+  'wu-walking-lunge':     'Bodyweight_Walking_Lunge',
+  'wu-glute-bridge':      'Bent-Knee_Hip_Raise',
+  'wu-ankle-circle':      'Ankle_Circles',
+  'wu-triceps-stretch':   'Triceps_Stretch',
+  'wu-childs-pose':       'Childs_Pose',
+  'wu-quad-stretch':      'All_Fours_Quad_Stretch',
+  'wu-hamstring-stretch': 'Hamstring_Stretch',
+  'wu-calf-wall':         'Calf_Stretch_Hands_Against_Wall',
+  'wu-supine-twist':      'Spinal_Stretch',
+
+  // ── v4.4.x — additional loose matches (image illustrates the right pose,
+  //    even if name in free-exercise-db differs slightly) ────────────────────
+  'wu-lat-stretch':       'Overhead_Lat',           // identical pose
+  'wu-biceps-wall':       'Standing_Biceps_Stretch',// identical pose
+  'wu-doorway-stretch':   'Behind_Head_Chest_Stretch', // similar chest stretch
+
+  // ── v4.4.x — fill missing lift images (these IDs aren't in ANIMATION_URLS) ─
+  // Free-exercise-db match where available; lift-share via ASSET_ALIASES
+  // (in generateLocalGifManifest.js) for the rest.
+  'nordic-curl':          'Glute_Ham_Raise',  // closest analog (eccentric hamstring)
+};
+
+function loadExtraUrls() {
+  const urls = {};
+  for (const [ourId, theirId] of Object.entries(EXTRA_GIF_OVERRIDES)) {
+    urls[ourId] = `${JDLV_BASE}${theirId}/0.jpg`;
+  }
+  return urls;
+}
+
+// ---------------------------------------------------------------------------
 // HTTP fetch helper — follows redirects, writes to disk
 // ---------------------------------------------------------------------------
 
@@ -112,7 +164,7 @@ async function main() {
     fs.mkdirSync(OUT_DIR, { recursive: true });
   }
 
-  const urls = loadAnimationUrls();
+  const urls = { ...loadAnimationUrls(), ...loadExtraUrls() };
   const ids = Object.keys(urls).sort();
   console.log(`curateExerciseGifs: ${ids.length} URLs to fetch`);
 
