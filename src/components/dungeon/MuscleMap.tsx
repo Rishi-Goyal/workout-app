@@ -23,7 +23,9 @@ const MUSCLE_SLUG_MAP: Record<MuscleGroup, Slug[]> = {
   calves:     ['calves'],
 };
 
-const MUSCLE_LABELS: Record<MuscleGroup, string> = {
+// Exported for InstructionsPanel (v4.5.0 PR 2/3) — single source of truth
+// for muscle-group display labels across the app.
+export const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   chest:      'Pectorals',
   shoulders:  'Deltoids',
   biceps:     'Biceps',

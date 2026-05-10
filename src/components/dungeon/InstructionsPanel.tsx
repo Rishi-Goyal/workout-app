@@ -1,18 +1,23 @@
 /**
  * InstructionsPanel — exercise guide pane for the active-quest screen.
  *
- * v4.2.0 Theme E additions:
- *   - Top-pinned "⚠️ Watch Out" red-accent card listing common mistakes
- *   - ProgressionSwapRow — ↓ Easier / ↑ Harder pill buttons at the bottom
+ * v4.5.0 PR 2/3 — surface previously-hidden Exercise data:
+ *   - Difficulty pill alongside movement type
+ *   - Primary + secondary muscles chip row
+ *   - Effort-per-set fatigue bar visualization
+ *   - Full progression-chain dot indicator (showing user's position)
  *
- * Render order: mistakes → form cues → step-by-step → swap row
+ * Render order: pills row → equipment → muscles → effort bars →
+ *   Watch Out / Form Tips → form checklist → how-to steps → progression
  */
 import { memo, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
-import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
+import { EXERCISE_MAP, getMuscleFatigue, getProgressionChain } from '@/lib/exerciseDatabase';
+import { EXERCISE_DB_DATA } from '@/lib/exerciseDBData';
 import { getMistakes } from '@/lib/exerciseMistakes';
 import { inferExerciseType, type ExerciseType } from '@/components/dungeon/ExerciseAnimator';
+import { MUSCLE_LABELS } from '@/components/dungeon/MuscleMap';
 import FormCueChecklist from '@/components/dungeon/FormCueChecklist';
 import type { MuscleGroup, Equipment } from '@/types';
 
@@ -45,6 +50,23 @@ const EQUIPMENT_ICONS: Record<Equipment, string> = {
   bench:            '🪑',
   cable_machine:    '⚙️',
   bodyweight_only:  '🧍',
+};
+
+// v4.5.0 — surface Exercise.difficultyLevel (1–5) as a labelled pill.
+// Colour scales jade → cyan → gold → orange → crimson with difficulty.
+const DIFFICULTY_LABEL: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: 'BEGINNER',
+  2: 'NOVICE',
+  3: 'INTERMEDIATE',
+  4: 'ADVANCED',
+  5: 'ELITE',
+};
+const DIFFICULTY_COLOR: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: COLORS.jade,
+  2: COLORS.cyan,
+  3: COLORS.gold,
+  4: COLORS.orange,
+  5: COLORS.crimson,
 };
 
 // ---------------------------------------------------------------------------
@@ -222,13 +244,44 @@ function InstructionsPanel({
   const harderExerciseId = exercise?.progression?.harderExerciseId ?? null;
   const showSwapRow = onSwap && (easierExerciseId || harderExerciseId);
 
+  // v4.5.0 — surfaced data fields. All gracefully degrade for warmups
+  // (wu-* IDs aren't in EXERCISE_MAP so `exercise` is undefined).
+  const difficultyLevel = exercise?.difficultyLevel ?? null;
+  const dbMechanic = EXERCISE_DB_DATA[exerciseId]?.mechanic ?? null;
+  const fatigue = exercise ? getMuscleFatigue(exercise) : null;
+  // Sort fatigue entries highest → lowest, take top 4 for compact display.
+  const fatigueEntries = fatigue
+    ? (Object.entries(fatigue) as [MuscleGroup, number][])
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+    : [];
+  const chain = exercise ? getProgressionChain(exerciseId) : [];
+  const chainIndex = exercise ? chain.findIndex((e) => e.id === exerciseId) : -1;
+
   return (
     <View style={styles.container}>
 
-      {/* Movement type pill */}
-      <View style={[styles.typePill, { backgroundColor: color + '18', borderColor: color + '40' }]}>
-        <View style={[styles.typeDot, { backgroundColor: color }]} />
-        <Text style={[styles.typeText, { color }]}>{TYPE_LABEL[type]}</Text>
+      {/* Pills row — movement type + difficulty (lifts only). v4.5.0:
+          difficulty pill is the previously-unsurfaced exercise.difficultyLevel,
+          colour-coded jade → crimson with the mechanic suffix from
+          EXERCISE_DB_DATA when available (e.g. "INTERMEDIATE · COMPOUND"). */}
+      <View style={styles.pillsRow}>
+        <View style={[styles.typePill, { backgroundColor: color + '18', borderColor: color + '40' }]}>
+          <View style={[styles.typeDot, { backgroundColor: color }]} />
+          <Text style={[styles.typeText, { color }]}>{TYPE_LABEL[type]}</Text>
+        </View>
+        {difficultyLevel !== null && (
+          <View style={[styles.diffPill, {
+            backgroundColor: DIFFICULTY_COLOR[difficultyLevel] + '18',
+            borderColor: DIFFICULTY_COLOR[difficultyLevel] + '40',
+          }]}>
+            <Text style={[styles.diffText, { color: DIFFICULTY_COLOR[difficultyLevel] }]}>
+              {DIFFICULTY_LABEL[difficultyLevel]}
+              {dbMechanic ? ` · ${dbMechanic.toUpperCase()}` : ''}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Equipment needed */}
@@ -240,6 +293,62 @@ function InstructionsPanel({
               <View key={eq} style={styles.equipChip}>
                 <Text style={styles.equipIcon}>{EQUIPMENT_ICONS[eq]}</Text>
                 <Text style={styles.equipLabel}>{eq.replace(/_/g, ' ')}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* v4.5.0 — muscles section. Primary muscle (gold "WORKS") +
+          secondary muscles (amber "ALSO HITS"). Lifts only — warmups
+          have target muscles in their warmupDatabase entry but the
+          panel doesn't currently look those up; falls back gracefully. */}
+      {exercise && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>MUSCLES</Text>
+          <View style={styles.musclesRow}>
+            <Text style={styles.musclesLabel}>WORKS</Text>
+            <View style={[styles.muscleChip, styles.muscleChipPrimary]}>
+              <Text style={styles.muscleChipText}>{MUSCLE_LABELS[exercise.primaryMuscle]}</Text>
+            </View>
+          </View>
+          {exercise.secondaryMuscles.length > 0 && (
+            <View style={styles.musclesRow}>
+              <Text style={styles.musclesLabel}>ALSO HITS</Text>
+              <View style={styles.muscleChipsList}>
+                {exercise.secondaryMuscles.map((m) => (
+                  <View key={m} style={[styles.muscleChip, styles.muscleChipSecondary]}>
+                    <Text style={styles.muscleChipTextSecondary}>{MUSCLE_LABELS[m]}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* v4.5.0 — effort per set: per-muscle fatigue 1–10 visualised as
+          horizontal bars. Driven by getMuscleFatigue() which uses explicit
+          muscleFatigue when set or derives from difficultyLevel otherwise. */}
+      {fatigueEntries.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>EFFORT PER SET</Text>
+          <View style={styles.fatigueList}>
+            {fatigueEntries.map(([m, v], i) => (
+              <View key={m} style={styles.fatigueRow}>
+                <Text style={styles.fatigueLabel}>{MUSCLE_LABELS[m]}</Text>
+                <View style={styles.fatigueTrack}>
+                  <View
+                    style={[
+                      styles.fatigueFill,
+                      {
+                        width: `${Math.min(100, v * 10)}%`,
+                        backgroundColor: i === 0 ? COLORS.gold : COLORS.goldDim,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.fatigueValue}>{v}/10</Text>
               </View>
             ))}
           </View>
@@ -301,6 +410,45 @@ function InstructionsPanel({
               </View>
             ))}
           </View>
+        </View>
+      )}
+
+      {/* v4.5.0 — full progression-chain visualization. Shows where the
+          current exercise sits in the easiest→hardest chain. Read-only
+          dots; the existing easier/harder swap pills below remain the
+          single source of mutation. Hidden for chains with only the
+          current entry (singletons). */}
+      {chain.length > 1 && chainIndex >= 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>PROGRESSION</Text>
+          <View style={styles.chainRow}>
+            {chain.map((step, i) => {
+              const isCurrent = i === chainIndex;
+              const isPast = i < chainIndex;
+              return (
+                <View key={step.id} style={styles.chainStep}>
+                  <View
+                    style={[
+                      styles.chainDot,
+                      isPast && styles.chainDotPast,
+                      isCurrent && styles.chainDotCurrent,
+                    ]}
+                  />
+                  {i < chain.length - 1 && (
+                    <View
+                      style={[
+                        styles.chainLine,
+                        isPast && styles.chainLinePast,
+                      ]}
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.chainLabel}>
+            Step {chainIndex + 1} of {chain.length} · {exercise?.name}
+          </Text>
         </View>
       )}
 
@@ -469,5 +617,151 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans,
     color: COLORS.text,
     lineHeight: 20,
+  },
+
+  // ── v4.5.0 — surfaced data ──────────────────────────────────────────────
+  pillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  diffPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  diffText: {
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontFamily: FONTS.sansBold,
+  },
+  // Muscles row
+  musclesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  musclesLabel: {
+    fontSize: 9,
+    letterSpacing: 1.5,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.textMuted,
+    width: 68,
+  },
+  muscleChipsList: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  muscleChip: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+  },
+  muscleChipPrimary: {
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    borderColor: 'rgba(245,166,35,0.45)',
+  },
+  muscleChipSecondary: {
+    backgroundColor: 'rgba(178,119,18,0.10)',
+    borderColor: 'rgba(178,119,18,0.35)',
+  },
+  muscleChipText: {
+    fontSize: 11,
+    fontFamily: FONTS.sansBold,
+    color: COLORS.gold,
+    letterSpacing: 0.4,
+  },
+  muscleChipTextSecondary: {
+    fontSize: 11,
+    fontFamily: FONTS.sansMed,
+    color: COLORS.goldDim,
+    letterSpacing: 0.4,
+  },
+  // Effort bars
+  fatigueList: {
+    gap: 6,
+  },
+  fatigueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fatigueLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.sansMed,
+    color: COLORS.textSecondary,
+    width: 80,
+  },
+  fatigueTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  fatigueFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  fatigueValue: {
+    fontSize: 10,
+    fontFamily: FONTS.mono,
+    color: COLORS.textMuted,
+    width: 36,
+    textAlign: 'right',
+  },
+  // Progression chain dots
+  chainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  chainStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  chainDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  chainDotPast: {
+    backgroundColor: COLORS.goldDim,
+    borderColor: COLORS.gold,
+  },
+  chainDotCurrent: {
+    backgroundColor: COLORS.gold,
+    borderColor: COLORS.goldLight,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  chainLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 2,
+  },
+  chainLinePast: {
+    backgroundColor: COLORS.goldDim,
+  },
+  chainLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.sansMed,
+    color: COLORS.textSecondary,
+    marginTop: 6,
+    letterSpacing: 0.3,
   },
 });
