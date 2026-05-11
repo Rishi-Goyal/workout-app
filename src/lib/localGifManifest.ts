@@ -8,7 +8,7 @@
  * `resolveGif()` (src/lib/exerciseGifs.ts).
  */
 
-// Generated from 126 bundled assets.
+// Generated from 124 bundled assets.
 
 export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'ab-wheel-rollout': require('../../assets/exercises/ab-wheel-rollout.jpg'),
@@ -102,7 +102,6 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'tricep-pushdown-band': require('../../assets/exercises/tricep-pushdown-band.jpg'),
   'upright-row': require('../../assets/exercises/upright-row.jpg'),
   'walking-lunge': require('../../assets/exercises/walking-lunge.jpg'),
-  'wall-push-up': require('../../assets/exercises/wall-push-up.gif'),
   'weighted-dip': require('../../assets/exercises/weighted-dip.gif'),
   'weighted-pull-up': require('../../assets/exercises/weighted-pull-up.jpg'),
   'wide-push-up': require('../../assets/exercises/wide-push-up.gif'),
@@ -133,7 +132,6 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'wu-tricep-swing': require('../../assets/exercises/wu-arm-circles.jpg'),
   'wu-triceps-stretch': require('../../assets/exercises/wu-triceps-stretch.jpg'),
   'wu-walking-lunge': require('../../assets/exercises/wu-walking-lunge.jpg'),
-  'wu-wall-pushup': require('../../assets/exercises/wall-push-up.gif'),
   'wu-wrist-circle': require('../../assets/exercises/wu-wrist-circle.jpg'),
   'wu-wrist-flexor': require('../../assets/exercises/wu-wrist-circle.jpg'),
   'wu-ytw-raise': require('../../assets/exercises/wu-arm-circles.jpg'),

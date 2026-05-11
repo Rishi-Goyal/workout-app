@@ -17,6 +17,7 @@ import InstructionsPanel from '@/components/dungeon/InstructionsPanel';
 import WorkoutTimer from '@/components/dungeon/WorkoutTimer';
 import HoldDrillTimer from '@/components/dungeon/HoldDrillTimer';
 import CoachMark from '@/components/tutorial/CoachMark';
+import { useTutorialStore } from '@/stores/useTutorialStore';
 import Badge from '@/components/ui/Badge';
 import PressableButton from '@/components/ui/PressableButton';
 import SectionLabel from '@/components/ui/SectionLabel';
@@ -73,6 +74,10 @@ export default function ActiveQuestScreen() {
   // their progress getting paused under their own gaze. Releasing the wake-lock
   // happens automatically when this screen unmounts (router.back, finalize, etc).
   useKeepAwake();
+  // v4.5.1 QA P0.3 — coach-mark 4 (rest period) only renders once the user
+  // has dismissed coach-mark 3 (start your set), so two tutorial bubbles
+  // never stack on the screen simultaneously.
+  const step3Dismissed = useTutorialStore((s) => s.dismissedSteps.includes(3));
 
   const { questId } = useLocalSearchParams<{ questId: string }>();
   const { activeSession, markQuest, swapQuestExercise } = useSessionStore();
@@ -152,20 +157,32 @@ export default function ActiveQuestScreen() {
     return () => { dismissWorkoutNotification(); };
   }, [quest.exerciseName, quest.sets]);
 
-  // v4.1.0 A1 — auto-advance to the next pending quest after the current one.
-  // We deliberately look only at quests *after* the current in session order,
-  // so users running a manual re-order from the list don't get bounced to a
-  // quest they already saw. If nothing pending is left → fall back to the
-  // list (Home shows the Finish button).
+  // v4.5.1 — auto-advance to the earliest pending quest in session order.
+  // QA v4.5.0 P0.1: a user who taps directly into a Mini-Boss without doing
+  // the warmups first should return to Cat-Cow before being routed to
+  // Child's Pose (cooldown). The original v4.1.0 A1 implementation
+  // searched only `slice(idx + 1)`, which meant the user kept being pushed
+  // forward into the cooldown while two warmups remained pending.
+  //
+  // PR #51 Codex P1 then caught that "search after current, fallback to
+  // before" still picks the cooldown when the user is on the lift (the
+  // lift's idx + 1 is the cooldown, found before the wrap-around fires).
+  // The correct behaviour for a phase-ordered dungeon (Mobs → Mini-Bosses
+  // → Recovery) is the simplest one: always advance to the earliest
+  // pending quest other than the current. Session order IS the desired
+  // route through.
   const nextPendingQuestId: string | null = (() => {
     if (!activeSession) return null;
-    const idx = activeSession.quests.findIndex((q) => q.id === quest!.id);
-    if (idx < 0) return null;
-    const next = activeSession.quests.slice(idx + 1).find((q) => q.status === 'pending');
-    return next?.id ?? null;
+    const earliest = activeSession.quests.find(
+      (q) => q.status === 'pending' && q.id !== quest!.id,
+    );
+    return earliest?.id ?? null;
   })();
 
-  // Label on the done-phase primary depends on what's next.
+  // Label on the done-phase primary. "Finish Dungeon" only when there's
+  // *no* pending work anywhere in the session — wraps-around-aware so a
+  // user who started mid-session still sees "Next Quest" until everything
+  // else is cleared.
   const completeLabel = nextPendingQuestId
     ? '✓ Save & Next Quest →'
     : '✓ Save & Finish Dungeon →';
@@ -289,8 +306,13 @@ export default function ActiveQuestScreen() {
 
         {/* v4.2.0 Theme D — coach-mark 4 (rest period) sits between the
             timer and the XP row, only for lifts on the tutorial floor.
-            It points up at the timer where rest counts down. */}
-        {!isNonLift && !!activeSession?.isTutorial && (character?.floorsCleared ?? 0) < 1 && (
+            v4.5.1 QA P0.3: also gate on step 3 being dismissed first so
+            two coach-marks don't stack on the screen at once. The natural
+            sequence is "start your set" → "rest period" anyway. */}
+        {!isNonLift &&
+          !!activeSession?.isTutorial &&
+          (character?.floorsCleared ?? 0) < 1 &&
+          step3Dismissed && (
           <CoachMark stepId={4} isVisible anchor="top" />
         )}
 

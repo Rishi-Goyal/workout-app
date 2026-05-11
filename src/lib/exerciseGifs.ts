@@ -94,12 +94,38 @@ function matchScore(query: string, result: string): number {
 }
 
 /**
+ * Names we know the remote services return wrong content for. The
+ * lookup is by display name (normalised), so all aliases for the same
+ * actually-wrong asset must be listed. The corresponding bundled file
+ * was also deleted and the static ANIMATION_URLS entry commented out;
+ * this blocklist closes the last remaining "remote serves the wrong
+ * image" hole flagged by Codex P2 on PR #51.
+ *
+ * Effect: fetchExerciseGif returns null immediately for these names,
+ * which routes ExerciseGif to the honest SVG silhouette fallback.
+ */
+const REMOTE_FETCH_BLOCKLIST = new Set<string>([
+  // 'Wall Push-Up' — the ExerciseDB GIF for this name is a floor
+  // push-up. Mislabeled at the source; no clean substitute in any of
+  // the open exercise databases we use.
+  'wall pushup',
+  'wall push up',
+  'wall push-up',
+]);
+
+/**
  * Fetch a GIF URL for the given exercise name.
  * Returns a URL string, or null if not found.
  */
 export async function fetchExerciseGif(exerciseName: string): Promise<string | null> {
   const cacheKey = normalise(exerciseName);
   if (gifCache.has(cacheKey)) return gifCache.get(cacheKey)!;
+  // Known-bad name → short-circuit so ExerciseGif falls to the SVG
+  // placeholder rather than fetching the mislabeled remote asset.
+  if (REMOTE_FETCH_BLOCKLIST.has(cacheKey)) {
+    gifCache.set(cacheKey, null);
+    return null;
+  }
 
   try {
     const encodedName = encodeURIComponent(normalise(exerciseName));

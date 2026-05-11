@@ -207,10 +207,25 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
           </Animated.View>
         )}
 
+        {/* v4.5.1 — skipped quests get a ⋯ button alongside the status text
+            so the "tap ⋯ to restore" copy actually does what it says. Before
+            this fix the button was gated on `pending` only — Codex / QA v4.5.0
+            P0.2: UI promised an unreachable action. */}
         {quest.status === 'skipped' && (
-          <Text style={[styles.statusText, { color: COLORS.textMuted, textAlign: 'center', marginTop: 4 }]}>
-            Quest skipped — tap ⋯ to restore
-          </Text>
+          <Animated.View entering={FadeIn} style={styles.actions}>
+            <Text style={[styles.statusText, { color: COLORS.textMuted, flex: 1, marginRight: 8 }]}>
+              Quest skipped — tap ⋯ to restore
+            </Text>
+            <Pressable
+              style={styles.moreBtn}
+              onPress={() => setMenuOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Restore quest options"
+              hitSlop={8}
+            >
+              <Text style={styles.moreBtnText}>⋯</Text>
+            </Pressable>
+          </Animated.View>
         )}
       </Card>
 
@@ -236,16 +251,30 @@ export default function QuestCard({ quest, onAction, disabled }: QuestCardProps)
               </View>
             </Pressable>
 
-            <Pressable
-              style={styles.sheetRow}
-              onPress={() => { setMenuOpen(false); onAction(quest.id, 'skipped'); }}
-            >
-              <Text style={styles.sheetRowIcon}>✕</Text>
-              <View style={styles.sheetRowBody}>
-                <Text style={styles.sheetRowLabel}>Skip quest</Text>
-                <Text style={styles.sheetRowHint}>No XP earned — tap ⋯ again to restore</Text>
-              </View>
-            </Pressable>
+            {/* v4.5.1 — Skip <-> Restore toggle based on current status. */}
+            {isSkipped ? (
+              <Pressable
+                style={styles.sheetRow}
+                onPress={() => { setMenuOpen(false); onAction(quest.id, 'pending'); }}
+              >
+                <Text style={styles.sheetRowIcon}>↻</Text>
+                <View style={styles.sheetRowBody}>
+                  <Text style={styles.sheetRowLabel}>Restore quest</Text>
+                  <Text style={styles.sheetRowHint}>Put it back into your queue</Text>
+                </View>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={styles.sheetRow}
+                onPress={() => { setMenuOpen(false); onAction(quest.id, 'skipped'); }}
+              >
+                <Text style={styles.sheetRowIcon}>✕</Text>
+                <View style={styles.sheetRowBody}>
+                  <Text style={styles.sheetRowLabel}>Skip quest</Text>
+                  <Text style={styles.sheetRowHint}>No XP earned — tap ⋯ again to restore</Text>
+                </View>
+              </Pressable>
+            )}
 
             <Pressable
               style={styles.sheetRow}

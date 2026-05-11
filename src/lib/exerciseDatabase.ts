@@ -1475,7 +1475,12 @@ const JDLV = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercise
 const EXDB = 'https://static.exercisedb.dev/media/';
 const ANIMATION_URLS: Partial<Record<string, string>> = {
   // ── Chest ───────────────────────────────────────────────────────────────────
-  'wall-push-up':           EXDB + 'P9GFBME.gif',
+  // v4.5.1 QA P0.4 — `wall-push-up` removed: the source EXDB asset
+  // (P9GFBME.gif) shows a *floor* push-up, not a wall push-up.
+  // Misleading enough for a beginner to learn bad form. No clean wall-
+  // push-up analog exists in free-exercise-db or wger. Letting this fall
+  // through to the abstract SVG silhouette is the honest answer.
+  // 'wall-push-up':           EXDB + 'P9GFBME.gif',  // REMOVED
   'incline-push-up':        EXDB + 'CB8WET1.gif',
   'wide-push-up':           EXDB + 'wpbD28t.gif',
   'push-up':                EXDB + 'Snj1wSv.gif',
