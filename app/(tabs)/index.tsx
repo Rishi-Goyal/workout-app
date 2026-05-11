@@ -389,6 +389,14 @@ export default function DungeonTabScreen() {
             ) : (
               (() => {
                 const groups = groupQuestsByPhase(activeSession.quests);
+                // v4.5.1 — during the Floor 1 tutorial the coach-mark says
+                // "These are your Mobs — tap one to begin", but the default
+                // collapse state had Mini-Bosses expanded and Mobs hidden. QA
+                // v4.5.0 P0.3: tutorial copy didn't match what was visible.
+                // Flip the defaults while tutorial is active so the user
+                // actually sees a Mob card to tap.
+                const isTutorialActive =
+                  !!activeSession.isTutorial && (character.floorsCleared ?? 0) < 1;
                 return (
                   <>
                     <DungeonRoom
@@ -397,6 +405,7 @@ export default function DungeonTabScreen() {
                       icon={PHASE_META.mob.icon}
                       quests={groups.mob}
                       onAction={handleQuestAction}
+                      defaultExpanded={isTutorialActive ? true : undefined}
                     />
                     <DungeonRoom
                       phase="miniboss"
@@ -404,6 +413,7 @@ export default function DungeonTabScreen() {
                       icon={PHASE_META.miniboss.icon}
                       quests={groups.miniboss}
                       onAction={handleQuestAction}
+                      defaultExpanded={isTutorialActive ? false : undefined}
                     />
                     <DungeonRoom
                       phase="recovery"
