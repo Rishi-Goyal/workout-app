@@ -54,8 +54,16 @@ interface MonthSpan {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// v4.5.2 QA P0.7 — local-date key, not UTC. `toISOString` returns the date
+// in UTC; for users in positive-offset timezones (IST = UTC+5:30), an
+// evening workout could end up on yesterday's cell, and the auto-scroll
+// "today" target was shifted off by one. All cell day/month labels use
+// local time via getDate/getMonth, so the key must match.
 function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function getCellColor(xp: number): string {
@@ -109,7 +117,12 @@ function generateYearGrid(xpByDay: Record<string, number>): {
       day: cursor.getDate(),
       xp: xpByDay[key] ?? 0,
       isToday: key === todayKey,
-      isPadding: key < realStartKey,
+      // v4.5.2 QA P0.7 — mark BOTH leading (before startDate) AND trailing
+      // (after today) padding. Without this, future cells in the current
+      // alignment week (e.g. Wed–Sat after a Tue) appear as "missed
+      // workouts" and the visible date range header reads like "May 13 –
+      // May 16" when today is May 12.
+      isPadding: key < realStartKey || key > todayKey,
     });
     cursor.setDate(cursor.getDate() + 1);
   }
@@ -178,9 +191,16 @@ export default function WorkoutCalendar({ sessions }: WorkoutCalendarProps) {
   const totalActiveDays = allCells.filter(c => c.xp > 0).length;
   const totalWorkouts = sessions.filter(s => s.status === 'completed').length;
 
-  // Date range
-  const firstReal = allCells[0];
-  const lastReal = allCells[allCells.length - 1];
+  // v4.5.2 QA P0.7 \u2014 date range derived from non-padding cells only. The
+  // first non-padding cell is the start of the 365-day window; the last
+  // non-padding cell is today. Previously this used the full grid
+  // (including alignment padding) and read like "May 13 \u2013 May 16" when
+  // today was May 12 because lastReal was the Saturday of the alignment
+  // week (a future date) and firstReal was last year's same-month-day
+  // \u2014 confusing with no year context.
+  const realCells = allCells.filter((c) => !c.isPadding);
+  const firstReal = realCells[0];
+  const lastReal = realCells[realCells.length - 1];
   const dateRange = firstReal && lastReal
     ? `${MONTHS[firstReal.month]} ${firstReal.day} \u2013 ${MONTHS[lastReal.month]} ${lastReal.day}`
     : '';

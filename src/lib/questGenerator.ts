@@ -84,14 +84,28 @@ function getWorkoutDay(splitType: WorkoutSplitType, floor: number): WorkoutDay |
   return activeDays[floor % activeDays.length];
 }
 
-/** Check if user has ANY of the required equipment.
- *  bodyweight_only exercises are always accessible — if you have equipment
- *  you can still do push-ups, planks, etc. */
+/** Check if the user has the equipment to perform this exercise.
+ *
+ * v4.5.2 QA P1.6 — previously any exercise that listed 'bodyweight_only'
+ * in its equipment array was treated as universally accessible. That was
+ * fine for true bodyweight movements (push-up, plank), but wrong for
+ * hybrids that list 'bodyweight_only' alongside a real requirement —
+ * e.g. Australian Pull-Up's `['pull_up_bar', 'bodyweight_only']` got
+ * recommended to no-equipment users who can't actually do it.
+ *
+ * New semantics: 'bodyweight_only' is an informational flag meaning
+ * "no plates/weights added", not "no equipment required". The exercise
+ * is doable iff the user has at least one of the *real* requirements
+ * (everything except 'bodyweight_only'); if there are no real
+ * requirements (pure bodyweight), it's universal.
+ */
 function canDoExercise(exercise: Exercise, available: Equipment[]): boolean {
-  // Bodyweight exercises are available to everyone
-  if (exercise.equipment.includes('bodyweight_only')) return true;
+  const realRequirements = exercise.equipment.filter((e) => e !== 'bodyweight_only');
+  // Pure bodyweight (nothing else listed) → accessible to everyone.
+  if (realRequirements.length === 0) return true;
+  // Otherwise the user must have at least one of the actually-needed pieces.
   const avail = new Set(available);
-  return exercise.equipment.some(eq => avail.has(eq));
+  return realRequirements.some((eq) => avail.has(eq));
 }
 
 /** Get recently used exercise names (from last N sessions) */

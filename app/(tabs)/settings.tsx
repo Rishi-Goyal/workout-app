@@ -379,7 +379,12 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 14, fontFamily: FONTS.sansBold, color: COLORS.text, letterSpacing: 0.3 },
   fieldHint: { fontSize: 12, fontFamily: FONTS.sans, color: COLORS.textMuted, marginTop: 2, marginBottom: 10 },
 
-  splitRow: { gap: 8, paddingVertical: 4 },
+  // v4.5.2 QA P2.2 — left/right paddingHorizontal on the scrollable content
+  // gives chips room to "rest" at both ends of the scroll. Without it the
+  // first and last pills got clipped flush against the parent's edge and
+  // there was no affordance suggesting horizontal scrollability. Adds a
+  // visible "peek" of the off-screen pill as the natural affordance.
+  splitRow: { gap: 8, paddingVertical: 4, paddingHorizontal: 16 },
   splitChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,

@@ -12,7 +12,7 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { View, Image, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { fetchExerciseGif, resolveGif } from '@/lib/exerciseGifs';
+import { fetchExerciseGif, resolveGif, isRemoteFetchBlocked } from '@/lib/exerciseGifs';
 import { COLORS } from '@/lib/constants';
 import ExerciseIcon from '@/components/dungeon/ExerciseIcon';
 
@@ -44,9 +44,16 @@ export default function ExerciseGif({ exerciseId, animationUrl, exerciseName, fa
     return r?.source === 'local' ? { kind: 'local', module: r.value } : null;
   }, [exerciseId]);
 
-  const [state, setState] = useState<State>(
-    localSrc || animationUrl ? 'loaded' : 'loading',
-  );
+  // v4.5.2 — start in 'empty' immediately for blocklisted names (Wall
+  // Push-Up etc.) so the loading spinner never appears. QA on v4.5.1
+  // saw the spinner stay visible even though fetchExerciseGif's blocklist
+  // check returns null in a microtask — short-circuit at mount removes
+  // any chance of a render race.
+  const blockedRemote = useMemo(() => isRemoteFetchBlocked(exerciseName), [exerciseName]);
+  const initialState: State = localSrc || animationUrl
+    ? 'loaded'
+    : blockedRemote ? 'empty' : 'loading';
+  const [state, setState] = useState<State>(initialState);
   const [src, setSrc] = useState<Src>(
     localSrc ?? (animationUrl ? { kind: 'remote', uri: animationUrl } : null),
   );
@@ -62,6 +69,12 @@ export default function ExerciseGif({ exerciseId, animationUrl, exerciseName, fa
     if (animationUrl) {
       setState('loaded');
       setSrc({ kind: 'remote', uri: animationUrl });
+      return;
+    }
+    // Blocklisted name — never enter loading, go straight to empty.
+    if (blockedRemote) {
+      setState('empty');
+      setSrc(null);
       return;
     }
 
@@ -80,7 +93,7 @@ export default function ExerciseGif({ exerciseId, animationUrl, exerciseName, fa
     });
 
     return () => { cancelled = true; };
-  }, [localSrc, animationUrl, exerciseName]);
+  }, [localSrc, animationUrl, exerciseName, blockedRemote]);
 
   if (state === 'loading') {
     return (

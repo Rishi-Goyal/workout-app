@@ -510,13 +510,17 @@ const backExercises: Exercise[] = [
   },
   {
     id: 'back-extension',
-    name: 'Back Extension',
+    // v4.5.2 QA P1.6 — renamed from "Back Extension" so the floor/prone
+    // bodyweight variant is unambiguous. The standalone name was being
+    // recommended to no-equipment users and read as the roman-chair /
+    // GHR version (which needs a bench).
+    name: 'Superman Hold',
     primaryMuscle: 'back',
     secondaryMuscles: ['glutes', 'hamstrings'],
     movementPattern: 'hinge',
     difficultyLevel: 1,
     equipment: ['bodyweight_only'],
-    formCues: ['Neutral spine', 'Squeeze glutes at top', 'Slow controlled movement'],
+    formCues: ['Lie face-down, arms extended forward', 'Lift chest, arms, and legs together', 'Squeeze glutes at top', 'Slow controlled lower'],
     progression: { easierExerciseId: null, harderExerciseId: 'good-morning' },
     tags: ['bodyweight', 'beginner', 'rehabilitation', 'lower back'],
   },
