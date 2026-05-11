@@ -157,24 +157,26 @@ export default function ActiveQuestScreen() {
     return () => { dismissWorkoutNotification(); };
   }, [quest.exerciseName, quest.sets]);
 
-  // v4.5.1 — auto-advance prefers the next pending quest *after* the current
-  // one (preserves the v4.1.0 A1 intent: a manual re-order from the list
-  // doesn't bounce the user to a quest they already saw). But if nothing
-  // pending remains after the current, wrap to the start of the session
-  // to find any earlier pending work. QA v4.5.0 found that users who
-  // tapped straight into a Mini-Boss room without doing the warmups first
-  // saw "Save & Finish Dungeon" while two warmups were still untouched.
+  // v4.5.1 — auto-advance to the earliest pending quest in session order.
+  // QA v4.5.0 P0.1: a user who taps directly into a Mini-Boss without doing
+  // the warmups first should return to Cat-Cow before being routed to
+  // Child's Pose (cooldown). The original v4.1.0 A1 implementation
+  // searched only `slice(idx + 1)`, which meant the user kept being pushed
+  // forward into the cooldown while two warmups remained pending.
+  //
+  // PR #51 Codex P1 then caught that "search after current, fallback to
+  // before" still picks the cooldown when the user is on the lift (the
+  // lift's idx + 1 is the cooldown, found before the wrap-around fires).
+  // The correct behaviour for a phase-ordered dungeon (Mobs → Mini-Bosses
+  // → Recovery) is the simplest one: always advance to the earliest
+  // pending quest other than the current. Session order IS the desired
+  // route through.
   const nextPendingQuestId: string | null = (() => {
     if (!activeSession) return null;
-    const idx = activeSession.quests.findIndex((q) => q.id === quest!.id);
-    if (idx < 0) return null;
-    const after = activeSession.quests.slice(idx + 1).find((q) => q.status === 'pending');
-    if (after) return after.id;
-    // Wrap-around: any earlier pending quest the user skipped past
-    const earlier = activeSession.quests
-      .slice(0, idx)
-      .find((q) => q.status === 'pending');
-    return earlier?.id ?? null;
+    const earliest = activeSession.quests.find(
+      (q) => q.status === 'pending' && q.id !== quest!.id,
+    );
+    return earliest?.id ?? null;
   })();
 
   // Label on the done-phase primary. "Finish Dungeon" only when there's
