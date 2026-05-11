@@ -40,38 +40,38 @@ const ASSET_ALIASES = {
   'pause-squat':            'barbell-back-squat', // same exercise, paused tempo
   'single-leg-hip-thrust':  'hip-thrust',         // same setup, one leg
   'hanging-knee-raise':     'hanging-leg-raise',  // same hang, smaller ROM
-  'hollow-body-hold':       'plank',              // both supine core isometrics
 
-  // ── v4.5.0 PR 3/3 — close-cousin reuse for warmups with no
-  //   free-exercise-db/wger image. Each mapping is honest: the substitute
-  //   asset depicts the same body position or movement family well enough
-  //   that the visual isn't actively misleading. Cases where no honest
-  //   cousin exists (jumping-jacks, deep-breathing, etc.) are intentionally
-  //   absent here — they fall through to the SVG silhouette in
-  //   ExerciseGif.tsx so the panel is never empty but doesn't show a wrong
-  //   movement either.
-  'wu-birddog':             'wu-deadbug',         // both floor anti-extension
-  'wu-calf-pump':           'standing-calf-raise',// same calf raise motion
-  'wu-couch-stretch':       'wu-quad-stretch',    // both quad stretches
-  'wu-cross-body':          'wu-arm-circles',     // shoulder mobility
-  'wu-downward-dog':        'wu-childs-pose',     // prone yoga, similar inversion
-  'wu-figure-four':         'wu-supine-twist',    // both supine glute/hip stretches
-  'wu-hip-opener':          'wu-walking-lunge',   // "world's greatest stretch" is a lunge
-  'wu-leg-swing':           'wu-walking-lunge',   // standing leg motion
-  'wu-pigeon':              'wu-childs-pose',     // both seated/prone yoga
-  'wu-shoulder-roll':       'wu-arm-circles',     // shoulder mobility
-  'wu-standing-forward':    'wu-hamstring-stretch',// both fold-forward hamstring
-  'wu-thoracic-rotation':   'wu-cat-cow',         // both quadruped spine mobility
-  'wu-tricep-swing':        'wu-arm-circles',     // arm swinging
-  'wu-wrist-flexor':        'wu-wrist-circle',    // both wrist work
-  'wu-ytw-raise':           'wu-arm-circles',     // shoulder activation
+  // ── v4.5.0 PR 3/3 — close-cousin reuse for warmups. Strict honesty bar:
+  //   alias ONLY when the substitute asset depicts the same body position
+  //   AND the same movement family. Different-position or different-intent
+  //   pairs (e.g. supine vs prone, stretch vs rotation) fall through to
+  //   the SVG silhouette in ExerciseGif — better placeholder than wrong
+  //   picture. This was tightened in response to a PR #49 Codex P2 that
+  //   caught `hollow-body-hold → plank` (supine vs prone) — a class-of-bug
+  //   warning that I'd been too generous elsewhere. Pruned set below.
+  'wu-plank-reach':         'plank',              // plank-with-arm-reach is a plank
+  'wu-calf-pump':           'standing-calf-raise',// bouncing through ankles IS a calf raise
+  'wu-shoulder-roll':       'wu-arm-circles',     // both rotational shoulder mobility
+  'wu-standing-forward':    'wu-hamstring-stretch',// standing forward fold IS hamstring stretch
+  'wu-thoracic-rotation':   'wu-cat-cow',         // both quadruped spine flow
+  'wu-tricep-swing':        'wu-arm-circles',     // both arm-swinging overhead
+  'wu-wrist-flexor':        'wu-wrist-circle',    // same wrist position + motion family
+  'wu-ytw-raise':           'wu-arm-circles',     // shoulder-activation arm movements
+  'wu-hip-opener':          'wu-walking-lunge',   // World's Greatest Stretch starts as a lunge
 
-  // Intentionally NOT aliased — no honest cousin exists. These fall through
-  // to the SVG silhouette fallback in ExerciseGif:
-  //   wu-cobra            (prone back extension — no analog)
-  //   wu-deep-breathing   (no movement to depict)
-  //   wu-jumping-jacks    (full-body cardio bounce — no good frame)
-  //   wu-march-in-place   (high-knee standing — no good frame)
+  // Intentionally NOT aliased — falls through to SVG silhouette:
+  //   hollow-body-hold     supine; plank is prone (Codex flagged on PR #49)
+  //   wu-birddog           quadruped, not supine like dead-bug
+  //   wu-cobra             prone back extension — no analog
+  //   wu-couch-stretch     rear-foot-elevated quad — different from standing quad stretch
+  //   wu-cross-body        shoulder stretch, not arm rotation
+  //   wu-deep-breathing    no movement to depict
+  //   wu-downward-dog      V-shape inversion, not kneeling like child's pose
+  //   wu-figure-four       supine knee-pull, distinct from supine twist
+  //   wu-jumping-jacks     cardio bounce — no good single frame
+  //   wu-leg-swing         standing pendulum, not forward step
+  //   wu-march-in-place    high-knee standing — no good frame
+  //   wu-pigeon            seated front-shin fold, not kneeling
 };
 
 function main() {

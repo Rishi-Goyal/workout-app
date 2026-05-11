@@ -8,7 +8,7 @@
  * `resolveGif()` (src/lib/exerciseGifs.ts).
  */
 
-// Generated from 134 bundled assets.
+// Generated from 126 bundled assets.
 
 export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'ab-wheel-rollout': require('../../assets/exercises/ab-wheel-rollout.jpg'),
@@ -52,7 +52,6 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'hanging-knee-raise': require('../../assets/exercises/hanging-leg-raise.jpg'),
   'hanging-leg-raise': require('../../assets/exercises/hanging-leg-raise.jpg'),
   'hip-thrust': require('../../assets/exercises/hip-thrust.jpg'),
-  'hollow-body-hold': require('../../assets/exercises/plank.jpg'),
   'incline-barbell-press': require('../../assets/exercises/incline-barbell-press.gif'),
   'incline-dumbbell-curl': require('../../assets/exercises/incline-dumbbell-curl.jpg'),
   'incline-dumbbell-press': require('../../assets/exercises/incline-dumbbell-press.gif'),
@@ -111,26 +110,19 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'wu-arm-circles': require('../../assets/exercises/wu-arm-circles.jpg'),
   'wu-band-pull-apart': require('../../assets/exercises/wu-band-pull-apart.jpg'),
   'wu-biceps-wall': require('../../assets/exercises/wu-biceps-wall.jpg'),
-  'wu-birddog': require('../../assets/exercises/wu-deadbug.jpg'),
   'wu-bodyweight-squat': require('../../assets/exercises/wu-bodyweight-squat.jpg'),
   'wu-calf-pump': require('../../assets/exercises/standing-calf-raise.jpg'),
   'wu-calf-wall': require('../../assets/exercises/wu-calf-wall.jpg'),
   'wu-cat-cow': require('../../assets/exercises/wu-cat-cow.jpg'),
   'wu-childs-pose': require('../../assets/exercises/wu-childs-pose.jpg'),
-  'wu-couch-stretch': require('../../assets/exercises/wu-quad-stretch.jpg'),
-  'wu-cross-body': require('../../assets/exercises/wu-arm-circles.jpg'),
   'wu-dead-hang': require('../../assets/exercises/dead-hang.gif'),
   'wu-deadbug': require('../../assets/exercises/wu-deadbug.jpg'),
   'wu-doorway-stretch': require('../../assets/exercises/wu-doorway-stretch.jpg'),
-  'wu-downward-dog': require('../../assets/exercises/wu-childs-pose.jpg'),
-  'wu-figure-four': require('../../assets/exercises/wu-supine-twist.jpg'),
   'wu-glute-bridge': require('../../assets/exercises/wu-glute-bridge.jpg'),
   'wu-good-morning': require('../../assets/exercises/good-morning.jpg'),
   'wu-hamstring-stretch': require('../../assets/exercises/wu-hamstring-stretch.jpg'),
   'wu-hip-opener': require('../../assets/exercises/wu-walking-lunge.jpg'),
   'wu-lat-stretch': require('../../assets/exercises/wu-lat-stretch.jpg'),
-  'wu-leg-swing': require('../../assets/exercises/wu-walking-lunge.jpg'),
-  'wu-pigeon': require('../../assets/exercises/wu-childs-pose.jpg'),
   'wu-plank-reach': require('../../assets/exercises/plank.jpg'),
   'wu-quad-stretch': require('../../assets/exercises/wu-quad-stretch.jpg'),
   'wu-scap-pull': require('../../assets/exercises/wu-scap-pull.jpg'),
