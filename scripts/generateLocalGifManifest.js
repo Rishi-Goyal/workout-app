@@ -29,14 +29,49 @@ const EXT_PRIORITY = ['gif', 'webp', 'png', 'jpg', 'jpeg'];
 // the file. Metro deduplicates the require()s automatically. Listed here so
 // the manifest generator picks them up alongside the directory scan.
 const ASSET_ALIASES = {
-  // Warmup → lift (same movement, just a warmup vs working set)
+  // ── Warmup → lift (same movement, just a warmup vs working set) ─────────
   'wu-wall-pushup':         'wall-push-up',
   'wu-good-morning':        'good-morning',
-  // Lift → lift (identical visual or close family — fills v4.4.x coverage gaps
-  // for exercises that were missing from ANIMATION_URLS originally)
-  'pause-squat':            'barbell-back-squat',  // same exercise, paused tempo
-  'single-leg-hip-thrust':  'hip-thrust',          // same setup, one leg
-  'hanging-knee-raise':     'hanging-leg-raise',   // same hang, smaller ROM
+  'wu-dead-hang':           'dead-hang',          // identical isometric hang
+  'wu-plank-reach':         'plank',              // same prone hand-contact hold
+
+  // ── Lift → lift (identical visual or close family — fills v4.4.x gaps
+  //   for exercises that were missing from ANIMATION_URLS originally) ────
+  'pause-squat':            'barbell-back-squat', // same exercise, paused tempo
+  'single-leg-hip-thrust':  'hip-thrust',         // same setup, one leg
+  'hanging-knee-raise':     'hanging-leg-raise',  // same hang, smaller ROM
+
+  // ── v4.5.0 PR 3/3 — close-cousin reuse for warmups. Strict honesty bar:
+  //   alias ONLY when the substitute asset depicts the same body position
+  //   AND the same movement family. Different-position or different-intent
+  //   pairs (e.g. supine vs prone, stretch vs rotation) fall through to
+  //   the SVG silhouette in ExerciseGif — better placeholder than wrong
+  //   picture. This was tightened in response to a PR #49 Codex P2 that
+  //   caught `hollow-body-hold → plank` (supine vs prone) — a class-of-bug
+  //   warning that I'd been too generous elsewhere. Pruned set below.
+  'wu-plank-reach':         'plank',              // plank-with-arm-reach is a plank
+  'wu-calf-pump':           'standing-calf-raise',// bouncing through ankles IS a calf raise
+  'wu-shoulder-roll':       'wu-arm-circles',     // both rotational shoulder mobility
+  'wu-standing-forward':    'wu-hamstring-stretch',// standing forward fold IS hamstring stretch
+  'wu-thoracic-rotation':   'wu-cat-cow',         // both quadruped spine flow
+  'wu-tricep-swing':        'wu-arm-circles',     // both arm-swinging overhead
+  'wu-wrist-flexor':        'wu-wrist-circle',    // same wrist position + motion family
+  'wu-ytw-raise':           'wu-arm-circles',     // shoulder-activation arm movements
+  'wu-hip-opener':          'wu-walking-lunge',   // World's Greatest Stretch starts as a lunge
+
+  // Intentionally NOT aliased — falls through to SVG silhouette:
+  //   hollow-body-hold     supine; plank is prone (Codex flagged on PR #49)
+  //   wu-birddog           quadruped, not supine like dead-bug
+  //   wu-cobra             prone back extension — no analog
+  //   wu-couch-stretch     rear-foot-elevated quad — different from standing quad stretch
+  //   wu-cross-body        shoulder stretch, not arm rotation
+  //   wu-deep-breathing    no movement to depict
+  //   wu-downward-dog      V-shape inversion, not kneeling like child's pose
+  //   wu-figure-four       supine knee-pull, distinct from supine twist
+  //   wu-jumping-jacks     cardio bounce — no good single frame
+  //   wu-leg-swing         standing pendulum, not forward step
+  //   wu-march-in-place    high-knee standing — no good frame
+  //   wu-pigeon            seated front-shin fold, not kneeling
 };
 
 function main() {
@@ -87,7 +122,10 @@ function main() {
     ' * `resolveGif()` (src/lib/exerciseGifs.ts).',
     ' */',
     '',
-    `// Generated ${new Date().toISOString()} from ${ids.length} bundled assets.`,
+    // No timestamp — keeps the file byte-stable across reruns so re-running
+    // the script never produces a spurious diff (same idempotency principle
+    // applied to wgerData.ts in PR #47).
+    `// Generated from ${ids.length} bundled assets.`,
     '',
     'export const LOCAL_GIF_MANIFEST: Record<string, number> = {',
     ...ids.map((id) => `  '${id}': require('../../assets/exercises/${byId.get(id)}'),`),

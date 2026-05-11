@@ -8,7 +8,7 @@
  * `resolveGif()` (src/lib/exerciseGifs.ts).
  */
 
-// Generated 2026-05-04T11:42:04.292Z from 116 bundled assets.
+// Generated from 126 bundled assets.
 
 export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'ab-wheel-rollout': require('../../assets/exercises/ab-wheel-rollout.jpg'),
@@ -111,20 +111,30 @@ export const LOCAL_GIF_MANIFEST: Record<string, number> = {
   'wu-band-pull-apart': require('../../assets/exercises/wu-band-pull-apart.jpg'),
   'wu-biceps-wall': require('../../assets/exercises/wu-biceps-wall.jpg'),
   'wu-bodyweight-squat': require('../../assets/exercises/wu-bodyweight-squat.jpg'),
+  'wu-calf-pump': require('../../assets/exercises/standing-calf-raise.jpg'),
   'wu-calf-wall': require('../../assets/exercises/wu-calf-wall.jpg'),
   'wu-cat-cow': require('../../assets/exercises/wu-cat-cow.jpg'),
   'wu-childs-pose': require('../../assets/exercises/wu-childs-pose.jpg'),
+  'wu-dead-hang': require('../../assets/exercises/dead-hang.gif'),
   'wu-deadbug': require('../../assets/exercises/wu-deadbug.jpg'),
   'wu-doorway-stretch': require('../../assets/exercises/wu-doorway-stretch.jpg'),
   'wu-glute-bridge': require('../../assets/exercises/wu-glute-bridge.jpg'),
   'wu-good-morning': require('../../assets/exercises/good-morning.jpg'),
   'wu-hamstring-stretch': require('../../assets/exercises/wu-hamstring-stretch.jpg'),
+  'wu-hip-opener': require('../../assets/exercises/wu-walking-lunge.jpg'),
   'wu-lat-stretch': require('../../assets/exercises/wu-lat-stretch.jpg'),
+  'wu-plank-reach': require('../../assets/exercises/plank.jpg'),
   'wu-quad-stretch': require('../../assets/exercises/wu-quad-stretch.jpg'),
   'wu-scap-pull': require('../../assets/exercises/wu-scap-pull.jpg'),
+  'wu-shoulder-roll': require('../../assets/exercises/wu-arm-circles.jpg'),
+  'wu-standing-forward': require('../../assets/exercises/wu-hamstring-stretch.jpg'),
   'wu-supine-twist': require('../../assets/exercises/wu-supine-twist.jpg'),
+  'wu-thoracic-rotation': require('../../assets/exercises/wu-cat-cow.jpg'),
+  'wu-tricep-swing': require('../../assets/exercises/wu-arm-circles.jpg'),
   'wu-triceps-stretch': require('../../assets/exercises/wu-triceps-stretch.jpg'),
   'wu-walking-lunge': require('../../assets/exercises/wu-walking-lunge.jpg'),
   'wu-wall-pushup': require('../../assets/exercises/wall-push-up.gif'),
   'wu-wrist-circle': require('../../assets/exercises/wu-wrist-circle.jpg'),
+  'wu-wrist-flexor': require('../../assets/exercises/wu-wrist-circle.jpg'),
+  'wu-ytw-raise': require('../../assets/exercises/wu-arm-circles.jpg'),
 };
