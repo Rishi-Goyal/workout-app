@@ -29,14 +29,49 @@ const EXT_PRIORITY = ['gif', 'webp', 'png', 'jpg', 'jpeg'];
 // the file. Metro deduplicates the require()s automatically. Listed here so
 // the manifest generator picks them up alongside the directory scan.
 const ASSET_ALIASES = {
-  // Warmup → lift (same movement, just a warmup vs working set)
+  // ── Warmup → lift (same movement, just a warmup vs working set) ─────────
   'wu-wall-pushup':         'wall-push-up',
   'wu-good-morning':        'good-morning',
-  // Lift → lift (identical visual or close family — fills v4.4.x coverage gaps
-  // for exercises that were missing from ANIMATION_URLS originally)
-  'pause-squat':            'barbell-back-squat',  // same exercise, paused tempo
-  'single-leg-hip-thrust':  'hip-thrust',          // same setup, one leg
-  'hanging-knee-raise':     'hanging-leg-raise',   // same hang, smaller ROM
+  'wu-dead-hang':           'dead-hang',          // identical isometric hang
+  'wu-plank-reach':         'plank',              // same prone hand-contact hold
+
+  // ── Lift → lift (identical visual or close family — fills v4.4.x gaps
+  //   for exercises that were missing from ANIMATION_URLS originally) ────
+  'pause-squat':            'barbell-back-squat', // same exercise, paused tempo
+  'single-leg-hip-thrust':  'hip-thrust',         // same setup, one leg
+  'hanging-knee-raise':     'hanging-leg-raise',  // same hang, smaller ROM
+  'hollow-body-hold':       'plank',              // both supine core isometrics
+
+  // ── v4.5.0 PR 3/3 — close-cousin reuse for warmups with no
+  //   free-exercise-db/wger image. Each mapping is honest: the substitute
+  //   asset depicts the same body position or movement family well enough
+  //   that the visual isn't actively misleading. Cases where no honest
+  //   cousin exists (jumping-jacks, deep-breathing, etc.) are intentionally
+  //   absent here — they fall through to the SVG silhouette in
+  //   ExerciseGif.tsx so the panel is never empty but doesn't show a wrong
+  //   movement either.
+  'wu-birddog':             'wu-deadbug',         // both floor anti-extension
+  'wu-calf-pump':           'standing-calf-raise',// same calf raise motion
+  'wu-couch-stretch':       'wu-quad-stretch',    // both quad stretches
+  'wu-cross-body':          'wu-arm-circles',     // shoulder mobility
+  'wu-downward-dog':        'wu-childs-pose',     // prone yoga, similar inversion
+  'wu-figure-four':         'wu-supine-twist',    // both supine glute/hip stretches
+  'wu-hip-opener':          'wu-walking-lunge',   // "world's greatest stretch" is a lunge
+  'wu-leg-swing':           'wu-walking-lunge',   // standing leg motion
+  'wu-pigeon':              'wu-childs-pose',     // both seated/prone yoga
+  'wu-shoulder-roll':       'wu-arm-circles',     // shoulder mobility
+  'wu-standing-forward':    'wu-hamstring-stretch',// both fold-forward hamstring
+  'wu-thoracic-rotation':   'wu-cat-cow',         // both quadruped spine mobility
+  'wu-tricep-swing':        'wu-arm-circles',     // arm swinging
+  'wu-wrist-flexor':        'wu-wrist-circle',    // both wrist work
+  'wu-ytw-raise':           'wu-arm-circles',     // shoulder activation
+
+  // Intentionally NOT aliased — no honest cousin exists. These fall through
+  // to the SVG silhouette fallback in ExerciseGif:
+  //   wu-cobra            (prone back extension — no analog)
+  //   wu-deep-breathing   (no movement to depict)
+  //   wu-jumping-jacks    (full-body cardio bounce — no good frame)
+  //   wu-march-in-place   (high-knee standing — no good frame)
 };
 
 function main() {
@@ -87,7 +122,10 @@ function main() {
     ' * `resolveGif()` (src/lib/exerciseGifs.ts).',
     ' */',
     '',
-    `// Generated ${new Date().toISOString()} from ${ids.length} bundled assets.`,
+    // No timestamp — keeps the file byte-stable across reruns so re-running
+    // the script never produces a spurious diff (same idempotency principle
+    // applied to wgerData.ts in PR #47).
+    `// Generated from ${ids.length} bundled assets.`,
     '',
     'export const LOCAL_GIF_MANIFEST: Record<string, number> = {',
     ...ids.map((id) => `  '${id}': require('../../assets/exercises/${byId.get(id)}'),`),

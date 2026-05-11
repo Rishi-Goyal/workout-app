@@ -27,6 +27,7 @@ import { useHistoryStore } from '@/stores/useHistoryStore';
 import { getCopy } from '@/lib/copy';
 import { getSuggestedWeight } from '@/lib/weights';
 import { EXERCISE_MAP } from '@/lib/exerciseDatabase';
+import { WARMUP_MAP } from '@/lib/warmupDatabase';
 import { COLORS, FONTS, RADIUS, SPACING } from '@/lib/constants';
 import { showWorkoutNotification, dismissWorkoutNotification } from '@/lib/workoutNotification';
 import type { MuscleGroup, QuestStatus, SetLog } from '@/types';
@@ -343,6 +344,15 @@ export default function ActiveQuestScreen() {
                 exerciseId={quest.exerciseId}
                 animationUrl={exerciseEntry?.animationUrl}
                 exerciseName={quest.exerciseName}
+                // v4.5.0 — when ExerciseGif falls all the way through to its
+                // SVG silhouette (4 warmups have no bundled image), use the
+                // actual WarmupExercise.kind to pick the right glyph:
+                // jumping-jacks/march-in-place ('dynamic') get the ripple
+                // arcs, cobra/box-breathing ('static') get the concentric
+                // rings.
+                fallbackKind={
+                  quest.exerciseId ? WARMUP_MAP[quest.exerciseId]?.kind : undefined
+                }
               />
               <ExerciseVideo
                 exerciseId={quest.exerciseId ?? ''}

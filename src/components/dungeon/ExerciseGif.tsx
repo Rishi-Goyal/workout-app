@@ -1,16 +1,20 @@
 /**
  * ExerciseGif — displays an exercise animation or image.
  *
- * v4.2.0 Theme B priority:
+ * Priority order:
  *   1. Bundled local asset via `resolveGif(exerciseId)` (instant, offline)
  *   2. Static animationUrl baked into the Exercise object (instant, online)
  *   3. Runtime fetch from ExerciseDB API (last resort, network)
- *   4. null — caller shows ExerciseVideo / steps instead
+ *   4. v4.5.0 — SVG silhouette via <ExerciseIcon> (was: return null). Ensures
+ *      the Guide tab is never visually empty for the handful of warmups
+ *      (Cobra, Box Breathing, Jumping Jacks, High-Knee March) where no
+ *      honest cousin asset exists in our bundled set.
  */
 import { useState, useEffect, useMemo } from 'react';
 import { View, Image, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { fetchExerciseGif, resolveGif } from '@/lib/exerciseGifs';
 import { COLORS } from '@/lib/constants';
+import ExerciseIcon from '@/components/dungeon/ExerciseIcon';
 
 interface ExerciseGifProps {
   /** Preferred — keys the local manifest. v4.2.0+ callers should always pass this. */
@@ -19,6 +23,12 @@ interface ExerciseGifProps {
   animationUrl?: string;
   /** Last-resort: API search by display name. */
   exerciseName: string;
+  /**
+   * v4.5.0 — warmup `kind` from warmupDatabase ('static' | 'dynamic' | 'activation').
+   * Drives the SVG fallback glyph choice when no image is available.
+   * Optional; defaults to 'static' inside ExerciseIcon when absent.
+   */
+  fallbackKind?: 'static' | 'dynamic' | 'activation';
 }
 
 type State = 'loading' | 'loaded' | 'empty';
@@ -27,7 +37,7 @@ type LocalSrc = { kind: 'local'; module: number };
 type RemoteSrc = { kind: 'remote'; uri: string };
 type Src = LocalSrc | RemoteSrc | null;
 
-export default function ExerciseGif({ exerciseId, animationUrl, exerciseName }: ExerciseGifProps) {
+export default function ExerciseGif({ exerciseId, animationUrl, exerciseName, fallbackKind }: ExerciseGifProps) {
   // 1. Local-first — synchronous, no flicker.
   const localSrc = useMemo<LocalSrc | null>(() => {
     const r = resolveGif(exerciseId);
@@ -104,8 +114,10 @@ export default function ExerciseGif({ exerciseId, animationUrl, exerciseName }: 
     );
   }
 
-  // No media available — caller shows ExerciseVideo / steps instead
-  return null;
+  // v4.5.0 — no media available. Render an SVG silhouette so the panel is
+  // never visually empty. The caller can still rely on the Form Tips card
+  // + step-by-step instructions for full guidance.
+  return <ExerciseIcon kind={fallbackKind} exerciseName={exerciseName} />;
 }
 
 const styles = StyleSheet.create({
