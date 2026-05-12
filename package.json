@@ -14,6 +14,7 @@
     "curate-exercisedb": "node scripts/curateExerciseDBData.js",
     "curate-wger": "node scripts/curateWgerData.js",
     "audit-exercises": "node scripts/auditExerciseData.js",
+    "audit-quality": "node scripts/auditExerciseQuality.js",
     "curate-all": "npm run curate-gifs && npm run curate-exercisedb && npm run curate-wger"
   },
   "dependencies": {
