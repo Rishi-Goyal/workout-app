@@ -276,7 +276,10 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
 //   3. WARMUP_MAP[id].cue (single line, the v4.4.1 fallback)
 // ---------------------------------------------------------------------------
 
-const WARMUP_CURATED_INSTRUCTIONS: Record<string, string[]> = {
+// Exported so tests can assert curated coverage directly (rather than
+// going through getMistakes() and risking false-pass via ExerciseDB
+// fallthrough — PR #56 Codex P2).
+export const WARMUP_CURATED_INSTRUCTIONS: Record<string, string[]> = {
   // ── v4.6.0 PR 2/4 additions — dynamic warmups (tempo + breathing) ──────
   // QA on v4.5.2 highlighted that single-image-plus-cue isn't enough for
   // alternating movements. Each dynamic entry below names the start
@@ -316,7 +319,7 @@ const WARMUP_CURATED_INSTRUCTIONS: Record<string, string[]> = {
     'Lie on your back with arms extended toward the ceiling, knees bent 90°.',
     'Press the lower back into the floor — this is the locked position.',
     'Slowly lower the right arm overhead AND extend the left leg straight, hovering above the floor.',
-    'Return to centre; alternate. Move slowly: 4 seconds per rep. 8 reps each side.',
+    'Return to centre; alternate sides. Each rep ~3 seconds; aim for ~6 reps each side over 45s.',
     'Breathe steadily; the goal is core control, not speed.',
   ],
   'wu-bodyweight-squat': [
