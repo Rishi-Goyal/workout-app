@@ -1,6 +1,6 @@
 {
   "name": "dungeonfit",
-  "version": "4.5.2",
+  "version": "4.6.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
