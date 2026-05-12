@@ -50,16 +50,25 @@ function loadLifts() {
 
 function loadWarmups() {
   const src = fs.readFileSync(WARMUP_PATH, 'utf8');
-  const re = /id:\s*'(wu-[a-z0-9-]+)'[^}]*?name:\s*'([^']+)'[^}]*?durationSec:\s*(\d+)[^}]*?kind:\s*'(\w+)'[^}]*?cue:\s*'([^']+)'/g;
+  // v4.6.0 — accept both ' and " quote styles. Some warmup names contain
+  // an apostrophe (e.g. "Child's Pose") and have to be double-quoted in
+  // the TS source; the single-quote-only regex silently dropped them
+  // (Codex flagged wu-childs-pose missing from the audit).
+  const q = `(?:'([^']+)'|"([^"]+)")`;
+  const re = new RegExp(
+    `id:\\s*'(wu-[a-z0-9-]+)'[^}]*?name:\\s*${q}[^}]*?durationSec:\\s*(\\d+)[^}]*?kind:\\s*${q}[^}]*?cue:\\s*${q}`,
+    'g',
+  );
   const out = {};
   let m;
   while ((m = re.exec(src)) !== null) {
-    out[m[1]] = {
-      name: m[2],
-      durationSec: parseInt(m[3], 10),
-      kind: m[4],
-      cue: m[5],
-    };
+    // Each `q` capture group produces 2 slots (single or double quoted);
+    // pick whichever isn't undefined.
+    const name = m[2] ?? m[3];
+    const durationSec = parseInt(m[4], 10);
+    const kind = m[5] ?? m[6];
+    const cue = m[7] ?? m[8];
+    out[m[1]] = { name, durationSec, kind, cue };
   }
   return out;
 }
@@ -131,24 +140,29 @@ function nameMatchScore(a, b) {
   return smaller.size === 0 ? 0 : overlap / smaller.size;
 }
 
-// Manual overrides from scripts/curateExerciseDBData.js — these mappings
-// were vetted at curation time even if the source name doesn't match ours
-// (e.g. our 'lateral-raise' → 'Side_Lateral_Raise'). Don't flag NAME_DRIFT
-// for these IDs; they're already curated-correct.
-const CURATED_OVERRIDE_IDS = new Set([
-  'push-up', 'pull-up', 'wide-push-up', 'diamond-push-up', 'one-arm-push-up',
-  'australian-pull-up', 'barbell-bench-press', 'paused-bench-press',
-  'incline-barbell-press', 'machine-chest-press', 'cable-chest-fly',
-  'dumbbell-fly', 'lat-pulldown', 'deadlift', 'lateral-raise', 'reverse-fly',
-  'overhead-tricep-extension', 'weighted-dip', 'lunge', 'walking-lunge',
-  'step-up', 'glute-bridge', 'ab-wheel-rollout', 'standing-ab-wheel',
-  'leg-press-calf-raise',
-  // Warmup overrides
-  'wu-arm-circles', 'wu-band-pull-apart', 'wu-scap-pull', 'wu-cat-cow',
-  'wu-wrist-circle', 'wu-deadbug', 'wu-bodyweight-squat', 'wu-walking-lunge',
-  'wu-glute-bridge', 'wu-ankle-circle', 'wu-triceps-stretch', 'wu-childs-pose',
-  'wu-quad-stretch', 'wu-hamstring-stretch', 'wu-calf-wall', 'wu-supine-twist',
-]);
+// Manual overrides parsed directly from scripts/curateExerciseDBData.js
+// at runtime. These mappings were vetted at curation time even if the
+// source name doesn't match ours (e.g. our 'lateral-raise' →
+// 'Side_Lateral_Raise'). Don't flag NAME_DRIFT for these IDs.
+//
+// v4.6.0 — Codex flagged that a hardcoded copy of the override IDs went
+// stale (we had 41, the real map had 44). Parsing once at startup keeps
+// the single source of truth in curateExerciseDBData.js.
+function loadCuratedOverrideIds() {
+  const curationScriptPath = path.join(ROOT, 'scripts', 'curateExerciseDBData.js');
+  if (!fs.existsSync(curationScriptPath)) return new Set();
+  const src = fs.readFileSync(curationScriptPath, 'utf8');
+  // Match the MANUAL_OVERRIDES object literal block and pull its keys.
+  const block = src.match(/const\s+MANUAL_OVERRIDES\s*=\s*\{([\s\S]*?)\n\};/);
+  if (!block) return new Set();
+  const out = new Set();
+  const re = /['"]([a-z0-9-]+)['"]\s*:\s*['"]/g;
+  let m;
+  while ((m = re.exec(block[1])) !== null) out.add(m[1]);
+  return out;
+}
+
+const CURATED_OVERRIDE_IDS = loadCuratedOverrideIds();
 
 // ---------------------------------------------------------------------------
 // Tempo / breathing / alternation keyword list — for dynamic warmups
