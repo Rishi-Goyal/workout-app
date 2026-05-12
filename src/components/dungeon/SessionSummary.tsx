@@ -310,8 +310,14 @@ export default function SessionSummary({
                         <Text style={styles.previewName} numberOfLines={1}>
                           {pq.exerciseName}
                         </Text>
+                        {/* v4.5.2 QA P1.5 — handle static lift quests
+                            (plank, dead-hang, etc.) where reps is '—' and
+                            duration lives in holdSeconds. "1×—" was the
+                            visible bug; now: "1 × 30s hold" / "3 × 8 reps". */}
                         <Text style={styles.previewDetail}>
-                          {pq.sets}×{pq.reps}
+                          {pq.holdSeconds
+                            ? `${pq.sets} × ${pq.holdSeconds}s hold`
+                            : `${pq.sets} × ${pq.reps} reps`}
                           {typeof pq.suggestedWeight === 'number' ? `  @ ${pq.suggestedWeight}kg` : ''}
                         </Text>
                         {pq.adaptationCopy ? (

@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Pressable, TouchableOpacity, BackHandler,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import GoalSelector from '@/components/setup/GoalSelector';
 import EquipmentPicker from '@/components/setup/EquipmentPicker';
 import MuscleStrengthSliders from '@/components/setup/MuscleStrengthSliders';
@@ -141,6 +141,11 @@ function dominantDimensions(
 
 export default function SetupScreen() {
   const setProfile = useProfileStore((s) => s.setProfile);
+  // v4.5.2 QA P2.1 — onboarding step 5 was clipping Back/Continue into
+  // the Android 3-button-or-gesture area because the ScrollView's
+  // contentContainerStyle used a fixed paddingBottom: 40 that didn't
+  // account for the safe-area inset. Use the real bottom inset.
+  const insets = useSafeAreaInsets();
 
   const [step, setStep]         = useState<Step>(1);
   const [name, setName]         = useState('');
@@ -209,7 +214,10 @@ export default function SetupScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
 
           <View style={styles.header}>
             <Text style={styles.logo}>⚔️ DungeonFit</Text>

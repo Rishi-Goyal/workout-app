@@ -97,21 +97,32 @@ function matchScore(query: string, result: string): number {
  * Names we know the remote services return wrong content for. The
  * lookup is by display name (normalised), so all aliases for the same
  * actually-wrong asset must be listed. The corresponding bundled file
- * was also deleted and the static ANIMATION_URLS entry commented out;
- * this blocklist closes the last remaining "remote serves the wrong
- * image" hole flagged by Codex P2 on PR #51.
+ * was also deleted and the static ANIMATION_URLS entry commented out.
  *
- * Effect: fetchExerciseGif returns null immediately for these names,
- * which routes ExerciseGif to the honest SVG silhouette fallback.
+ * Effect: fetchExerciseGif returns null immediately for these names AND
+ * ExerciseGif short-circuits its initial state via isRemoteFetchBlocked
+ * so the loading spinner never appears (v4.5.2 QA P0.4 found that the
+ * initial spinner from a render-then-async-resolve cycle could appear
+ * stuck on slower JS threads).
  */
 const REMOTE_FETCH_BLOCKLIST = new Set<string>([
   // 'Wall Push-Up' — the ExerciseDB GIF for this name is a floor
   // push-up. Mislabeled at the source; no clean substitute in any of
-  // the open exercise databases we use.
+  // the open exercise databases we use. Entries kept in both
+  // normalised forms (hyphen stripped) so any future caller hits the
+  // blocklist regardless of how they spell the name pre-normalise.
   'wall pushup',
   'wall push up',
-  'wall push-up',
 ]);
+
+/**
+ * Synchronous probe for the blocklist. Used by ExerciseGif to set the
+ * correct initial state at mount, skipping the 'loading' spinner phase
+ * entirely for known-bad exercises.
+ */
+export function isRemoteFetchBlocked(exerciseName: string): boolean {
+  return REMOTE_FETCH_BLOCKLIST.has(normalise(exerciseName));
+}
 
 /**
  * Fetch a GIF URL for the given exercise name.
