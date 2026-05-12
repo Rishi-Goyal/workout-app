@@ -217,8 +217,12 @@ function auditEntry(id, meta, dbEntry, manifestPath, curatedSet) {
 
   // Warmup-specific checks
   if (meta.kind && meta.kind !== 'lift') {
-    // DURATION_CLASH — durationSec vs source instructions' "X seconds"
-    if (dbEntry && meta.durationSec) {
+    // DURATION_CLASH — durationSec vs source instructions' "X seconds".
+    // Only meaningful when the user actually sees the source instructions
+    // at runtime — i.e. when hand-curated content doesn't take precedence.
+    // (PR 2/4 wired the runtime to prefer WARMUP_CURATED_INSTRUCTIONS over
+    // the DB-scraped instructions for any wu-* id that has curated content.)
+    if (dbEntry && meta.durationSec && !curatedSet.has(id)) {
       const m = dbEntry.instructions.join(' ').match(/(\d+)\s*seconds?/i);
       if (m) {
         const sourceSecs = parseInt(m[1], 10);

@@ -276,7 +276,131 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
 //   3. WARMUP_MAP[id].cue (single line, the v4.4.1 fallback)
 // ---------------------------------------------------------------------------
 
-const WARMUP_CURATED_INSTRUCTIONS: Record<string, string[]> = {
+// Exported so tests can assert curated coverage directly (rather than
+// going through getMistakes() and risking false-pass via ExerciseDB
+// fallthrough — PR #56 Codex P2).
+export const WARMUP_CURATED_INSTRUCTIONS: Record<string, string[]> = {
+  // ── v4.6.0 PR 2/4 additions — dynamic warmups (tempo + breathing) ──────
+  // QA on v4.5.2 highlighted that single-image-plus-cue isn't enough for
+  // alternating movements. Each dynamic entry below names the start
+  // position, the tempo, the breathing pattern, and the rep target.
+  'wu-cat-cow': [
+    'Start on hands and knees, wrists under shoulders, knees under hips.',
+    'Inhale: drop the belly, lift the chest and tailbone (Cow). Hold ~1 second.',
+    'Exhale: round the spine, drop the head, tuck the tailbone (Cat). Hold ~1 second.',
+    'Continue alternating slowly — aim for ~12 cycles over 40 seconds.',
+    'Move only as far as feels good; this is mobility, not stretching.',
+  ],
+  'wu-arm-circles': [
+    'Stand tall with arms straight out to the sides at shoulder height.',
+    'Trace small forward circles for 15 seconds — slow and controlled.',
+    'Reverse: small backward circles for the next 15 seconds.',
+    'Keep the shoulders relaxed; the movement comes from the shoulder joint, not the trapezius.',
+  ],
+  'wu-band-pull-apart': [
+    'Hold a light resistance band at shoulder height, arms straight in front of you.',
+    'Pull the band apart by squeezing the shoulder blades together; keep the arms straight.',
+    'Slowly return — the eccentric is half the work.',
+    'Inhale on the stretch, exhale on the pull. 12–15 reps.',
+  ],
+  'wu-scap-pull': [
+    'Hang from a pull-up bar with arms fully extended, shoulders relaxed.',
+    'Without bending the elbows, pull the shoulder blades down and together.',
+    'Hold the pulled position 1 second; you should feel your body rise slightly.',
+    'Slowly relax back to the hang. 8 reps; this primes the lats for pulling.',
+  ],
+  'wu-wrist-circle': [
+    'Extend the arms in front of you, hands in loose fists.',
+    'Rotate the wrists in slow circles — 8 times in one direction.',
+    'Reverse and circle 8 times the other way.',
+    'Open and close the fists 5 times to finish; primes the forearms.',
+  ],
+  'wu-deadbug': [
+    'Lie on your back with arms extended toward the ceiling, knees bent 90°.',
+    'Press the lower back into the floor — this is the locked position.',
+    'Slowly lower the right arm overhead AND extend the left leg straight, hovering above the floor.',
+    'Return to centre; alternate sides. Each rep ~3 seconds; aim for ~6 reps each side over 45s.',
+    'Breathe steadily; the goal is core control, not speed.',
+  ],
+  'wu-bodyweight-squat': [
+    'Stand with feet shoulder-width apart, toes slightly turned out.',
+    'Push the hips back and bend the knees, lowering until the hip crease drops below the knee.',
+    'Drive through the heels to stand; squeeze the glutes at the top.',
+    'Tempo: 2 seconds down, 1 second up. Aim for 10–15 reps.',
+    'Keep the weight in the mid-foot/heel; chest stays proud.',
+  ],
+  'wu-walking-lunge': [
+    'Stand tall, hands on hips or by your sides for balance.',
+    'Step the right foot forward into a long stride; lower until both knees are ~90°.',
+    'Drive through the front heel to step the left foot forward into the next lunge.',
+    'Keep the torso upright; the back knee should kiss the floor (not slam it).',
+    'Alternate legs. 10 reps total (5 each side); slow and controlled.',
+  ],
+  'wu-glute-bridge': [
+    'Lie on your back, knees bent, feet flat on the floor, hip-width apart.',
+    'Drive through the heels to lift the hips toward the ceiling.',
+    'Squeeze the glutes hard at the top; the body forms a straight line from shoulders to knees.',
+    'Lower with control; brief pause at the bottom. 10 slow reps.',
+    'Avoid arching the lower back — let the glutes do the work, not the spine.',
+  ],
+  'wu-ankle-circle': [
+    'Sit or stand on one leg, lifting the other foot off the floor.',
+    'Trace 8 slow circles with the toes in one direction, then 8 in the reverse.',
+    'Switch feet and repeat.',
+    'Keep the rest of the body still; only the ankle moves.',
+  ],
+
+  // ── v4.6.0 PR 2/4 additions — static stretches (hold + breathing) ─────
+  'wu-lat-stretch': [
+    'Stand tall and reach the right arm straight overhead.',
+    'Grab the right wrist with the left hand.',
+    'Side-bend gently to the left, feeling a stretch along the right lat and side.',
+    'Hold 30 seconds, breathing slow. Switch sides.',
+  ],
+  'wu-biceps-wall': [
+    'Stand sideways to a wall; place the palm flat on the wall at shoulder height.',
+    'Keep the arm fully straight and the palm facing forward.',
+    'Slowly rotate the chest away from the wall until you feel a stretch through the bicep and front shoulder.',
+    'Hold 30 seconds, breathing slow. Switch sides.',
+  ],
+  'wu-triceps-stretch': [
+    'Stand or sit tall; raise the right arm overhead.',
+    'Bend the right elbow so the hand drops behind the head, between the shoulder blades.',
+    'Use the left hand to gently press the right elbow further behind the head.',
+    'Hold 30 seconds, feeling the stretch through the back of the right arm. Switch sides.',
+  ],
+  'wu-childs-pose': [
+    'Kneel on the floor, big toes touching, knees as wide as the mat.',
+    'Sit the hips back onto the heels; reach the arms forward along the floor.',
+    'Let the forehead rest on the mat; relax the shoulders and chest toward the floor.',
+    'Hold 45 seconds, breathing into the back ribs. Restorative — let everything go heavy.',
+  ],
+  'wu-quad-stretch': [
+    'Stand tall, holding a wall or chair for balance.',
+    'Bend the right knee and grab the right ankle behind you.',
+    'Pull the heel toward the glute; keep the knees together, hips facing forward.',
+    'Hold 30 seconds, feeling the stretch through the front of the right thigh. Switch sides.',
+  ],
+  'wu-hamstring-stretch': [
+    'Sit on the floor; extend the right leg straight, bend the left knee with the sole against the right thigh.',
+    'Hinge at the hips and reach toward the right foot, keeping the back flat.',
+    'Don\'t force it — go as far as the hamstring lets you; stop when you feel tension, not pain.',
+    'Hold 45 seconds, breathing slow. Switch sides.',
+  ],
+  'wu-calf-wall': [
+    'Stand facing a wall; place both hands on it at shoulder height.',
+    'Step the right foot back, planting the heel firmly on the floor; keep the leg straight.',
+    'Bend the front knee toward the wall until you feel the stretch through the back calf.',
+    'Hold 30 seconds. Switch sides.',
+  ],
+  'wu-supine-twist': [
+    'Lie on your back, arms out in a T at shoulder height.',
+    'Bend the right knee and bring it across the body to the left side.',
+    'Keep both shoulders flat on the floor; let the right knee fall toward the floor.',
+    'Hold 45 seconds, breathing into the lower back stretch. Switch sides.',
+  ],
+
+  // ── v4.4.x originals (kept) — alphabetical block below ────────────────
   'wu-thoracic-rotation': [
     'Start on hands and knees with hands directly under shoulders.',
     'Place one hand behind your head; rotate that elbow toward the opposite hand on the floor.',
@@ -473,6 +597,20 @@ export function getMistakes(
   if (curated && curated.length > 0) {
     return { items: curated, source: 'curated' };
   }
+  // v4.6.0 PR 2/4 — for warmup IDs, hand-curated content wins over
+  // auto-curated DB content. Several `wu-*` IDs are mapped to similar-
+  // but-not-identical free-exercise-db entries (e.g. Cat-Cow → Cat
+  // Stretch, whose instructions say "Hold for 15 seconds" — wrong for
+  // our 40s alternating-tempo Cat-Cow). The 42 warmups all have
+  // hand-authored entries in WARMUP_CURATED_INSTRUCTIONS; trust those
+  // over the DB scrape.
+  const isWarmupId = exerciseId.startsWith('wu-');
+  if (isWarmupId) {
+    const curatedWarmup = WARMUP_CURATED_INSTRUCTIONS[exerciseId];
+    if (curatedWarmup && curatedWarmup.length > 0) {
+      return { items: curatedWarmup, source: 'exercisedb' };
+    }
+  }
   const dbEntry = EXERCISE_DB_DATA[exerciseId];
   if (dbEntry && dbEntry.instructions.length > 0) {
     return { items: dbEntry.instructions, source: 'exercisedb' };
@@ -487,9 +625,9 @@ export function getMistakes(
   if (wger && wger.instructions.length > 0) {
     return { items: wger.instructions, source: 'exercisedb' };
   }
-  // v4.4.x — hand-curated multi-step instructions for warmups whose names
-  // have no acceptable analog in free-exercise-db OR wger (e.g. Box
-  // Breathing). Same visual styling as ExerciseDB-sourced tips.
+  // v4.4.x — hand-curated multi-step instructions for warmups that fell
+  // through the priority chain above (shouldn't happen post-v4.6.0 since
+  // we cover all 42 warmups, but kept as belt-and-braces).
   const curatedWarmup = WARMUP_CURATED_INSTRUCTIONS[exerciseId];
   if (curatedWarmup && curatedWarmup.length > 0) {
     return { items: curatedWarmup, source: 'exercisedb' };
