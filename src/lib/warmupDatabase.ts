@@ -89,7 +89,7 @@ export const WARMUP_EXERCISES: WarmupExercise[] = [
   { id: 'wu-figure-four',         name: 'Figure-Four Stretch',       targetMuscles: ['glutes', 'hamstrings'], durationSec: 45, kind: 'static',   cue: 'Lying on back. Pull the knee toward the chest.' },
   { id: 'wu-couch-stretch',       name: 'Couch Stretch',             targetMuscles: ['quads', 'glutes'],    durationSec: 45, kind: 'static',     cue: 'Back foot on the couch. Tuck the pelvis.' },
   { id: 'wu-calf-wall',           name: 'Wall Calf Stretch',         targetMuscles: ['calves'],             durationSec: 30, kind: 'static',     cue: 'Back heel down, front knee bent.' },
-  { id: 'wu-downward-dog',        name: 'Downward Dog',              targetMuscles: ['calves', 'hamstrings', 'shoulders'], durationSec: 45, kind: 'static', cue: 'Pedal the heels. Long spine.' },
+  { id: 'wu-downward-dog',        name: 'Downward Dog',              targetMuscles: ['calves', 'hamstrings', 'shoulders'], durationSec: 45, kind: 'static', cue: 'Inverted V. Press chest toward thighs, pedal the heels gently.' },
   { id: 'wu-supine-twist',        name: 'Supine Spinal Twist',       targetMuscles: ['back', 'core'],       durationSec: 45, kind: 'static',     cue: 'Knees fall to one side. Shoulders stay down.' },
 
   // ── General / full-body rest-day fillers ───────────────────────────────────
