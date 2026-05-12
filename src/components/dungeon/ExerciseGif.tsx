@@ -13,6 +13,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { View, Image, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { fetchExerciseGif, resolveGif, isRemoteFetchBlocked } from '@/lib/exerciseGifs';
+import { LOCAL_GIF_KINDS } from '@/lib/localGifManifest';
 import { COLORS } from '@/lib/constants';
 import ExerciseIcon from '@/components/dungeon/ExerciseIcon';
 
@@ -26,6 +27,9 @@ interface ExerciseGifProps {
   /**
    * v4.5.0 — warmup `kind` from warmupDatabase ('static' | 'dynamic' | 'activation').
    * Drives the SVG fallback glyph choice when no image is available.
+   * v4.6.0 — also drives a small "FIRST POSITION" disclosure overlay
+   * when the kind is 'dynamic' but the bundled visual is a still image.
+   * The user knows they're looking at a snapshot, not the full movement.
    * Optional; defaults to 'static' inside ExerciseIcon when absent.
    */
   fallbackKind?: 'static' | 'dynamic' | 'activation';
@@ -107,21 +111,41 @@ export default function ExerciseGif({ exerciseId, animationUrl, exerciseName, fa
   if (state === 'loaded' && src) {
     const isLocal = src.kind === 'local';
     const imageSource = isLocal ? src.module : { uri: src.uri };
-    const isGif = isLocal
-      ? true // local manifest only includes media; treat as animated
+    // v4.6.0 — for the local-bundled path we treat .gif/.webp as animated
+    // and .jpg/.png as still. The previous `isLocal ? true` was inaccurate
+    // (~half our bundled assets are .jpg stills). LOCAL_GIF_KINDS — emitted
+    // by scripts/generateLocalGifManifest.js — tells us per-id.
+    const localAssetIsAnimated = isLocal
+      ? exerciseId !== undefined && LOCAL_GIF_KINDS[exerciseId] === 'animated'
       : src.uri.endsWith('.gif');
+    // v4.6.0 — for `kind: 'dynamic'` warmups whose visual is a still
+    // image, surface a small overlay so the user knows the picture is
+    // a snapshot of the start position, not the full movement. The
+    // curated multi-step instructions in the Form Tips card carry the
+    // actual tempo/breathing/alternation guidance.
+    const showFirstPositionDisclosure =
+      fallbackKind === 'dynamic' && !localAssetIsAnimated;
     const label = isLocal
-      ? 'BUNDLED · OFFLINE READY'
-      : isGif
+      ? localAssetIsAnimated
+        ? 'BUNDLED · ANIMATED · OFFLINE READY'
+        : 'BUNDLED · OFFLINE READY'
+      : localAssetIsAnimated
         ? 'ANIMATED · ExerciseDB'
         : 'EXERCISE GUIDE';
     return (
       <View style={styles.gifContainer}>
-        <Image
-          source={imageSource}
-          style={styles.gif}
-          resizeMode="contain"
-        />
+        <View style={styles.imageWrap}>
+          <Image
+            source={imageSource}
+            style={styles.gif}
+            resizeMode="contain"
+          />
+          {showFirstPositionDisclosure && (
+            <View style={styles.dynamicBadge}>
+              <Text style={styles.dynamicBadgeText}>FIRST POSITION · MOVEMENT ALTERNATES</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.sourceLabel}>{label}</Text>
       </View>
     );
@@ -148,11 +172,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  imageWrap: {
+    width: '100%',
+    position: 'relative',
+  },
   gif: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 12,
     backgroundColor: COLORS.surface,
+  },
+  // v4.6.0 — overlay badge for dynamic exercises whose bundled visual is
+  // a still image. Sits along the bottom edge of the image, semi-transparent
+  // gold so the user notices but isn't visually overwhelmed.
+  dynamicBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    backgroundColor: 'rgba(7,6,26,0.85)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  dynamicBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: COLORS.gold,
   },
   sourceLabel: {
     fontSize: 10,
