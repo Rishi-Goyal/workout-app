@@ -191,10 +191,12 @@ function auditEntry(id, meta, dbEntry, manifestPath, curatedSet) {
   const flags = [];
 
   // NAME_DRIFT — only meaningful if we have a DB source to compare against,
-  // AND the mapping wasn't already manually vetted in
-  // scripts/curateExerciseDBData.js's override list. Curated overrides
-  // intentionally point at a differently-named source.
-  if (dbEntry && !CURATED_OVERRIDE_IDS.has(id)) {
+  // AND the mapping wasn't already manually vetted (curated overrides
+  // intentionally point at a differently-named source) AND there's no
+  // curated EXERCISE_MISTAKES entry winning over the DB content at
+  // runtime (PR #56 onwards). If the user never sees the divergent source
+  // instructions, the drift is internal noise.
+  if (dbEntry && !CURATED_OVERRIDE_IDS.has(id) && !curatedSet.has(id)) {
     const score = nameMatchScore(meta.name, dbEntry.sourceName);
     if (score < 0.7) {
       flags.push({

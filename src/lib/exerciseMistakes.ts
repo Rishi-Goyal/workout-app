@@ -153,6 +153,84 @@ const EXERCISE_MISTAKES: Record<string, string[]> = {
   ],
   // v4.4.0 — wall-push-up is the Floor 1 tutorial lift; every brand-new
   // user sees it first. free-exercise-db has no analog, so we curate.
+  // ── v4.6.0 PR 3/4 additions — lifts whose audit flagged NAME_DRIFT or
+  //   THIN_DB. Adding curated mistakes here makes them ship as red
+  //   "WATCH OUT" cards and routes around the auto-curated DB mapping at
+  //   runtime (since EXERCISE_MISTAKES wins first in getMistakes()).
+  //   These are common lifts where users do benefit from explicit
+  //   common-mistake bullets.
+  'back-extension': [
+    'Hyperextending the lower back at the top — lift only until the body forms a straight line.',
+    'Using momentum to swing up — pause briefly at the top, control the descent.',
+    'Looking up at the ceiling — keep a neutral neck, eyes down at the floor.',
+    'Holding your breath — exhale on the lift, inhale on the lower.',
+  ],
+  'band-lateral-raise': [
+    'Shrugging the shoulders up to the ears — keep them packed down and back.',
+    'Lifting too high — stop when the arms are parallel to the floor; higher recruits traps, not delts.',
+    'Bending the elbows then "raising" — keep arms straight; slight elbow softness only.',
+    'Letting the band snap you back down — control the return for full medial-delt work.',
+  ],
+  'bulgarian-split-squat': [
+    'Front knee shooting forward past the toes — step the front foot a bit further out.',
+    'Leaning the torso forward — stay tall, chest up, ribs over hips.',
+    'Letting the front knee cave inward — actively drive it out over the middle toe.',
+    'Bouncing off the back foot — the back leg is for balance only; drive purely through the front heel.',
+  ],
+  'front-squat': [
+    'Elbows dropping during the descent — keep them high; collapsing elbows dumps the bar forward.',
+    'Squatting onto the toes — weight stays mid-foot/heel through the entire rep.',
+    'Wrist pain from a tight rack — work on shoulder mobility, use a strap or cross-arm grip until your wrists adapt.',
+    'Rounding the upper back — brace hard, chest up; the bar must stay on the shoulders, not the throat.',
+  ],
+  'leg-curl': [
+    'Lifting the hips off the pad — keep them planted; let the hamstrings do the work.',
+    'Jerking the weight at the start — initiate smoothly; tempo matters more than load on isolation.',
+    'Cutting the range short — bring the heels all the way to the glutes if mobility allows.',
+    'Rushing the eccentric (lowering phase) — slow it down to maximise hamstring time under tension.',
+  ],
+  'parallel-bar-dip': [
+    'Flaring the elbows wide — keep them tucked at ~30° to spare the shoulders.',
+    'Half reps — go down until the upper arms are at least parallel to the floor.',
+    'Shrugging at the top — keep the shoulders packed down and back through lockout.',
+    'Leaning too far forward (chest emphasis) or too upright (tricep emphasis) — pick one and stay consistent.',
+  ],
+  'pendlay-row': [
+    'Lifting the torso during the row — the torso stays parallel to the floor throughout.',
+    'Not resetting on the floor — Pendlay is a dead-stop row; each rep starts from a static bar.',
+    'Pulling with the arms first — drive the elbows back; the lats initiate, arms finish.',
+    'Rounding the lower back — flat-back hinge is non-negotiable; this is a high-risk position under load.',
+  ],
+  'side-plank': [
+    'Letting the hips sag toward the floor — drive them up; the body forms a straight line.',
+    'Rotating forward at the chest — stack the shoulders and hips squarely.',
+    'Holding the breath — breathe steadily; bracing and breathing aren\'t exclusive.',
+    'Letting the head drop — keep a neutral neck, eyes forward.',
+  ],
+  'single-leg-calf-raise': [
+    'Cutting the range short — rise all the way up onto the toes for full plantarflexion.',
+    'Bouncing at the bottom — the stretch reflex is cheating; pause briefly with the heel below floor level if standing on a step.',
+    'Letting the foot roll outward or inward — keep the weight even across the front of the foot.',
+    'Rushing the descent — slow the eccentric for both size and Achilles health.',
+  ],
+  'face-pull': [
+    'Pulling to the chest instead of the face — the bar/rope should track to forehead height.',
+    'Internally rotating the shoulders — externally rotate at the end: thumbs back, knuckles up.',
+    'Using too much weight and rocking — face pulls are a high-rep accessory; light load, perfect form.',
+    'Shrugging the shoulders up — keep them packed down; this is a rear-delt + rotator-cuff exercise, not a trap shrug.',
+  ],
+  'kettlebell-swing': [
+    'Squatting the swing — this is a hip hinge, not a squat; the knees stay relatively straight.',
+    'Lifting the bell with the arms — the arms are ropes; power comes from a sharp hip drive.',
+    'Letting the bell hang at the bottom — the lats keep it close to the body throughout.',
+    'Overextending the lower back at the top — finish with a hard glute squeeze, ribs down, never lean back.',
+  ],
+  'push-press': [
+    'Pressing without leg drive — the dip and drive are the entire point; you should feel the bar pop off the shoulders.',
+    'Bending the knees too deep (it becomes a jerk) — short, sharp dip; ~⅛ of a squat.',
+    'Letting the chest collapse forward in the dip — torso stays vertical; bend the knees, not the hips.',
+    'Pressing the bar in front of the face — bar path is straight up; tuck the chin so the bar can pass.',
+  ],
   'wall-push-up': [
     'Standing too close to the wall — step back so arms are fully extended at the start.',
     'Letting the hips sag or pike — keep one straight line from heels to head.',
