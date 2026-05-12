@@ -84,28 +84,25 @@ function getWorkoutDay(splitType: WorkoutSplitType, floor: number): WorkoutDay |
   return activeDays[floor % activeDays.length];
 }
 
-/** Check if the user has the equipment to perform this exercise.
+/** Check if user has ANY of the required equipment.
+ *  bodyweight_only exercises are always accessible — if you have equipment
+ *  you can still do push-ups, planks, etc.
  *
- * v4.5.2 QA P1.6 — previously any exercise that listed 'bodyweight_only'
- * in its equipment array was treated as universally accessible. That was
- * fine for true bodyweight movements (push-up, plank), but wrong for
- * hybrids that list 'bodyweight_only' alongside a real requirement —
- * e.g. Australian Pull-Up's `['pull_up_bar', 'bodyweight_only']` got
- * recommended to no-equipment users who can't actually do it.
- *
- * New semantics: 'bodyweight_only' is an informational flag meaning
- * "no plates/weights added", not "no equipment required". The exercise
- * is doable iff the user has at least one of the *real* requirements
- * (everything except 'bodyweight_only'); if there are no real
- * requirements (pure bodyweight), it's universal.
+ *  v4.5.2 history: a previous attempt at P1.6 ("Australian Pull-Up shows
+ *  for no-equipment users") filtered 'bodyweight_only' out as informational
+ *  and required real equipment. Codex caught the overcorrection — that
+ *  also pulled valid bodyweight-or-loaded variants (Russian Twist
+ *  `['bodyweight_only', 'dumbbells']`, Walking Lunge, etc.) out of the
+ *  no-equipment quest pool, which is wrong: they ARE doable bodyweight.
+ *  The right fix was data, not logic: Australian Pull-Up was the only
+ *  exercise that incorrectly listed 'bodyweight_only' alongside an
+ *  actually-required apparatus. We've removed that single bad data point,
+ *  and the simple predicate below is correct again.
  */
 function canDoExercise(exercise: Exercise, available: Equipment[]): boolean {
-  const realRequirements = exercise.equipment.filter((e) => e !== 'bodyweight_only');
-  // Pure bodyweight (nothing else listed) → accessible to everyone.
-  if (realRequirements.length === 0) return true;
-  // Otherwise the user must have at least one of the actually-needed pieces.
+  if (exercise.equipment.includes('bodyweight_only')) return true;
   const avail = new Set(available);
-  return realRequirements.some((eq) => avail.has(eq));
+  return exercise.equipment.some((eq) => avail.has(eq));
 }
 
 /** Get recently used exercise names (from last N sessions) */

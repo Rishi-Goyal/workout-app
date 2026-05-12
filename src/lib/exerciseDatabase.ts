@@ -352,7 +352,12 @@ const backExercises: Exercise[] = [
     secondaryMuscles: ['biceps', 'core'],
     movementPattern: 'pull',
     difficultyLevel: 1,
-    equipment: ['pull_up_bar', 'bodyweight_only'],
+    // v4.5.2 QA P1.6 — was ['pull_up_bar', 'bodyweight_only']; the
+    // 'bodyweight_only' flag was telling canDoExercise that this was
+    // universally accessible, so no-equipment users got it recommended.
+    // Inverted row genuinely needs a horizontal bar to grip — there's no
+    // bodyweight-only substitute movement. Removed the flag.
+    equipment: ['pull_up_bar'],
     formCues: ['Bar at waist height', 'Heels on floor', 'Pull chest to bar', 'Easier with higher bar'],
     progression: { easierExerciseId: 'dead-hang', harderExerciseId: 'lat-pulldown' },
     tags: ['bodyweight', 'beginner', 'horizontal pull'],
